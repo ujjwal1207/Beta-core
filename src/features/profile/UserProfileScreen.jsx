@@ -1,21 +1,39 @@
-import React, { useState } from 'react';
-import { ArrowLeft, Settings, User, Edit3, Plus } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ArrowLeft, Settings, User, Edit3, Plus, Loader, Users } from 'lucide-react';
 import { useAppContext } from '../../context/AppContext';
 import ProfileCompletionNudge from './components/ProfileCompletionNudge';
-import ProfileProgress from '../feed/components/ProfileProgress';
 import Button from '../../components/ui/Button';
+import userService from '../../services/userService';
 
 const UserProfileScreen = () => {
-  const { setScreen, onboardingAnswers, profileData, setProfileData } = useAppContext();
+  const { setScreen, onboardingAnswers, user, updateUserProfile, updateUserMood } = useAppContext();
 
-  const [localName, setLocalName] = useState(profileData.name || '');
-  const [localOrg, setLocalOrg] = useState(profileData.organization || '');
-  const [localTagline, setLocalTagline] = useState(profileData.customTagline || '');
-  const [localLocation, setLocalLocation] = useState(profileData.location || '');
-  const [localIndustry, setLocalIndustry] = useState(profileData.industry || '');
-  const [localExpertise, setLocalExpertise] = useState(profileData.expertise || '');
-  const [localExploring, setLocalExploring] = useState(profileData.exploring || '');
+  // Use backend user data instead of local profileData
+  const [localName, setLocalName] = useState('');
+  const [localOrg, setLocalOrg] = useState('');
+  const [localTagline, setLocalTagline] = useState('');
+  const [localLocation, setLocalLocation] = useState('');
+  const [localIndustry, setLocalIndustry] = useState('');
+  const [localExpertise, setLocalExpertise] = useState('');
+  const [localExploring, setLocalExploring] = useState('');
+  const [currentMood, setCurrentMood] = useState(0);
   const [isDirty, setIsDirty] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState(null);
+
+  // Load user data from backend
+  useEffect(() => {
+    if (user) {
+      setLocalName(user.full_name || '');
+      setLocalOrg(user.role || '');
+      setLocalTagline(user.bio || '');
+      setLocalLocation(user.location || '');
+      setLocalIndustry(user.industry || '');
+      setLocalExpertise(user.expertise || '');
+      setLocalExploring(user.exploring || '');
+      setCurrentMood(user.mood || 0);
+    }
+  }, [user]);
 
   const sharerInsights = {
     youngerSelf: onboardingAnswers['SHARER_TRACK_1'],
@@ -27,19 +45,50 @@ const UserProfileScreen = () => {
   const vibeAnswers = onboardingAnswers['VIBE_QUIZ'] || [];
   const isSharer = vibeAnswers.includes('KNOWLEDGE_SHARER');
 
-  const handleSave = () => {
-    setProfileData(prev => ({
-      ...prev,
-      name: localName,
-      organization: localOrg,
-      customTagline: localTagline,
-      location: localLocation,
-      industry: localIndustry,
-      expertise: localExpertise,
-      exploring: localExploring,
-      isProfileBasicCompleted: true
-    }));
-    setIsDirty(false);
+  const handleSave = async () => {
+    setIsSaving(true);
+    setSaveError(null);
+    
+    try {
+      // Update profile via backend API
+      await updateUserProfile({
+        full_name: localName,
+        role: localOrg,
+        bio: localTagline,
+        location: localLocation,
+        industry: localIndustry,
+        expertise: localExpertise,
+        exploring: localExploring,
+      });
+      
+      setIsDirty(false);
+    } catch (error) {
+      console.error('Error saving profile:', error);
+      setSaveError('Failed to save changes. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleMoodChange = async (newMood) => {
+    setCurrentMood(newMood);
+    setIsDirty(true);
+    
+    try {
+      await updateUserMood(newMood);
+    } catch (error) {
+      console.error('Error updating mood:', error);
+    }
+  };
+
+  const getMoodLabel = (mood) => {
+    const labels = ['Calm 😌', 'Happy 😊', 'Anxious 😰', 'Overwhelmed 😵'];
+    return labels[mood] || 'Calm 😌';
+  };
+
+  const getMoodColor = (mood) => {
+    const colors = ['bg-green-500', 'bg-yellow-500', 'bg-orange-500', 'bg-red-500'];
+    return colors[mood] || 'bg-green-500';
   };
 
   const InfoBlock = ({ title, onEdit, children, editScreenKey }) => (
@@ -69,17 +118,26 @@ const UserProfileScreen = () => {
 
   return (
     <div className="relative flex flex-col h-full bg-slate-50">
-      <header className="absolute top-0 w-full bg-white/80 backdrop-blur-lg z-30 border-b border-slate-200">
-        <div className="flex items-center justify-between p-3 h-14">
-          <button onClick={() => setScreen('FEED')} className="p-2 rounded-full hover:bg-slate-200">
-            <ArrowLeft className="w-6 h-6 text-slate-600" />
+      {/* Top Header */}
+      <div className="fixed top-0 left-0 right-0 bg-white border-b border-slate-200 px-4 py-3 flex justify-between items-center z-50">
+        <h1 className="text-xl font-bold text-slate-800">Profile</h1>
+        <div className="flex items-center space-x-2">
+          <button 
+            onClick={() => setScreen('MY_CONNECTIONS')}
+            className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+            aria-label="My Connections"
+          >
+            <Users className="w-5 h-5 text-slate-600" />
           </button>
-          <h1 className="text-lg font-bold text-slate-800">My Profile</h1>
-          <button onClick={() => setScreen('SETTINGS')} className="p-2 rounded-full hover:bg-slate-200">
-            <Settings className="w-6 h-6 text-slate-600" />
+          <button 
+            onClick={() => setScreen('SETTINGS')}
+            className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+            aria-label="Settings"
+          >
+            <Settings className="w-5 h-5 text-slate-600" />
           </button>
         </div>
-      </header>
+      </div>
 
       <div className="flex-grow overflow-y-auto pt-[57px] p-4 space-y-4 pb-24">
         <div className="relative bg-white p-6 rounded-xl shadow-sm border border-slate-100 w-full">
@@ -99,10 +157,36 @@ const UserProfileScreen = () => {
             </div>
           </div>
           
+          {/* Mood Slider */}
           <div className="mb-6">
-            <ProfileProgress />
+            <label className="text-sm font-semibold text-slate-700 mb-2 block">
+              How are you feeling today? <span className="text-indigo-600 font-bold">{getMoodLabel(currentMood)}</span>
+            </label>
+            <div className="relative">
+              <input
+                type="range"
+                min="0"
+                max="3"
+                value={currentMood}
+                onChange={(e) => handleMoodChange(parseInt(e.target.value))}
+                className="w-full h-2 rounded-lg appearance-none cursor-pointer"
+                style={{
+                  background: `linear-gradient(to right, #10b981 0%, #eab308 33%, #f97316 66%, #ef4444 100%)`,
+                }}
+              />
+              <div 
+                className={`absolute top-[-8px] w-4 h-4 rounded-full ${getMoodColor(currentMood)} border-2 border-white shadow-lg pointer-events-none transition-all`}
+                style={{ left: `calc(${(currentMood / 3) * 100}% - 8px)` }}
+              />
+            </div>
+            <div className="flex justify-between mt-1 text-xs text-slate-500">
+              <span>😌 Calm</span>
+              <span>😊 Happy</span>
+              <span>😰 Anxious</span>
+              <span>😵 Overwhelmed</span>
+            </div>
           </div>
-
+          
           <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 w-full mb-6">
             <h3 className="text-base font-bold text-slate-800 mb-2">About me</h3>
             <p className="text-sm text-slate-500 mb-3">Completing your journey helps us find you the best connections.</p>
@@ -196,8 +280,23 @@ const UserProfileScreen = () => {
       
       {isDirty && (
         <div className="absolute bottom-0 left-0 w-full p-4 bg-white/90 backdrop-blur-lg border-t border-slate-200 z-40">
-          <Button primary onClick={handleSave}>
-            Save Changes
+          {saveError && (
+            <p className="text-sm text-red-600 mb-2 text-center">{saveError}</p>
+          )}
+          <Button 
+            primary 
+            onClick={handleSave}
+            disabled={isSaving}
+            className="relative"
+          >
+            {isSaving ? (
+              <>
+                <Loader className="w-5 h-5 animate-spin inline mr-2" />
+                Saving...
+              </>
+            ) : (
+              'Save Changes'
+            )}
           </Button>
         </div>
       )}

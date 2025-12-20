@@ -1,11 +1,11 @@
-import React, { useState, useMemo } from 'react';
-import { Search, User } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Search, User, Loader } from 'lucide-react';
 import { useAppContext } from '../../context/AppContext';
 import TopTabBar from '../../components/layout/TopTabBar';
 import PostCard from './components/PostCard';
 import QuickPostStories from './components/QuickPostStories';
 import FeedJourneyCard from './components/FeedJourneyCard';
-import { ALL_PEOPLE } from '../../data/mockData';
+import feedService from '../../services/feedService';
 
 const FeedScreen = () => {
   const { 
@@ -13,16 +13,51 @@ const FeedScreen = () => {
     setIsAddMomentModalOpen, 
     setIsAddReflectionModalOpen,
     setViewingStory,
-    onboardingAnswers 
+    onboardingAnswers,
+    user,
+    isAuthenticated
   } = useAppContext();
   
   const [showNudge, setShowNudge] = useState(true);
+  const [posts, setPosts] = useState([]);
+  const [isLoadingPosts, setIsLoadingPosts] = useState(true);
+  const [error, setError] = useState(null);
 
-  const posts = useMemo(() => [
-    ALL_PEOPLE.find(p => p.id === 11),
-    ALL_PEOPLE.find(p => p.id === 12),
-    ALL_PEOPLE.find(p => p.id === 13),
-  ].filter(Boolean), []);
+  // Fetch posts from backend
+  const fetchPosts = async () => {
+    if (!isAuthenticated) {
+      setIsLoadingPosts(false);
+      return;
+    }
+
+    try {
+      setIsLoadingPosts(true);
+      setError(null);
+      // Fetch with Vibe Engine enabled
+      const feedData = await feedService.getFeed({ limit: 20, useVibe: true });
+      console.log('Fetched posts:', feedData); // Debug log
+      setPosts(feedData);
+    } catch (err) {
+      console.error('Error fetching feed:', err);
+      setError('Failed to load feed. Please try again.');
+    } finally {
+      setIsLoadingPosts(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchPosts();
+  }, [isAuthenticated]);
+
+  // Listen for post creation events
+  useEffect(() => {
+    const handlePostCreated = () => {
+      fetchPosts();
+    };
+
+    window.addEventListener('postCreated', handlePostCreated);
+    return () => window.removeEventListener('postCreated', handlePostCreated);
+  }, [isAuthenticated]);
 
   return (
     <div className="relative flex flex-col h-full bg-slate-50">
@@ -48,7 +83,13 @@ const FeedScreen = () => {
           
           <div className="bg-white p-3 rounded-xl shadow-sm border border-slate-100 w-full flex items-center gap-3 my-4">
             <div className="w-10 h-10 rounded-full bg-slate-200 flex-shrink-0 flex items-center justify-center">
-              <User className="w-6 h-6 text-slate-500" />
+              {user?.full_name ? (
+                <span className="text-sm font-semibold text-slate-600">
+                  {user.full_name.charAt(0).toUpperCase()}
+                </span>
+              ) : (
+                <User className="w-6 h-6 text-slate-500" />
+              )}
             </div>
             <button 
               onClick={() => setIsAddMomentModalOpen(true)}
@@ -67,7 +108,48 @@ const FeedScreen = () => {
             <h2 className="text-xl font-bold text-slate-800">Recent Posts</h2>
           </div>
 
-          {posts.map((post, index) => <PostCard key={index} post={post} />)}
+          {isLoadingPosts ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader className="w-8 h-8 text-indigo-500 animate-spin" />
+            </div>
+          ) : error ? (
+            <div className="text-center py-8">
+              <p className="text-red-600 mb-2">{error}</p>
+              <button 
+                onClick={() => window.location.reload()}
+                className="text-indigo-600 hover:text-indigo-800 font-semibold"
+              >
+                Try Again
+              </button>
+            </div>
+          ) : posts.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-slate-500">No posts yet. Be the first to share!</p>
+            </div>
+          ) : (
+            posts.map((post) => (
+              <PostCard 
+                key={post.id} 
+                post={{
+                  id: post.id,
+                  name: post.user_name,
+                  role: post.user_role,
+                  trustScore: post.user_trust_score,
+                  image: `https://i.pravatar.cc/150?u=${post.user_id}`,
+                  content: post.content,
+                  likes: post.likes_count,
+                  comments: post.comments_count,
+                  mood: post.mood_at_time,
+                  timestamp: new Date(post.created_at).toLocaleDateString(),
+                  imageUrl: post.image_url,
+                  videoUrl: post.video_url,
+                  type: post.type,
+                  isLiked: post.is_liked,
+                }}
+                onUpdate={fetchPosts}
+              />
+            ))
+          )}
         </div>
       </div>
     </div>

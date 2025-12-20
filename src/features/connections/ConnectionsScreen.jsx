@@ -1,21 +1,55 @@
-import React, { useState, useMemo, useCallback } from 'react';
-import { Search, Users, Star, MessageSquare, Calendar, Frown } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Search, Users, Star, MessageSquare, Calendar, Frown, Loader } from 'lucide-react';
 import { useAppContext } from '../../context/AppContext';
 import TopTabBar from '../../components/layout/TopTabBar';
 import SwipeablePersonCard from './components/SwipeablePersonCard';
 import ScheduleCallModal from './components/ScheduleCallModal';
+import IncomingRequests from './components/IncomingRequests';
 import MoodDisplay from '../../components/ui/MoodDisplay';
-import { ALL_PEOPLE, POPULAR_TOPICS } from '../../data/mockData';
+import { POPULAR_TOPICS } from '../../data/mockData';
+import connectionsService from '../../services/connectionsService';
 
 // Swipeable People Screen
 const SwipeablePeopleScreen = () => {
   const { setScreen, setSelectedPerson, setPreviousScreen } = useAppContext();
-  
-  const sections = useMemo(() => [
-    { title: 'People You Might Connect With', people: ALL_PEOPLE.filter(p => p.mood > 1) },
-    { title: 'New Voices', people: ALL_PEOPLE.filter(p => p.age < 35 && p.id > 2) },
-    { title: 'Nearby Connections', people: ALL_PEOPLE.filter(p => p.tags.includes('Local')) },
-  ], []);
+  const [people, setPeople] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetchDiscoveryPeople = async () => {
+      try {
+        setIsLoading(true);
+        const data = await connectionsService.discover(20);
+        setPeople(data);
+      } catch (err) {
+        setError('Failed to load discovery feed');
+        console.error('Error fetching discovery:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchDiscoveryPeople();
+  }, []);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader className="w-8 h-8 text-indigo-500 animate-spin" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-center py-8 px-4">
+        <p className="text-red-600">{error}</p>
+      </div>
+    );
+  }
+
+  const sections = [{ title: 'People You Might Connect With', people }];
 
   return (
     <div className="flex flex-row overflow-x-auto w-full scroll-snap-x-mandatory hide-scrollbar">
@@ -30,8 +64,26 @@ const SwipeablePeopleScreen = () => {
                 <div key={person.id} className="w-full max-w-sm mx-auto flex-shrink-0 relative" style={{ height: '65vh', minHeight: '420px' }}>
                   <div className="absolute w-full h-full">
                     <SwipeablePersonCard 
-                      person={person} 
-                      onAction={() => setScreen('MESSAGE_DELIVERED')} 
+                      person={{
+                        id: person.id,
+                        name: person.full_name,
+                        age: person.age,
+                        role: person.role,
+                        image: `https://i.pravatar.cc/400?u=${person.id}`,
+                        mood: person.mood,
+                        location: person.location,
+                        tags: person.tags || [],
+                        bio: person.bio,
+                        trustScore: person.trust_score,
+                      }} 
+                      onAction={async () => {
+                        try {
+                          await connectionsService.sendRequest(person.id);
+                          setScreen('MESSAGE_DELIVERED');
+                        } catch (error) {
+                          console.error('Failed to send connection request:', error);
+                        }
+                      }} 
                       style={{ position: 'relative', transform: 'none' }} 
                       isTop={true}
                     />
@@ -64,13 +116,13 @@ const PersonResultCard = ({ person }) => {
     setScreen('PROFILE_DETAIL');
   };
   
-  const isSuperLinker = (person?.connections || 0) > 200 && (person?.trustScore || 0) >= 3.0;
+  const isSuperLinker = person.is_super_linker || false;
 
   return (
     <>
       <div className="bg-white p-3 rounded-xl shadow-sm border border-slate-100 flex items-center mb-3 w-full">
         <div className="w-12 h-12 rounded-full bg-cover bg-center mr-3 flex-shrink-0 relative">
-          <img src={person.image.replace('/400/500','/100/100')} alt={person.name} className="w-12 h-12 rounded-full" />
+          <img src={`https://i.pravatar.cc/100?u=${person.id}`} alt={person.full_name} className="w-12 h-12 rounded-full" />
           {isSuperLinker && (
             <div className="absolute -bottom-1 -right-1 flex items-center justify-center w-5 h-5 bg-amber-400 rounded-full border-2 border-white">
               <Star className="w-3 h-3 text-white fill-white" />
@@ -80,15 +132,22 @@ const PersonResultCard = ({ person }) => {
         <div className="flex-grow min-w-0">
           <button onClick={handleNameClick} className="text-left">
             <div className='flex items-center'>
-              <p className="font-semibold text-base text-slate-800 truncate hover:underline">{person.name}, {person.age}</p>
+              <p className="font-semibold text-base text-slate-800 truncate hover:underline">{person.full_name}{person.age ? `, ${person.age}` : ''}</p>
               <MoodDisplay moodIndex={person.mood} />
             </div>
-            <p className="text-xs text-slate-500 truncate">{person.role}</p>
+            <p className="text-xs text-slate-500 truncate">{person.role || 'No role specified'}</p>
           </button>
         </div>
         <div className="flex space-x-2 ml-3 flex-shrink-0">
           <button 
-            onClick={() => setScreen('MESSAGE_DELIVERED')} 
+            onClick={async () => {
+              try {
+                await connectionsService.sendRequest(person.id);
+                setScreen('MESSAGE_DELIVERED');
+              } catch (error) {
+                console.error('Failed to send connection request:', error);
+              }
+            }} 
             className="p-2 rounded-lg bg-slate-100 text-indigo-600 hover:bg-slate-200"
           >
             <MessageSquare className="w-5 h-5"/>
@@ -113,28 +172,33 @@ const PersonResultCard = ({ person }) => {
 
 // Find Connection Screen
 const FindConnectionScreen = () => {
-  const defaultSuggestions = useMemo(() => ALL_PEOPLE.slice(0, 5), []); 
   const [searchTerm, setSearchTerm] = useState('');
-  const [results, setResults] = useState(defaultSuggestions);
+  const [results, setResults] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
   const [searchPerformed, setSearchPerformed] = useState(false);
 
-  const handleSearch = useCallback((query) => {
-    const lowerQuery = query.toLowerCase().trim();
-    if (!lowerQuery) {
-      setResults(defaultSuggestions); 
-      setSearchTerm(''); 
-      setSearchPerformed(false); 
+  const handleSearch = useCallback(async (query) => {
+    const trimmedQuery = query.trim();
+    if (!trimmedQuery) {
+      setResults([]);
+      setSearchTerm('');
+      setSearchPerformed(false);
       return;
     }
-    const filtered = ALL_PEOPLE.filter(p => 
-      p.name.toLowerCase().includes(lowerQuery) || 
-      p.role.toLowerCase().includes(lowerQuery) || 
-      p.tags.some(t => t.toLowerCase().includes(lowerQuery))
-    );
-    setResults(filtered); 
-    setSearchTerm(query); 
-    setSearchPerformed(true);
-  }, [defaultSuggestions]);
+
+    try {
+      setIsLoading(true);
+      setSearchTerm(query);
+      setSearchPerformed(true);
+      const data = await connectionsService.search(trimmedQuery, 20);
+      setResults(data);
+    } catch (err) {
+      console.error('Search error:', err);
+      setResults([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
   return (
     <div className="flex flex-col w-full bg-slate-50 p-4 pt-0">
@@ -169,19 +233,27 @@ const FindConnectionScreen = () => {
         </>
       )}
       <div className='flex-grow pt-4'>
-        <h3 className="text-base font-semibold text-slate-800 mb-3">
-          {searchPerformed ? `Found ${results.length} people for "${searchTerm}"` : 'Suggestions for You'}
-        </h3>
-        {results.length > 0 ? (
-          <div className="space-y-0">{results.map(person => <PersonResultCard key={person.id} person={person} />)}</div>
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader className="w-8 h-8 text-indigo-500 animate-spin" />
+          </div>
         ) : (
-          searchPerformed && (
-            <div className="text-center p-8 bg-white rounded-xl shadow-lg border border-slate-200">
-              <Frown className="w-10 h-10 text-slate-400 mx-auto mb-4"/>
-              <p className="font-semibold text-base text-slate-700">No one matched that search.</p>
-              <p className="text-sm text-slate-500 mt-1">Try a different or more general topic.</p>
-            </div>
-          )
+          <>
+            <h3 className="text-base font-semibold text-slate-800 mb-3">
+              {searchPerformed ? `Found ${results.length} people for "${searchTerm}"` : 'Start searching...'}
+            </h3>
+            {results.length > 0 ? (
+              <div className="space-y-0">{results.map(person => <PersonResultCard key={person.id} person={person} />)}</div>
+            ) : (
+              searchPerformed && (
+                <div className="text-center p-8 bg-white rounded-xl shadow-lg border border-slate-200">
+                  <Frown className="w-10 h-10 text-slate-400 mx-auto mb-4"/>
+                  <p className="font-semibold text-base text-slate-700">No one matched that search.</p>
+                  <p className="text-sm text-slate-500 mt-1">Try a different or more general topic.</p>
+                </div>
+              )
+            )}
+          </>
         )}
       </div>
     </div>
@@ -190,9 +262,24 @@ const FindConnectionScreen = () => {
 
 // Super ListenLinker Screen
 const SuperListenLinkerScreen = () => {
-  const superLinkers = useMemo(() => 
-    ALL_PEOPLE.filter(p => (p.connections || 0) > 200 && (p.trustScore || 0) >= 3.0), 
-  []);
+  const [superLinkers, setSuperLinkers] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchSuperLinkers = async () => {
+      try {
+        setIsLoading(true);
+        const data = await connectionsService.getSuperLinkers(20);
+        setSuperLinkers(data);
+      } catch (err) {
+        console.error('Error fetching super linkers:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchSuperLinkers();
+  }, []);
 
   const SuperPersonCard = ({ person }) => {
     const { setScreen, setSelectedPerson, setPreviousScreen } = useAppContext();
@@ -209,23 +296,19 @@ const SuperListenLinkerScreen = () => {
         <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex items-center mb-3 w-full">
           <div 
             className="w-16 h-16 rounded-full bg-cover bg-center mr-4 flex-shrink-0" 
-            style={{backgroundImage: `url(${person.image.replace('/400/500','/100/100')})`}}
+            style={{backgroundImage: `url(https://i.pravatar.cc/100?u=${person.id})`}}
           ></div>
           <div className="flex-grow min-w-0">
             <button onClick={handleNameClick} className="text-left">
               <div className='flex items-center'>
-                <p className="font-semibold text-base text-slate-800 truncate hover:underline">{person.name}, {person.age}</p>
+                <p className="font-semibold text-base text-slate-800 truncate hover:underline">{person.full_name}{person.age ? `, ${person.age}` : ''}</p>
               </div>
-              <p className="text-sm text-slate-500 truncate">{person.role}</p>
+              <p className="text-sm text-slate-500 truncate">{person.role || 'No role specified'}</p>
             </button>
             <div className="flex items-center space-x-3 mt-2">
               <div className="flex items-center text-xs font-medium text-slate-600">
                 <Star className="w-4 h-4 text-amber-500 fill-amber-500 mr-1" />
-                <span><span className="font-bold text-slate-800">{person.trustScore}</span> Trust Score</span>
-              </div>
-              <div className="flex items-center text-xs font-medium text-slate-600">
-                <Users className="w-4 h-4 text-indigo-500 mr-1" />
-                <span><span className="font-bold text-slate-800">{person.connections}</span> Connections</span>
+                <span><span className="font-bold text-slate-800">{person.trust_score?.toFixed(1) || '0.0'}</span> Trust Score</span>
               </div>
             </div>
           </div>
@@ -245,6 +328,14 @@ const SuperListenLinkerScreen = () => {
       </>
     );
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader className="w-8 h-8 text-indigo-500 animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col w-full bg-slate-50 p-4 pt-0">
@@ -276,6 +367,14 @@ const ConnectionsScreen = () => {
     <div className="flex flex-col h-full bg-slate-50">
       <TopTabBar setScreen={setScreen} currentScreen="CONNECTIONS_DASHBOARD" />
       <div className="flex-grow overflow-y-auto pt-[121px]">
+        
+        {/* Incoming Requests Section - Only show on Discover tab */}
+        {mode === 'SWIPE' && (
+          <div className="pt-4">
+            <IncomingRequests />
+          </div>
+        )}
+        
         <div className="sticky top-0 w-full p-4 flex justify-center bg-slate-50/90 backdrop-blur-md z-10 border-b border-slate-200">
           <div className="flex bg-slate-200 p-1 rounded-full shadow-inner max-w-full">
             {['SWIPE', 'SEARCH', 'SUPER'].map(m => (

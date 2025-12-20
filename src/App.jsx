@@ -10,6 +10,9 @@ import ChatHistoryScreen from './pages/ChatHistoryScreen';
 import MessageDeliveredScreen from './pages/MessageDeliveredScreen';
 import FeedScreen from './features/feed/FeedScreen';
 import ConnectionsScreen from './features/connections/ConnectionsScreen';
+import MyConnectionsScreen from './features/connections/MyConnectionsScreen';
+import ConnectionRequestsScreen from './features/connections/ConnectionRequestsScreen';
+import ChatRoomScreen from './features/chat/ChatRoomScreen';
 import UserProfileScreen from './features/profile/UserProfileScreen';
 import ProfileDetailScreen from './features/profile/ProfileDetailScreen';
 import QuizScreen from './features/onboarding/QuizScreen';
@@ -37,6 +40,12 @@ const AppContent = () => {
     setViewingStory
   } = useAppContext();
 
+  // Callback to refresh feed after post creation
+  const handlePostCreated = () => {
+    // Trigger a custom event that FeedScreen can listen to
+    window.dispatchEvent(new CustomEvent('postCreated'));
+  };
+
   const renderScreen = useCallback(() => {
     // Check if current screen is a quiz step
     const quizStep = quizFlow[screen];
@@ -62,6 +71,9 @@ const AppContent = () => {
       MESSAGE_DELIVERED: <MessageDeliveredScreen />,
       FEED: <FeedScreen />,
       CONNECTIONS_DASHBOARD: <ConnectionsScreen />,
+      MY_CONNECTIONS: <MyConnectionsScreen />,
+      CONNECTION_REQUESTS: <ConnectionRequestsScreen />,
+      CHAT_ROOM: <ChatRoomScreen />,
       USER_PROFILE: <UserProfileScreen />,
       PROFILE_DETAIL: <ProfileDetailScreen />,
     };
@@ -80,11 +92,13 @@ const AppContent = () => {
       {/* Modal components */}
       <AddMomentModal 
         isOpen={isAddMomentModalOpen} 
-        onClose={() => setIsAddMomentModalOpen(false)} 
+        onClose={() => setIsAddMomentModalOpen(false)}
+        onPostCreated={handlePostCreated}
       />
       <AddReflectionModal 
         isOpen={isAddReflectionModalOpen} 
-        onClose={() => setIsAddReflectionModalOpen(false)} 
+        onClose={() => setIsAddReflectionModalOpen(false)}
+        onPostCreated={handlePostCreated}
       />
       <StoryViewerModal 
         person={viewingStory} 

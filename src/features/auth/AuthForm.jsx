@@ -1,12 +1,68 @@
-import React from 'react';
-import { ArrowLeft, Eye } from 'lucide-react';
+import React, { useState } from 'react';
+import { ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { useAppContext } from '../../context/AppContext';
 
 export const AuthForm = ({ isLogin }) => {
-  const { setScreen } = useAppContext();
+  const { setScreen, login, signup, isLoading, authError } = useAppContext();
+  
+  const [formData, setFormData] = useState({
+    full_name: '',
+    email: '',
+    password: '',
+  });
+  const [showPassword, setShowPassword] = useState(false);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleAuth = () => setScreen('FEED');
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+    setError(''); // Clear error on input change
+  };
+
+  const handleAuth = async (e) => {
+    e.preventDefault();
+    setError('');
+
+    // Validation
+    if (!isLogin && !formData.full_name.trim()) {
+      setError('Please enter your full name');
+      return;
+    }
+    if (!formData.email.trim()) {
+      setError('Please enter your email');
+      return;
+    }
+    if (!formData.password.trim()) {
+      setError('Please enter your password');
+      return;
+    }
+    if (!isLogin && !agreedToTerms) {
+      setError('Please agree to the Terms & Conditions');
+      return;
+    }
+
+    try {
+      if (isLogin) {
+        await login({
+          email: formData.email,
+          password: formData.password,
+        });
+      } else {
+        await signup({
+          full_name: formData.full_name,
+          email: formData.email,
+          password: formData.password,
+        });
+      }
+    } catch (err) {
+      setError(err.message || 'Authentication failed. Please try again.');
+    }
+  };
 
   return (
     <div className="flex flex-col h-full p-6 bg-slate-50">
@@ -23,11 +79,20 @@ export const AuthForm = ({ isLogin }) => {
         {isLogin ? 'Welcome back, we missed you.' : 'Join to start connecting with the community.'}
       </p>
       
-      <div className="space-y-4 flex-grow overflow-y-auto">
+      {(error || authError) && (
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
+          {error || authError}
+        </div>
+      )}
+      
+      <form onSubmit={handleAuth} className="space-y-4 flex-grow overflow-y-auto">
         {!isLogin && (
           <input 
             className="w-full p-4 bg-white border border-slate-300 rounded-lg placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-base" 
             type="text" 
+            name="full_name"
+            value={formData.full_name}
+            onChange={handleInputChange}
             placeholder="Your Full Name" 
             required 
           />
@@ -35,31 +100,53 @@ export const AuthForm = ({ isLogin }) => {
         <input 
           className="w-full p-4 bg-white border border-slate-300 rounded-lg placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-base" 
           type="email" 
+          name="email"
+          value={formData.email}
+          onChange={handleInputChange}
           placeholder="Email" 
           required 
         />
         <div className="relative">
           <input 
             className="w-full p-4 bg-white border border-slate-300 rounded-lg placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-base" 
-            type="password" 
+            type={showPassword ? "text" : "password"}
+            name="password"
+            value={formData.password}
+            onChange={handleInputChange}
             placeholder="Your Password" 
             required 
           />
-          <Eye className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 cursor-pointer" />
+          <button
+            type="button"
+            onClick={() => setShowPassword(!showPassword)}
+            className="absolute right-4 top-1/2 -translate-y-1/2"
+          >
+            {showPassword ? (
+              <EyeOff className="w-5 h-5 text-slate-400 cursor-pointer" />
+            ) : (
+              <Eye className="w-5 h-5 text-slate-400 cursor-pointer" />
+            )}
+          </button>
         </div>
         {!isLogin && (
           <div className="flex items-center text-sm pt-2">
-            <input type="checkbox" id="terms" className="w-4 h-4 rounded text-indigo-600 mr-2 focus:ring-indigo-500" />
+            <input 
+              type="checkbox" 
+              id="terms" 
+              checked={agreedToTerms}
+              onChange={(e) => setAgreedToTerms(e.target.checked)}
+              className="w-4 h-4 rounded text-indigo-600 mr-2 focus:ring-indigo-500" 
+            />
             <label htmlFor="terms" className="text-slate-600">
               I agree to the <a href="#" onClick={(e) => e.preventDefault()} className="font-semibold underline text-indigo-600">Terms & Conditions</a>
             </label>
           </div>
         )}
-      </div>
+      </form>
 
       <div className="mt-8 w-full space-y-3">
-        <Button primary onClick={handleAuth}>
-          {isLogin ? 'Come On In!' : 'Create Account'}
+        <Button primary onClick={handleAuth} disabled={isLoading}>
+          {isLoading ? 'Please wait...' : (isLogin ? 'Come On In!' : 'Create Account')}
         </Button>
         <div className="relative my-4">
           <div className="absolute inset-0 flex items-center">

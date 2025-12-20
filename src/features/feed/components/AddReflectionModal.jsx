@@ -1,18 +1,50 @@
 import React, { useState, useRef } from 'react';
-import { X, ImageIcon, VideoIcon } from 'lucide-react';
+import { X, ImageIcon, VideoIcon, Loader } from 'lucide-react';
 import Button from '../../../components/ui/Button';
+import feedService from '../../../services/feedService';
+import { useAppContext } from '../../../context/AppContext';
 
-const AddReflectionModal = ({ isOpen, onClose }) => {
+const AddReflectionModal = ({ isOpen, onClose, onPostCreated }) => {
+  const { user } = useAppContext();
   const [reflectionText, setReflectionText] = useState('');
   const [selectedFile, setSelectedFile] = useState(null);
+  const [isPosting, setIsPosting] = useState(false);
+  const [error, setError] = useState('');
   const fileInputRef = useRef(null);
 
-  const handlePost = () => {
-    console.log("Posting reflection:", reflectionText, "with file:", selectedFile?.name);
-    // In a real app, this would send to a server
-    onClose();
-    setReflectionText('');
-    setSelectedFile(null);
+  const handlePost = async () => {
+    if (!reflectionText.trim()) {
+      setError('Please enter some text');
+      return;
+    }
+
+    setIsPosting(true);
+    setError('');
+
+    try {
+      const postData = {
+        content: reflectionText,
+        type: 'reflection',
+        mood_at_time: user?.mood || 0, // Use user's current mood (0-3), default to Calm (0)
+      };
+
+      await feedService.createPost(postData);
+      
+      // Close modal and reset
+      onClose();
+      setReflectionText('');
+      setSelectedFile(null);
+      
+      // Notify parent to refresh feed
+      if (onPostCreated) {
+        onPostCreated();
+      }
+    } catch (err) {
+      console.error('Error creating post:', err);
+      setError(err.message || 'Failed to create post. Please try again.');
+    } finally {
+      setIsPosting(false);
+    }
   };
 
   const handleFileChange = (event) => {
@@ -42,12 +74,18 @@ const AddReflectionModal = ({ isOpen, onClose }) => {
           </button>
         </div>
         <div className="p-6 overflow-y-auto flex-grow">
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
+              {error}
+            </div>
+          )}
           <textarea
             className="w-full p-4 bg-slate-50 border border-slate-300 rounded-lg placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-base"
             rows="6"
             placeholder="Share a reflection, a lesson learned, or a moment of gratitude..."
             value={reflectionText}
             onChange={(e) => setReflectionText(e.target.value)}
+            disabled={isPosting}
           />
           <div className="mt-4 flex space-x-3">
             <button 
@@ -81,10 +119,17 @@ const AddReflectionModal = ({ isOpen, onClose }) => {
           )}
         </div>
         <div className="p-6 border-t border-slate-200 space-y-3">
-          <Button primary onClick={handlePost} disabled={reflectionText.trim().length === 0 && !selectedFile}>
-            Share Reflection
+          <Button primary onClick={handlePost} disabled={isPosting || (reflectionText.trim().length === 0 && !selectedFile)}>
+            {isPosting ? (
+              <>
+                <Loader className="w-4 h-4 mr-2 animate-spin inline" />
+                Posting...
+              </>
+            ) : (
+              'Share Reflection'
+            )}
           </Button>
-          <Button skip onClick={onClose}>Cancel</Button>
+          <Button skip onClick={onClose} disabled={isPosting}>Cancel</Button>
         </div>
       </div>
     </div>

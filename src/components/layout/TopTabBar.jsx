@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, Users, Phone, MessageSquare as ChatIcon, User } from 'lucide-react';
+import { Home, Users, Phone, MessageSquare as ChatIcon, User, UserPlus } from 'lucide-react';
 
 const NavItem = ({ icon: Icon, text, current, setScreen }) => (
   <button
@@ -28,6 +28,13 @@ export const TopTabBar = ({ setScreen, currentScreen }) => {
       <div className="flex items-center justify-between p-3 h-14">
         <h1 className="text-xl font-extrabold text-violet-600 tracking-tighter">ListenLink</h1>
         <div className="flex items-center space-x-2">
+          <button 
+            onClick={() => setScreen('CONNECTION_REQUESTS')}
+            className='w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center border border-slate-300 hover:bg-slate-300 transition-colors'
+            aria-label="Connection requests"
+          >
+            <UserPlus className="w-4 h-4 text-slate-600" />
+          </button>
           <button 
             onClick={() => setScreen('USER_PROFILE')}
             className='w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center border border-slate-300 hover:bg-slate-300 transition-colors'

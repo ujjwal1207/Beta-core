@@ -1,18 +1,53 @@
 import React, { useState, useRef } from 'react';
-import { X, ImageIcon, VideoIcon } from 'lucide-react';
+import { X, ImageIcon, VideoIcon, Loader } from 'lucide-react';
 import Button from '../../../components/ui/Button';
+import feedService from '../../../services/feedService';
+import { useAppContext } from '../../../context/AppContext';
 
-const AddMomentModal = ({ isOpen, onClose }) => {
+const AddMomentModal = ({ isOpen, onClose, onPostCreated }) => {
+  const { user } = useAppContext();
   const [momentText, setMomentText] = useState('');
   const [selectedFile, setSelectedFile] = useState(null);
+  const [isPosting, setIsPosting] = useState(false);
+  const [error, setError] = useState('');
   const fileInputRef = useRef(null);
 
-  const handlePost = () => {
-    console.log("Posting moment:", momentText, "with file:", selectedFile?.name);
-    // In a real app, this would send to a server
-    onClose();
-    setMomentText('');
-    setSelectedFile(null);
+  const handlePost = async () => {
+    if (!momentText.trim()) {
+      setError('Please enter some text');
+      return;
+    }
+
+    setIsPosting(true);
+    setError('');
+
+    try {
+      // Note: For now, we're not handling file uploads
+      // You can implement file upload to a service like Cloudinary later
+      const postData = {
+        content: momentText,
+        type: 'moment',
+        mood_at_time: user?.mood || 0, // Use user's current mood (0-3), default to Calm (0)
+        // image_url and video_url can be added after implementing file upload
+      };
+
+      await feedService.createPost(postData);
+      
+      // Close modal and reset
+      onClose();
+      setMomentText('');
+      setSelectedFile(null);
+      
+      // Notify parent to refresh feed
+      if (onPostCreated) {
+        onPostCreated();
+      }
+    } catch (err) {
+      console.error('Error creating post:', err);
+      setError(err.message || 'Failed to create post. Please try again.');
+    } finally {
+      setIsPosting(false);
+    }
   };
 
   const handleFileChange = (event) => {
@@ -42,12 +77,18 @@ const AddMomentModal = ({ isOpen, onClose }) => {
           </button>
         </div>
         <div className="p-6 overflow-y-auto flex-grow">
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
+              {error}
+            </div>
+          )}
           <textarea
             className="w-full p-4 bg-slate-50 border border-slate-300 rounded-lg placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-base"
             rows="6"
             placeholder="What's on your mind? Share an update, a lesson, or a win..."
             value={momentText}
             onChange={(e) => setMomentText(e.target.value)}
+            disabled={isPosting}
           />
           <div className="mt-4 flex space-x-3">
             <button 
@@ -81,10 +122,17 @@ const AddMomentModal = ({ isOpen, onClose }) => {
           )}
         </div>
         <div className="p-6 border-t border-slate-200 space-y-3">
-          <Button primary onClick={handlePost} disabled={momentText.trim().length === 0 && !selectedFile}>
-            Post
+          <Button primary onClick={handlePost} disabled={isPosting || (momentText.trim().length === 0 && !selectedFile)}>
+            {isPosting ? (
+              <>
+                <Loader className="w-4 h-4 mr-2 animate-spin inline" />
+                Posting...
+              </>
+            ) : (
+              'Post'
+            )}
           </Button>
-          <Button skip onClick={onClose}>Cancel</Button>
+          <Button skip onClick={onClose} disabled={isPosting}>Cancel</Button>
         </div>
       </div>
     </div>

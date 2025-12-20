@@ -23,7 +23,15 @@ const SettingItem = ({ icon: Icon, text, hasArrow = true, color = 'text-slate-60
 );
 
 export const SettingsScreen = () => {
-  const { setScreen } = useAppContext();
+  const { setScreen, logout } = useAppContext();
+  
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
+  };
   
   return (
     <div className="relative flex flex-col h-full bg-slate-50">
@@ -73,7 +81,7 @@ export const SettingsScreen = () => {
             text="Log Out" 
             hasArrow={false} 
             color="text-rose-500"
-            onClick={() => setScreen('WELCOME')}
+            onClick={handleLogout}
           />
         </div>
       </div>

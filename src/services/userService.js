@@ -1,0 +1,65 @@
+import api from './api';
+
+/**
+ * User Service
+ * Handles user profile operations
+ */
+
+const userService = {
+  /**
+   * Get current user's profile
+   * @returns {Promise<Object>} User profile data
+   */
+  getProfile: async () => {
+    try {
+      const response = await api.get('/users/me');
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  /**
+   * Update current user's profile
+   * @param {Object} profileData - Profile update data
+   * @returns {Promise<Object>} Updated user profile
+   */
+  updateProfile: async (profileData) => {
+    try {
+      const response = await api.patch('/users/me', profileData);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  /**
+   * Update user's mood
+   * @param {number} mood - Mood value (0-3 scale)
+   * @returns {Promise<Object>} Update response
+   */
+  updateMood: async (mood) => {
+    try {
+      const response = await api.patch(`/users/me/mood?mood=${mood}`);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  /**
+   * Get user profile by ID
+   * @param {number} userId - User ID
+   * @returns {Promise<Object>} User profile data
+   */
+  getUserById: async (userId) => {
+    try {
+      const response = await api.get(`/users/${userId}`);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+};
+
+export default userService;
