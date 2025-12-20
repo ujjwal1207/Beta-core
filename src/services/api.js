@@ -13,10 +13,14 @@ const api = axios.create({
   },
 });
 
-// Request interceptor for logging (optional)
+// Request interceptor - Add Authorization header from localStorage
 api.interceptors.request.use(
   (config) => {
-    // You can add custom headers or logging here
+    // Get token from localStorage (for iPhone/Safari compatibility)
+    const token = localStorage.getItem('access_token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
     return config;
   },
   (error) => {

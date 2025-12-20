@@ -17,6 +17,10 @@ const authService = {
   signup: async (userData) => {
     try {
       const response = await api.post('/auth/signup', userData);
+      // Store token in localStorage for iPhone/Safari compatibility
+      if (response.data.access_token) {
+        localStorage.setItem('access_token', response.data.access_token);
+      }
       return response.data;
     } catch (error) {
       throw error;
@@ -33,6 +37,10 @@ const authService = {
   login: async (credentials) => {
     try {
       const response = await api.post('/auth/login', credentials);
+      // Store token in localStorage for iPhone/Safari compatibility
+      if (response.data.access_token) {
+        localStorage.setItem('access_token', response.data.access_token);
+      }
       return response.data;
     } catch (error) {
       throw error;
@@ -40,11 +48,13 @@ const authService = {
   },
 
   /**
-   * Logout user (clears authentication cookie)
+   * Logout user (clears authentication cookie and localStorage)
    * @returns {Promise<Object>} Logout response
    */
   logout: async () => {
     try {
+      // Clear localStorage token
+      localStorage.removeItem('access_token');
       const response = await api.post('/auth/logout');
       return response.data;
     } catch (error) {
