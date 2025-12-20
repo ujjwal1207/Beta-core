@@ -52,9 +52,13 @@ export const AppProvider = ({ children }) => {
           setScreen('FEED');
         }
       } catch (error) {
-        // Silently handle - user not logged in
+        // User not authenticated - redirect to login
         setIsAuthenticated(false);
         setUser(null);
+        // Force redirect to login if not already on public pages
+        if (screen !== 'WELCOME' && screen !== 'LOGIN' && screen !== 'SIGNUP') {
+          setScreen('LOGIN');
+        }
       } finally {
         setIsLoading(false);
       }
