@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { useAppContext } from '../../context/AppContext';
+import authService from '../../services/authService';
 
 export const AuthForm = ({ isLogin }) => {
   const { setScreen, login, signup, isLoading, authError } = useAppContext();
@@ -61,6 +62,15 @@ export const AuthForm = ({ isLogin }) => {
       }
     } catch (err) {
       setError(err.message || 'Authentication failed. Please try again.');
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    try {
+      const response = await authService.getGoogleLoginUrl();
+      window.location.href = response.url;
+    } catch (err) {
+      setError('Google Sign In failed. Please try again.');
     }
   };
 
@@ -157,7 +167,11 @@ export const AuthForm = ({ isLogin }) => {
           </div>
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <button className="flex items-center justify-center w-full py-3 border border-slate-300 rounded-lg bg-white text-slate-700 font-semibold shadow-sm hover:bg-slate-100 active:scale-[0.98] transition-all">
+          <button 
+            type="button"
+            onClick={handleGoogleLogin}
+            className="flex items-center justify-center w-full py-3 border border-slate-300 rounded-lg bg-white text-slate-700 font-semibold shadow-sm hover:bg-slate-100 active:scale-[0.98] transition-all"
+          >
             <img src="https://upload.wikimedia.org/wikipedia/commons/4/4a/Logo_2013_Google.png" alt="Google" className="w-5 h-5 mr-2" /> Google
           </button>
           <button className="flex items-center justify-center w-full py-3 border border-slate-300 rounded-lg bg-white text-slate-700 font-semibold shadow-sm hover:bg-slate-100 active:scale-[0.98] transition-all">

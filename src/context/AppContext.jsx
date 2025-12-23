@@ -44,6 +44,17 @@ export const AppProvider = ({ children }) => {
   useEffect(() => {
     const checkAuth = async () => {
       try {
+        // Check if token is in URL (from Google OAuth redirect)
+        const urlParams = new URLSearchParams(window.location.search);
+        const tokenFromUrl = urlParams.get('token');
+        
+        if (tokenFromUrl) {
+          // Store token in localStorage
+          localStorage.setItem('access_token', tokenFromUrl);
+          // Clean up URL
+          window.history.replaceState({}, document.title, window.location.pathname);
+        }
+        
         const userData = await authService.getCurrentUser();
         setUser(userData);
         setIsAuthenticated(true);

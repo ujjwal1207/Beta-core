@@ -75,6 +75,19 @@ const authService = {
       throw error;
     }
   },
+
+  /**
+   * Get Google OAuth login URL
+   * @returns {Promise<Object>} Object containing Google OAuth URL
+   */
+  getGoogleLoginUrl: async () => {
+    try {
+      const response = await api.get('/auth/google/login');
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
 };
 
 export default authService;
