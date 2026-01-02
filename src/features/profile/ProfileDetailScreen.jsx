@@ -1,19 +1,28 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Star, Users, ThumbsUp, Clock, Briefcase, Calendar, MessageSquare, Loader, UserPlus } from 'lucide-react';
+import { ArrowLeft, Star, Users, ThumbsUp, Clock, Briefcase, Calendar, MessageSquare, Loader, UserPlus, Image as ImageIcon } from 'lucide-react';
 import { useAppContext } from '../../context/AppContext';
 import MoodDisplay from '../../components/ui/MoodDisplay';
 import ScheduleCallModal from '../connections/components/ScheduleCallModal';
 import Button from '../../components/ui/Button';
+import PostCard from '../feed/components/PostCard';
 import userService from '../../services/userService';
 import connectionsService from '../../services/connectionsService';
+import feedService from '../../services/feedService';
+import chatService from '../../services/chatService';
+import { getAvatarUrlWithSize } from '../../lib/avatarUtils';
 
 const ProfileDetailScreen = () => {
-  const { setScreen, selectedPerson, previousScreen } = useAppContext();
+  const { setScreen, selectedPerson, previousScreen, setSelectedPerson, setSelectedConversation, setPreviousScreen } = useAppContext();
   const [person, setPerson] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSendingRequest, setIsSendingRequest] = useState(false);
   const [requestSent, setRequestSent] = useState(false);
+  const [userPosts, setUserPosts] = useState([]);
+  const [postsLoading, setPostsLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('bio'); // 'bio' or 'posts'
+  const [isConnected, setIsConnected] = useState(false);
+  const [conversations, setConversations] = useState([]);
   
   useEffect(() => {
     const fetchUserProfile = async () => {
@@ -27,6 +36,17 @@ const ProfileDetailScreen = () => {
         // Fetch full user profile from backend
         const userProfile = await userService.getUserById(selectedPerson.id);
         setPerson(userProfile);
+        
+        // Check if this user is already a connection
+        const myConnections = await connectionsService.getMyConnections();
+        const connected = myConnections.some(conn => conn.id === selectedPerson.id);
+        setIsConnected(connected);
+        
+        // If connected, also fetch conversations for chat functionality
+        if (connected) {
+          const convs = await chatService.getConversations();
+          setConversations(convs);
+        }
       } catch (error) {
         console.error('Error fetching user profile:', error);
         setScreen('CONNECTIONS_DASHBOARD');
@@ -37,6 +57,25 @@ const ProfileDetailScreen = () => {
 
     fetchUserProfile();
   }, [selectedPerson, setScreen]);
+
+  useEffect(() => {
+    const fetchUserPosts = async () => {
+      if (!selectedPerson?.id) return;
+      
+      try {
+        setPostsLoading(true);
+        const posts = await feedService.getUserPosts(selectedPerson.id);
+        setUserPosts(posts);
+      } catch (error) {
+        console.error('Error fetching user posts:', error);
+        setUserPosts([]);
+      } finally {
+        setPostsLoading(false);
+      }
+    };
+
+    fetchUserPosts();
+  }, [selectedPerson]);
 
   const handleSendRequest = async () => {
     if (!person) return;
@@ -52,6 +91,32 @@ const ProfileDetailScreen = () => {
     } catch (error) {
       console.error('Error sending connection request:', error);
       alert('Failed to send connection request. Please try again.');
+    } finally {
+      setIsSendingRequest(false);
+    }
+  };
+
+  const handleStartChat = async () => {
+    if (!person) return;
+    
+    try {
+      setIsSendingRequest(true);
+      // Find existing conversation or create new one
+      const existingConv = conversations.find(c => c.other_user.id === person.id);
+      
+      if (existingConv) {
+        setSelectedConversation(existingConv);
+      } else {
+        const conv = await chatService.getPrivateConversation(person.id);
+        setSelectedConversation(conv);
+      }
+      
+      setSelectedPerson(person);
+      setPreviousScreen('PROFILE_DETAIL');
+      setScreen('CHAT_ROOM');
+    } catch (error) {
+      console.error('Failed to open chat:', error);
+      alert('Failed to open chat. Please try again.');
     } finally {
       setIsSendingRequest(false);
     }
@@ -73,7 +138,7 @@ const ProfileDetailScreen = () => {
     <>
       <div className="flex flex-col h-full bg-slate-100">
         <div className="flex-grow overflow-y-auto pb-28">
-          <div className="relative w-full h-64 bg-cover bg-center" style={{ backgroundImage: `url(https://i.pravatar.cc/400?u=${person.id})` }}>
+          <div className="relative w-full h-64 bg-cover bg-center" style={{ backgroundImage: `url(${getAvatarUrlWithSize(person, 400)})` }}>
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent"></div>
             <button onClick={() => setScreen(previousScreen || 'FEED')} className="absolute top-4 left-4 p-2 bg-black/30 backdrop-blur-sm rounded-full text-white hover:bg-black/50 transition-colors z-10">
               <ArrowLeft className="w-6 h-6" />
@@ -114,6 +179,20 @@ const ProfileDetailScreen = () => {
             )}
             
             <p className="text-base text-slate-700 leading-relaxed mb-6">{person.bio || 'No bio available'}</p>
+            
+            {person.expertise && (
+              <div className="mb-6">
+                <p className="text-xs font-bold text-indigo-600 uppercase mb-2">Expert In</p>
+                <div className="flex flex-wrap gap-2">
+                  {person.expertise.split(',').map((tag, index) => (
+                    <span key={index} className="px-3 py-1.5 text-sm font-semibold bg-indigo-100 text-indigo-700 rounded-full border border-indigo-300">
+                      {tag.trim()}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+            
             {person.tags && person.tags.length > 0 && (
               <div className="flex flex-wrap gap-2 mb-6">
                 {person.tags.map(tag => (
@@ -125,7 +204,36 @@ const ProfileDetailScreen = () => {
             )}
           </div>
 
-          {person.gratitude && person.gratitude.length > 0 && (
+          {/* Tab Navigation */}
+          <div className="bg-white mt-4 shadow-lg mx-0 sticky top-0 z-20">
+            <div className="flex border-b border-slate-200">
+              <button
+                onClick={() => setActiveTab('bio')}
+                className={`flex-1 py-4 text-base font-bold transition-all ${
+                  activeTab === 'bio'
+                    ? 'text-indigo-600 border-b-2 border-indigo-600'
+                    : 'text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                Bio
+              </button>
+              <button
+                onClick={() => setActiveTab('posts')}
+                className={`flex-1 py-4 text-base font-bold transition-all ${
+                  activeTab === 'posts'
+                    ? 'text-indigo-600 border-b-2 border-indigo-600'
+                    : 'text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                Posts
+              </button>
+            </div>
+          </div>
+
+          {/* Bio Tab Content */}
+          {activeTab === 'bio' && (
+            <>
+              {person.gratitude && person.gratitude.length > 0 && (
             <div className="bg-white p-6 mt-4 shadow-lg mx-0">
               <div className="flex items-center mb-6">
                 <div className="flex-shrink-0 w-12 h-12 flex items-center justify-center bg-gradient-to-br from-green-500 to-emerald-600 text-white rounded-xl shadow-lg mr-4">
@@ -148,7 +256,11 @@ const ProfileDetailScreen = () => {
             </div>
           )}
 
-          {person.sharerInsights && (
+          {person.sharer_insights && Object.keys(person.sharer_insights).length > 0 && (
+            person.sharer_insights.youngerSelf || 
+            person.sharer_insights.lifeLessons?.length > 0 || 
+            person.sharer_insights.societyChange
+          ) && (
             <div className="bg-white p-6 mt-4 shadow-lg mx-0">
               <div className="flex items-center mb-6">
                 <div className="flex-shrink-0 w-12 h-12 flex items-center justify-center bg-gradient-to-br from-indigo-500 to-purple-600 text-white rounded-xl shadow-lg mr-4">
@@ -157,26 +269,26 @@ const ProfileDetailScreen = () => {
                 <h3 className="text-xl font-extrabold text-slate-800">My Shared Wisdom</h3>
               </div>
               
-              {person.sharerInsights.youngerSelf && (
+              {person.sharer_insights.youngerSelf && (
                 <div className="mb-6">
                   <div className="flex items-center text-sm font-bold text-slate-600 mb-2">
                     <Clock className="w-4 h-4 mr-2 text-slate-400" />
                     ADVICE TO MY YOUNGER SELF
                   </div>
                   <blockquote className="text-base text-slate-700 italic border-l-4 border-indigo-200 pl-4 py-2 bg-slate-50 rounded-r-lg">
-                    "{person.sharerInsights.youngerSelf}"
+                    "{person.sharer_insights.youngerSelf}"
                   </blockquote>
                 </div>
               )}
 
-              {person.sharerInsights.lifeLessons && Array.isArray(person.sharerInsights.lifeLessons) && (
+              {person.sharer_insights.lifeLessons && Array.isArray(person.sharer_insights.lifeLessons) && person.sharer_insights.lifeLessons.length > 0 && (
                 <div className="mb-6">
                   <div className="flex items-center text-sm font-bold text-slate-600 mb-3">
                     <Briefcase className="w-4 h-4 mr-2 text-slate-400" />
                     KEY LIFE LESSONS
                   </div>
                   <div className="space-y-4">
-                    {person.sharerInsights.lifeLessons.map((exp, index) => (
+                    {person.sharer_insights.lifeLessons.map((exp, index) => (
                       <div key={index} className="p-4 rounded-xl border border-slate-200 bg-white shadow-sm">
                         <p className="text-base font-semibold text-slate-800 italic mb-3">"{exp.lesson}"</p>
                         <div className="text-sm font-medium text-slate-500 space-y-1">
@@ -197,15 +309,54 @@ const ProfileDetailScreen = () => {
                 </div>
               )}
 
-              {person.sharerInsights.societyChange && (
+              {person.sharer_insights.societyChange && (
                 <div>
                   <div className="flex items-center text-sm font-bold text-slate-600 mb-2">
                     <Users className="w-4 h-4 mr-2 text-slate-400" />
                     CHANGE I WANT TO SEE
                   </div>
                   <blockquote className="text-base text-slate-700 italic border-l-4 border-indigo-200 pl-4 py-2 bg-slate-50 rounded-r-lg">
-                    "{person.sharerInsights.societyChange}"
+                    "{person.sharer_insights.societyChange}"
                   </blockquote>
+                </div>
+              )}
+            </div>
+          )}
+            </>
+          )}
+          
+          {/* Posts Tab Content */}
+          {activeTab === 'posts' && (
+            <div className="bg-white mt-4 mx-0">
+              {postsLoading ? (
+                <div className="flex justify-center py-8">
+                  <Loader className="w-6 h-6 text-indigo-500 animate-spin" />
+                </div>
+              ) : userPosts.length > 0 ? (
+                <div className="space-y-4">
+                  {userPosts.filter(post => post && post.id).map((post) => (
+                    <PostCard 
+                      key={post.id} 
+                      post={post}
+                      showNotInterested={false}
+                      onUpdate={(updatedPost, deletedPostId) => {
+                        // Handle post update or deletion
+                        if (deletedPostId) {
+                          // Remove deleted post from list
+                          setUserPosts(prev => prev.filter(p => p && p.id !== deletedPostId));
+                        } else if (updatedPost) {
+                          // Update existing post in list
+                          setUserPosts(prev => 
+                            prev.filter(p => p && p.id).map(p => p.id === updatedPost.id ? updatedPost : p)
+                          );
+                        }
+                      }}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="p-6">
+                  <p className="text-center text-slate-500 py-8">No posts yet</p>
                 </div>
               )}
             </div>
@@ -216,7 +367,24 @@ const ProfileDetailScreen = () => {
 
         <div className="absolute bottom-0 left-0 w-full p-4 bg-white/90 backdrop-blur-lg border-t border-slate-200 z-10">
           <div className="flex space-x-3">
-            {requestSent ? (
+            {isConnected ? (
+              <Button 
+                onClick={handleStartChat} 
+                disabled={isSendingRequest}
+                primary 
+                className="flex-1 !bg-indigo-600 !text-white"
+              >
+                {isSendingRequest ? (
+                  <>
+                    <Loader className="w-5 h-5 inline mr-2 animate-spin"/> Opening...
+                  </>
+                ) : (
+                  <>
+                    <MessageSquare className="w-5 h-5 inline mr-2"/> Start Chat
+                  </>
+                )}
+              </Button>
+            ) : requestSent ? (
               <Button disabled className="flex-1 !bg-green-50 !text-green-600">
                 <UserPlus className="w-5 h-5 inline mr-2"/> Request Sent
               </Button>
@@ -233,7 +401,7 @@ const ProfileDetailScreen = () => {
                   </>
                 ) : (
                   <>
-                    <MessageSquare className="w-5 h-5 inline mr-2"/> Start Chat
+                    <UserPlus className="w-5 h-5 inline mr-2"/> Send Request
                   </>
                 )}
               </Button>

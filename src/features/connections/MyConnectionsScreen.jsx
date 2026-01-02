@@ -3,6 +3,7 @@ import { Search, MessageCircle, ArrowLeft, Loader, UserX } from 'lucide-react';
 import { useAppContext } from '../../context/AppContext';
 import connectionsService from '../../services/connectionsService';
 import chatService from '../../services/chatService';
+import { getAvatarUrlWithSize } from '../../lib/avatarUtils';
 
 const MyConnectionsScreen = () => {
   const { setScreen, setPreviousScreen, setSelectedPerson, setSelectedConversation } = useAppContext();
@@ -99,9 +100,9 @@ const MyConnectionsScreen = () => {
             >
               <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold text-lg shadow-sm">
                 <img 
-                  src={`https://i.pravatar.cc/100?u=${person.id}`} 
+                  src={getAvatarUrlWithSize(person, 100)} 
                   alt={person.full_name} 
-                  className="w-12 h-12 rounded-full"
+                  className="w-12 h-12 rounded-full object-cover"
                 />
               </div>
               <div className="flex-1 min-w-0">

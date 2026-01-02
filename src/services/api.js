@@ -1,7 +1,10 @@
 import axios from 'axios';
 
 // API Base URL - adjust this based on your environment
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://unperfective-vicennial-helen.ngrok-free.dev/api/v1';
+const API_BASE_URL = import.meta.env.VITE_API_URL;
+if (!API_BASE_URL) {
+  throw new Error('VITE_API_URL environment variable is required');
+}
 
 // Create axios instance with default config
 const api = axios.create({

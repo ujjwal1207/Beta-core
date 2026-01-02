@@ -5,7 +5,9 @@ import TopTabBar from '../../components/layout/TopTabBar';
 import PostCard from './components/PostCard';
 import QuickPostStories from './components/QuickPostStories';
 import FeedJourneyCard from './components/FeedJourneyCard';
+import ProfileProgress from './components/ProfileProgress';
 import feedService from '../../services/feedService';
+import { getAvatarUrlWithSize } from '../../lib/avatarUtils';
 
 const FeedScreen = () => {
   const { 
@@ -22,6 +24,7 @@ const FeedScreen = () => {
   const [posts, setPosts] = useState([]);
   const [isLoadingPosts, setIsLoadingPosts] = useState(true);
   const [error, setError] = useState(null);
+  const [hiddenPostIds, setHiddenPostIds] = useState(new Set());
 
   // Fetch posts from backend
   const fetchPosts = async () => {
@@ -36,6 +39,7 @@ const FeedScreen = () => {
       // Fetch with Vibe Engine enabled
       const feedData = await feedService.getFeed({ limit: 20, useVibe: true });
       console.log('Fetched posts:', feedData); // Debug log
+      console.log('First post with image:', feedData.find(p => p.image_url)?.image_url?.substring(0, 100)); // Check if image exists
       setPosts(feedData);
     } catch (err) {
       console.error('Error fetching feed:', err);
@@ -59,11 +63,19 @@ const FeedScreen = () => {
     return () => window.removeEventListener('postCreated', handlePostCreated);
   }, [isAuthenticated]);
 
+  // Hide a post when user clicks "not interested"
+  const hidePost = (postId) => {
+    setHiddenPostIds(prev => new Set([...prev, postId]));
+  };
+
   return (
     <div className="relative flex flex-col h-full bg-slate-50">
       <TopTabBar setScreen={setScreen} currentScreen="FEED" />
       <div className="flex-grow overflow-y-auto pt-[121px]">
         <div className="p-4">
+          {/* Daily Check-in - Always visible */}
+          <ProfileProgress />
+          
           {showNudge && (
             <FeedJourneyCard 
               onboardingAnswers={onboardingAnswers} 
@@ -127,15 +139,18 @@ const FeedScreen = () => {
               <p className="text-slate-500">No posts yet. Be the first to share!</p>
             </div>
           ) : (
-            posts.map((post) => (
+            posts
+              .filter(post => !hiddenPostIds.has(post.id))
+              .map((post) => (
               <PostCard 
                 key={post.id} 
                 post={{
                   id: post.id,
+                  user_id: post.user_id,
                   name: post.user_name,
                   role: post.user_role,
                   trustScore: post.user_trust_score,
-                  image: `https://i.pravatar.cc/150?u=${post.user_id}`,
+                  image: post.user_profile_photo || `https://i.pravatar.cc/150?u=${post.user_id}`,
                   content: post.content,
                   likes: post.likes_count,
                   comments: post.comments_count,
@@ -145,8 +160,15 @@ const FeedScreen = () => {
                   videoUrl: post.video_url,
                   type: post.type,
                   isLiked: post.is_liked,
+                  // Repost fields
+                  is_repost: post.is_repost,
+                  original_post_id: post.original_post_id,
+                  original_post_user_name: post.original_post_user_name,
+                  original_post_user_id: post.original_post_user_id,
+                  original_post_content: post.original_post_content,
                 }}
                 onUpdate={fetchPosts}
+                onHide={hidePost}
               />
             ))
           )}

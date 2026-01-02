@@ -1,9 +1,12 @@
-import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Settings, User, Edit3, Plus, Loader, Users } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { ArrowLeft, Settings, User, Edit3, Plus, Loader, Users, Camera } from 'lucide-react';
 import { useAppContext } from '../../context/AppContext';
 import ProfileCompletionNudge from './components/ProfileCompletionNudge';
 import Button from '../../components/ui/Button';
 import userService from '../../services/userService';
+import { MOOD_LABELS, MOOD_COLORS, getMoodGradient } from '../../config/theme';
+import PostCard from '../feed/components/PostCard';
+import feedService from '../../services/feedService';
 
 const UserProfileScreen = () => {
   const { setScreen, onboardingAnswers, user, updateUserProfile, updateUserMood } = useAppContext();
@@ -15,11 +18,19 @@ const UserProfileScreen = () => {
   const [localLocation, setLocalLocation] = useState('');
   const [localIndustry, setLocalIndustry] = useState('');
   const [localExpertise, setLocalExpertise] = useState('');
-  const [localExploring, setLocalExploring] = useState('');
   const [currentMood, setCurrentMood] = useState(0);
   const [isDirty, setIsDirty] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
+  const [profilePhoto, setProfilePhoto] = useState(null);
+  const [photoPreview, setPhotoPreview] = useState(null);
+  const fileInputRef = useRef(null);
+  const [activeTab, setActiveTab] = useState('bio');
+  const [userPosts, setUserPosts] = useState([]);
+  const [postsLoading, setPostsLoading] = useState(false);
+  const [savedPosts, setSavedPosts] = useState([]);
+  const [savedLoading, setSavedLoading] = useState(false);
+  const [isAboutMeExpanded, setIsAboutMeExpanded] = useState(false);
 
   // Load user data from backend
   useEffect(() => {
@@ -30,10 +41,55 @@ const UserProfileScreen = () => {
       setLocalLocation(user.location || '');
       setLocalIndustry(user.industry || '');
       setLocalExpertise(user.expertise || '');
-      setLocalExploring(user.exploring || '');
-      setCurrentMood(user.mood || 0);
+      // Set photo preview from existing profile photo only if no new photo is selected
+      if (user.profile_photo) {
+        setPhotoPreview(user.profile_photo);
+      }
     }
   }, [user]);
+
+  // Sync mood separately to ensure it updates when changed from other screens
+  useEffect(() => {
+    if (user) {
+      setCurrentMood(user.mood || 0);
+    }
+  }, [user?.mood]);
+
+  // Fetch user's posts
+  useEffect(() => {
+    const fetchUserPosts = async () => {
+      if (!user?.id) return;
+      setPostsLoading(true);
+      try {
+        const posts = await feedService.getUserPosts(user.id);
+        setUserPosts(posts);
+      } catch (error) {
+        console.error('Error fetching user posts:', error);
+      } finally {
+        setPostsLoading(false);
+      }
+    };
+    fetchUserPosts();
+  }, [user?.id]);
+
+  // Fetch saved posts
+  useEffect(() => {
+    const fetchSavedPosts = async () => {
+      if (!user?.id) return;
+      setSavedLoading(true);
+      try {
+        const posts = await feedService.getSavedPosts();
+        setSavedPosts(posts);
+      } catch (error) {
+        console.error('Error fetching saved posts:', error);
+      } finally {
+        setSavedLoading(false);
+      }
+    };
+    if (activeTab === 'saved') {
+      fetchSavedPosts();
+    }
+  }, [activeTab, user?.id]);
 
   const sharerInsights = {
     youngerSelf: onboardingAnswers['SHARER_TRACK_1'],
@@ -50,18 +106,35 @@ const UserProfileScreen = () => {
     setSaveError(null);
     
     try {
-      // Update profile via backend API
-      await updateUserProfile({
+      const updateData = {
         full_name: localName,
         role: localOrg,
         bio: localTagline,
         location: localLocation,
         industry: localIndustry,
         expertise: localExpertise,
-        exploring: localExploring,
-      });
+      };
+
+      // If there's a new profile photo, convert to base64
+      if (profilePhoto) {
+        const reader = new FileReader();
+        const base64Promise = new Promise((resolve, reject) => {
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(profilePhoto);
+        });
+        updateData.profile_photo = await base64Promise;
+        console.log('Saving profile photo, size:', updateData.profile_photo.length);
+      }
+
+      console.log('Updating profile with data:', { ...updateData, profile_photo: updateData.profile_photo ? `[base64 ${updateData.profile_photo.length} chars]` : 'none' });
+
+      // Update profile via backend API
+      const updatedUser = await updateUserProfile(updateData);
+      console.log('Profile updated successfully, photo:', updatedUser.profile_photo ? 'present' : 'missing');
       
       setIsDirty(false);
+      setProfilePhoto(null); // Clear the file object, keep preview from server
     } catch (error) {
       console.error('Error saving profile:', error);
       setSaveError('Failed to save changes. Please try again.');
@@ -81,14 +154,21 @@ const UserProfileScreen = () => {
     }
   };
 
-  const getMoodLabel = (mood) => {
-    const labels = ['Calm 😌', 'Happy 😊', 'Anxious 😰', 'Overwhelmed 😵'];
-    return labels[mood] || 'Calm 😌';
+  const handlePhotoChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        setSaveError('Photo must be less than 5MB');
+        return;
+      }
+      setProfilePhoto(file);
+      setPhotoPreview(URL.createObjectURL(file));
+      setIsDirty(true);
+    }
   };
 
-  const getMoodColor = (mood) => {
-    const colors = ['bg-green-500', 'bg-yellow-500', 'bg-orange-500', 'bg-red-500'];
-    return colors[mood] || 'bg-green-500';
+  const handlePhotoClick = () => {
+    fileInputRef.current?.click();
   };
 
   const InfoBlock = ({ title, onEdit, children, editScreenKey }) => (
@@ -120,7 +200,16 @@ const UserProfileScreen = () => {
     <div className="relative flex flex-col h-full bg-slate-50">
       {/* Top Header */}
       <div className="fixed top-0 left-0 right-0 bg-white border-b border-slate-200 px-4 py-3 flex justify-between items-center z-50">
-        <h1 className="text-xl font-bold text-slate-800">Profile</h1>
+        <div className="flex items-center">
+          <button 
+            onClick={() => setScreen('FEED')}
+            className="p-2 hover:bg-slate-100 rounded-lg transition-colors mr-2"
+            aria-label="Back to Feed"
+          >
+            <ArrowLeft className="w-5 h-5 text-slate-600" />
+          </button>
+          <h1 className="text-xl font-bold text-slate-800">Profile</h1>
+        </div>
         <div className="flex items-center space-x-2">
           <button 
             onClick={() => setScreen('MY_CONNECTIONS')}
@@ -142,8 +231,30 @@ const UserProfileScreen = () => {
       <div className="flex-grow overflow-y-auto pt-[57px] p-4 space-y-4 pb-24">
         <div className="relative bg-white p-6 rounded-xl shadow-sm border border-slate-100 w-full">
           <div className="flex items-center mb-6">
-            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white text-3xl font-bold mr-4 flex-shrink-0">
-              {localName ? localName[0] : <User className="w-10 h-10" />}
+            <div className="relative">
+              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white text-3xl font-bold mr-4 flex-shrink-0 overflow-hidden">
+                {photoPreview ? (
+                  <img src={photoPreview} alt="Profile" className="w-full h-full object-cover" />
+                ) : user?.profile_photo ? (
+                  <img src={user.profile_photo} alt="Profile" className="w-full h-full object-cover" />
+                ) : (
+                  localName ? localName[0] : <User className="w-10 h-10" />
+                )}
+              </div>
+              <button
+                onClick={handlePhotoClick}
+                className="absolute bottom-0 right-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full p-1.5 shadow-lg transition-colors"
+                aria-label="Upload photo"
+              >
+                <Camera className="w-4 h-4" />
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handlePhotoChange}
+                className="hidden"
+              />
             </div>
             <div className="flex-grow min-w-0">
               <label className="text-xs font-semibold text-slate-500">Display Name</label>
@@ -160,121 +271,212 @@ const UserProfileScreen = () => {
           {/* Mood Slider */}
           <div className="mb-6">
             <label className="text-sm font-semibold text-slate-700 mb-2 block">
-              How are you feeling today? <span className="text-indigo-600 font-bold">{getMoodLabel(currentMood)}</span>
+              How are you feeling today? <span className="font-bold" style={{color: MOOD_COLORS[currentMood]}}>{MOOD_LABELS[currentMood]}</span>
             </label>
-            <div className="relative">
-              <input
-                type="range"
-                min="0"
-                max="3"
-                value={currentMood}
-                onChange={(e) => handleMoodChange(parseInt(e.target.value))}
-                className="w-full h-2 rounded-lg appearance-none cursor-pointer"
-                style={{
-                  background: `linear-gradient(to right, #10b981 0%, #eab308 33%, #f97316 66%, #ef4444 100%)`,
-                }}
-              />
-              <div 
-                className={`absolute top-[-8px] w-4 h-4 rounded-full ${getMoodColor(currentMood)} border-2 border-white shadow-lg pointer-events-none transition-all`}
-                style={{ left: `calc(${(currentMood / 3) * 100}% - 8px)` }}
-              />
-            </div>
-            <div className="flex justify-between mt-1 text-xs text-slate-500">
-              <span>😌 Calm</span>
-              <span>😊 Happy</span>
-              <span>😰 Anxious</span>
-              <span>😵 Overwhelmed</span>
-            </div>
-          </div>
-          
-          <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 w-full mb-6">
-            <h3 className="text-base font-bold text-slate-800 mb-2">About me</h3>
-            <p className="text-sm text-slate-500 mb-3">Completing your journey helps us find you the best connections.</p>
-            <ProfileCompletionNudge
-              onboardingAnswers={onboardingAnswers}
-              setScreen={setScreen}
+            <input
+              type="range"
+              min="0"
+              max="3"
+              step="1"
+              value={currentMood}
+              onChange={(e) => handleMoodChange(parseInt(e.target.value))}
+              className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer range-slider-fix"
+              style={{ background: getMoodGradient() }}
             />
           </div>
           
-          <div className="space-y-4">
-            <div>
-              <label className="text-sm font-semibold text-slate-700 mb-1.5 block">Role / Company</label>
-              <input type="text" placeholder="e.g., Acme Inc. or Student" value={localOrg} onChange={(e) => { setLocalOrg(e.target.value); setIsDirty(true); }} className="w-full p-3 bg-slate-50 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-base" />
-            </div>
-            <div>
-              <label className="text-sm font-semibold text-slate-700 mb-1.5 block">Bio</label>
-              <input type="text" placeholder="e.g., 'Exploring new career paths'" value={localTagline} onChange={(e) => { setLocalTagline(e.target.value); setIsDirty(true); }} className="w-full p-3 bg-slate-50 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-base" />
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4">
+          <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 w-full mb-6">
+            <div 
+              className="flex items-center justify-between cursor-pointer"
+              onClick={() => setIsAboutMeExpanded(!isAboutMeExpanded)}
+            >
               <div>
-                <label className="text-sm font-semibold text-slate-700 mb-1.5 block">Location</label>
-                <input type="text" placeholder="e.g., Mumbai, India" value={localLocation} onChange={(e) => { setLocalLocation(e.target.value); setIsDirty(true); }} className="w-full p-3 bg-slate-50 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-base" />
+                <h3 className="text-base font-bold text-slate-800">About me</h3>
+                <p className="text-sm text-slate-500 mt-1">Completing your journey helps us find you the best connections.</p>
               </div>
-              <div>
-                <label className="text-sm font-semibold text-slate-700 mb-1.5 block">Industry</label>
-                <input type="text" placeholder="e.g., Technology" value={localIndustry} onChange={(e) => { setLocalIndustry(e.target.value); setIsDirty(true); }} className="w-full p-3 bg-slate-50 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-base" />
+              <div className={`transform transition-transform ${isAboutMeExpanded ? 'rotate-180' : ''}`}>
+                <svg className="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
               </div>
             </div>
-            
-            <div>
-              <label className="text-sm font-semibold text-slate-700 mb-1.5 block">My Expertise</label>
-              <textarea
-                className="w-full p-3 bg-slate-50 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-base"
-                rows="3"
-                placeholder="e.g., 'Product Management, front-end development (React), building design systems...'"
-                value={localExpertise}
-                onChange={(e) => { setLocalExpertise(e.target.value); setIsDirty(true); }}
-              />
-            </div>
-
-            <div>
-              <label className="text-sm font-semibold text-slate-700 mb-1.5 block">Areas I'm Exploring</label>
-              <textarea
-                className="w-full p-3 bg-slate-50 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-base"
-                rows="2"
-                placeholder="e.g., 'AI in creative tools, mindfulness techniques, angel investing...'"
-                value={localExploring}
-                onChange={(e) => { setLocalExploring(e.target.value); setIsDirty(true); }}
-              />
-            </div>
+            {isAboutMeExpanded && (
+              <div className="mt-4 space-y-4">
+                <ProfileCompletionNudge
+                  onboardingAnswers={onboardingAnswers}
+                  setScreen={setScreen}
+                />
+                
+                <div>
+                  <label className="text-sm font-semibold text-slate-700 mb-1.5 block">Role / Company</label>
+                  <input type="text" placeholder="e.g., Acme Inc. or Student" value={localOrg} onChange={(e) => { setLocalOrg(e.target.value); setIsDirty(true); }} className="w-full p-3 bg-slate-50 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-base" />
+                </div>
+                <div>
+                  <label className="text-sm font-semibold text-slate-700 mb-1.5 block">Bio</label>
+                  <input type="text" placeholder="e.g., 'Exploring new career paths'" value={localTagline} onChange={(e) => { setLocalTagline(e.target.value); setIsDirty(true); }} className="w-full p-3 bg-slate-50 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-base" />
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-semibold text-slate-700 mb-1.5 block">Location</label>
+                    <input type="text" placeholder="e.g., Mumbai, India" value={localLocation} onChange={(e) => { setLocalLocation(e.target.value); setIsDirty(true); }} className="w-full p-3 bg-slate-50 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-base" />
+                  </div>
+                  <div>
+                    <label className="text-sm font-semibold text-slate-700 mb-1.5 block">Industry</label>
+                    <input type="text" placeholder="e.g., Technology" value={localIndustry} onChange={(e) => { setLocalIndustry(e.target.value); setIsDirty(true); }} className="w-full p-3 bg-slate-50 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-base" />
+                  </div>
+                </div>
+                
+                <div>
+                  <label className="text-sm font-semibold text-slate-700 mb-1.5 block">My Expertise</label>
+                  <textarea
+                    className="w-full p-3 bg-slate-50 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-base"
+                    rows="3"
+                    placeholder="e.g., 'Product Management, front-end development (React), building design systems...'"
+                    value={localExpertise}
+                    onChange={(e) => { setLocalExpertise(e.target.value); setIsDirty(true); }}
+                  />
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
-        {isSharer && (
-          <InfoBlock title="My Shared Wisdom" onEdit={() => setScreen('SHARER_TRACK_1')} editScreenKey={'SHARER_TRACK_1'}>
-            {!hasSharerInsights ? (
-              <EmptyStateButton text="Add Your Wisdom & Insights" onClick={() => setScreen('SHARER_TRACK_1')} />
-            ) : (
-              <div className="space-y-4">
-                {sharerInsights.youngerSelf && (
-                  <div>
-                    <h4 className="text-sm font-bold text-slate-600 mb-1">Advice to Younger Self</h4>
-                    <p className="text-sm text-slate-700 italic">"{sharerInsights.youngerSelf}"</p>
-                  </div>
-                )}
-                {sharerInsights.lifeLessons && sharerInsights.lifeLessons.length > 0 && (
-                  <div>
-                    <h4 className="text-sm font-bold text-slate-600 mb-2">Key Life Lessons</h4>
-                    <div className="space-y-2">
-                      {sharerInsights.lifeLessons.map((lesson, i) => (
-                        <div key={i} className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-                          <p className="text-sm font-semibold text-slate-800 italic">"{lesson.lesson}"</p>
-                          <p className="text-xs text-slate-500 mt-1">Learned at: <span className="font-medium">{lesson.where}</span></p>
-                        </div>
-                      ))}
+        {/* Tab Navigation */}
+        <div className="sticky top-0 bg-white z-30 border-b border-slate-200 mb-4">
+          <div className="flex gap-4 px-4">
+            <button
+              onClick={() => setActiveTab('bio')}
+              className={`py-3 px-1 font-semibold text-sm transition-all ${
+                activeTab === 'bio'
+                  ? 'text-indigo-600 border-b-2 border-indigo-600'
+                  : 'text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              Bio
+            </button>
+            <button
+              onClick={() => setActiveTab('posts')}
+              className={`py-3 px-1 font-semibold text-sm transition-all ${
+                activeTab === 'posts'
+                  ? 'text-indigo-600 border-b-2 border-indigo-600'
+                  : 'text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              Posts
+            </button>
+            <button
+              onClick={() => setActiveTab('saved')}
+              className={`py-3 px-1 font-semibold text-sm transition-all ${
+                activeTab === 'saved'
+                  ? 'text-indigo-600 border-b-2 border-indigo-600'
+                  : 'text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              Saved
+            </button>
+          </div>
+        </div>
+
+        {/* Bio Tab Content */}
+        {activeTab === 'bio' && (
+          <div>
+            <InfoBlock title="My Shared Wisdom" onEdit={() => setScreen('SHARER_TRACK_1')} editScreenKey={'SHARER_TRACK_1'}>
+              {!hasSharerInsights ? (
+                <EmptyStateButton text="Add Your Wisdom & Insights" onClick={() => setScreen('SHARER_TRACK_1')} />
+              ) : (
+                <div className="space-y-4">
+                  {sharerInsights.youngerSelf && (
+                    <div>
+                      <h4 className="text-sm font-bold text-slate-600 mb-1">Advice to Younger Self</h4>
+                      <p className="text-sm text-slate-700 italic">"{sharerInsights.youngerSelf}"</p>
                     </div>
-                  </div>
-                )}
-                {sharerInsights.societyChange && (
-                  <div>
-                    <h4 className="text-sm font-bold text-slate-600 mb-1">Change I Want to See</h4>
-                    <p className="text-sm text-slate-700 italic">"{sharerInsights.societyChange}"</p>
-                  </div>
-                )}
+                  )}
+                  {sharerInsights.lifeLessons && sharerInsights.lifeLessons.length > 0 && (
+                    <div>
+                      <h4 className="text-sm font-bold text-slate-600 mb-2">Key Life Lessons</h4>
+                      <div className="space-y-2">
+                        {sharerInsights.lifeLessons.map((lesson, i) => (
+                          <div key={i} className="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                            <p className="text-sm font-semibold text-slate-800 italic">"{lesson.lesson}"</p>
+                            <p className="text-xs text-slate-500 mt-1">Learned at: <span className="font-medium">{lesson.where}</span></p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {sharerInsights.societyChange && (
+                    <div>
+                      <h4 className="text-sm font-bold text-slate-600 mb-1">Change I Want to See</h4>
+                      <p className="text-sm text-slate-700 italic">"{sharerInsights.societyChange}"</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </InfoBlock>
+          </div>
+        )}
+
+        {/* Posts Tab Content */}
+        {activeTab === 'posts' && (
+          <div className="space-y-4 pb-24">
+            {postsLoading ? (
+              <div className="flex justify-center items-center py-12">
+                <Loader className="w-8 h-8 animate-spin text-indigo-600" />
               </div>
+            ) : userPosts.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-slate-500 text-sm">No posts yet</p>
+              </div>
+            ) : (
+              (userPosts || []).map((post) => (
+                <PostCard 
+                  key={post.id} 
+                  post={post}
+                  onUpdate={(updatedPost, deletedPostId) => {
+                    if (deletedPostId) {
+                      // Handle deletion
+                      setUserPosts(prev => prev.filter(p => p.id !== deletedPostId));
+                    } else if (updatedPost) {
+                      // Handle update
+                      setUserPosts(prev => prev.map(p => p.id === updatedPost.id ? updatedPost : p));
+                    }
+                  }}
+                />
+              ))
             )}
-          </InfoBlock>
+          </div>
+        )}
+
+        {/* Saved Tab Content */}
+        {activeTab === 'saved' && (
+          <div className="space-y-4 pb-24">
+            {savedLoading ? (
+              <div className="flex justify-center items-center py-12">
+                <Loader className="w-8 h-8 animate-spin text-indigo-600" />
+              </div>
+            ) : savedPosts.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-slate-500 text-sm">No saved posts yet</p>
+              </div>
+            ) : (
+              (savedPosts || []).map((post) => (
+                <PostCard 
+                  key={post.id} 
+                  post={post}
+                  onUpdate={(updatedPost, deletedPostId) => {
+                    if (deletedPostId) {
+                      // Handle deletion from saved
+                      setSavedPosts(prev => prev.filter(p => p.id !== deletedPostId));
+                    } else if (updatedPost) {
+                      // Handle update
+                      setSavedPosts(prev => prev.map(p => p.id === updatedPost.id ? updatedPost : p));
+                    }
+                  }}
+                />
+              ))
+            )}
+          </div>
         )}
       </div>
       

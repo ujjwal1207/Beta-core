@@ -1,7 +1,28 @@
 import React from 'react';
-import { quizFlow, TRACK_Q1_KEYS, TRACK_Q2_KEYS, SHARER_TRACK_KEYS } from '../../../data/quizFlow';
+import { useAppContext } from '../../../context/AppContext';
+import { quizFlow, TRACK_Q1_KEYS, TRACK_Q2_KEYS } from '../../../data/quizFlow';
 
 const ProfileCompletionNudge = ({ onboardingAnswers, setScreen }) => {
+  const { user } = useAppContext();
+  
+  // Calculate profile fields completion (50% of total)
+  const calculateProfileFieldsCompletion = () => {
+    if (!user) return 0;
+    
+    let filledFields = 0;
+    const totalFields = 6; // full_name, bio, location, industry, role, expertise
+    
+    if (user.full_name?.trim()) filledFields++;
+    if (user.bio?.trim()) filledFields++;
+    if (user.location?.trim()) filledFields++;
+    if (user.industry?.trim()) filledFields++;
+    if (user.role?.trim()) filledFields++;
+    if (user.expertise?.trim()) filledFields++;
+    
+    // Return percentage contribution (max 50%)
+    return Math.round((filledFields / totalFields) * 50);
+  };
+
   const hasAnswer = (key) => {
     const answer = onboardingAnswers[key];
     if (Array.isArray(answer)) return answer.length > 0;
@@ -10,19 +31,14 @@ const ProfileCompletionNudge = ({ onboardingAnswers, setScreen }) => {
     return false;
   };
 
-  const completedVibeStep = hasAnswer('VIBE_QUIZ') ? 1 : 0;
-  const vibeAnswers = onboardingAnswers['VIBE_QUIZ'] || [];
-  const isSharer = vibeAnswers.includes('KNOWLEDGE_SHARER');
-  
-  const totalStepsForTrack = isSharer ? 1 + 3 + 1 : 1 + 1 + 1 + 1;
-  let completedSteps = completedVibeStep ? 1 : 0;
+  // Calculate onboarding journey completion (50% of total)
+  const calculateJourneyCompletion = () => {
+    const completedVibeStep = hasAnswer('VIBE_QUIZ') ? 1 : 0;
+    const vibeAnswers = onboardingAnswers['VIBE_QUIZ'] || [];
+    
+    const totalStepsForTrack = 1 + 1 + 1 + 1; // VIBE_QUIZ + Track 1 + NEW_GENERATION + optional GIVE_ADVICE
+    let completedSteps = completedVibeStep ? 1 : 0;
 
-  if (isSharer) {
-    if (hasAnswer('SHARER_TRACK_1')) completedSteps++;
-    if (hasAnswer('SHARER_TRACK_2')) completedSteps++;
-    if (hasAnswer('SHARER_TRACK_3')) completedSteps++;
-    if (hasAnswer('NEW_GENERATION')) completedSteps++;
-  } else {
     const nextTrackStep1Key = quizFlow['VIBE_QUIZ'].nextStepLogic(vibeAnswers, onboardingAnswers);
     if (nextTrackStep1Key && TRACK_Q1_KEYS.includes(nextTrackStep1Key) && hasAnswer(nextTrackStep1Key)) {
       completedSteps++;
@@ -31,33 +47,35 @@ const ProfileCompletionNudge = ({ onboardingAnswers, setScreen }) => {
     if (quizFlow['NEW_GENERATION']?.nextStepLogic(onboardingAnswers['NEW_GENERATION'], onboardingAnswers) === 'GIVE_ADVICE_QUIZ' && hasAnswer('GIVE_ADVICE_QUIZ')) {
       completedSteps++;
     }
-  }
+    
+    // Return percentage contribution (max 50%)
+    return Math.round((completedSteps / totalStepsForTrack) * 50);
+  };
+
+  const completedVibeStep = hasAnswer('VIBE_QUIZ') ? 1 : 0;
+  const vibeAnswers = onboardingAnswers['VIBE_QUIZ'] || [];
   
-  const percentage = Math.round((completedSteps / totalStepsForTrack) * 100);
+  // Calculate total percentage: 50% from profile fields + 50% from journey
+  const profileFieldsPercentage = calculateProfileFieldsCompletion();
+  const journeyPercentage = calculateJourneyCompletion();
+  const percentage = profileFieldsPercentage + journeyPercentage;
 
   const findNextStep = () => {
     if (!completedVibeStep) return () => setScreen('VIBE_QUIZ');
     
     const nextTrackStep1Key = quizFlow['VIBE_QUIZ'].nextStepLogic(vibeAnswers, onboardingAnswers);
-    if (nextTrackStep1Key && (TRACK_Q1_KEYS.includes(nextTrackStep1Key) || SHARER_TRACK_KEYS.includes(nextTrackStep1Key)) && !hasAnswer(nextTrackStep1Key)) {
+    if (nextTrackStep1Key && TRACK_Q1_KEYS.includes(nextTrackStep1Key) && !hasAnswer(nextTrackStep1Key)) {
       return () => setScreen(nextTrackStep1Key);
     }
     
     if (nextTrackStep1Key && hasAnswer(nextTrackStep1Key)) {
       const nextTrackStep2Key = quizFlow[nextTrackStep1Key]?.nextStepLogic(onboardingAnswers[nextTrackStep1Key], onboardingAnswers);
-      if (nextTrackStep2Key && (TRACK_Q2_KEYS.includes(nextTrackStep2Key) || SHARER_TRACK_KEYS.includes(nextTrackStep2Key)) && !hasAnswer(nextTrackStep2Key)) {
+      if (nextTrackStep2Key && TRACK_Q2_KEYS.includes(nextTrackStep2Key) && !hasAnswer(nextTrackStep2Key)) {
         return () => setScreen(nextTrackStep2Key);
-      }
-      if (nextTrackStep2Key && hasAnswer(nextTrackStep2Key) && SHARER_TRACK_KEYS.includes(nextTrackStep2Key)) {
-        const nextTrackStep3Key = quizFlow[nextTrackStep2Key]?.nextStepLogic(onboardingAnswers[nextTrackStep2Key], onboardingAnswers);
-        if (nextTrackStep3Key && (SHARER_TRACK_KEYS.includes(nextTrackStep3Key) || nextTrackStep3Key === 'NEW_GENERATION') && !hasAnswer(nextTrackStep3Key)) {
-          return () => setScreen(nextTrackStep3Key);
-        }
       }
     }
     
     if (!hasAnswer('NEW_GENERATION')) {
-      if (isSharer && !hasAnswer('SHARER_TRACK_3')) return () => setScreen('SHARER_TRACK_3');
       return () => setScreen('NEW_GENERATION');
     }
     

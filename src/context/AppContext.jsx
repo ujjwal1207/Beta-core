@@ -58,6 +58,27 @@ export const AppProvider = ({ children }) => {
         const userData = await authService.getCurrentUser();
         setUser(userData);
         setIsAuthenticated(true);
+        
+        // Load onboarding answers from backend
+        if (userData.onboarding_answers && Object.keys(userData.onboarding_answers).length > 0) {
+          setOnboardingAnswers(userData.onboarding_answers);
+        } else if (userData.sharer_insights && Object.keys(userData.sharer_insights).length > 0) {
+          // Backwards compatibility: if only sharer_insights exists, populate onboarding answers
+          const answers = {};
+          if (userData.sharer_insights.youngerSelf) {
+            answers['SHARER_TRACK_1'] = userData.sharer_insights.youngerSelf;
+          }
+          if (userData.sharer_insights.lifeLessons) {
+            answers['SHARER_TRACK_2'] = userData.sharer_insights.lifeLessons;
+          }
+          if (userData.sharer_insights.societyChange) {
+            answers['SHARER_TRACK_3'] = userData.sharer_insights.societyChange;
+          }
+          if (Object.keys(answers).length > 0) {
+            setOnboardingAnswers(answers);
+          }
+        }
+        
         // Only auto-navigate if not already on WELCOME or auth screens
         if (screen === 'WELCOME' || screen === 'LOGIN' || screen === 'SIGNUP') {
           setScreen('FEED');
@@ -104,7 +125,7 @@ export const AppProvider = ({ children }) => {
       const newUser = await authService.signup(userData);
       setUser(newUser);
       setIsAuthenticated(true);
-      setScreen('QUIZ'); // Navigate to onboarding quiz
+      setScreen('FEED'); // Navigate to main feed
       return newUser;
     } catch (error) {
       setAuthError(error.message || 'Signup failed');
@@ -149,6 +170,67 @@ export const AppProvider = ({ children }) => {
       throw error;
     }
   };
+
+  // Sync sharer insights to backend
+  const syncSharerInsights = async () => {
+    try {
+      const sharerInsights = {
+        youngerSelf: onboardingAnswers['SHARER_TRACK_1'] || '',
+        lifeLessons: onboardingAnswers['SHARER_TRACK_2'] || [],
+        societyChange: onboardingAnswers['SHARER_TRACK_3'] || '',
+      };
+      
+      // Only sync if there's any data
+      if (sharerInsights.youngerSelf || sharerInsights.lifeLessons.length > 0 || sharerInsights.societyChange) {
+        await updateUserProfile({ 
+          sharer_insights: sharerInsights,
+          onboarding_answers: onboardingAnswers // Save all onboarding answers
+        });
+      }
+    } catch (error) {
+      console.error('Error syncing sharer insights:', error);
+    }
+  };
+
+  // Sync all onboarding answers to backend whenever they change
+  const syncOnboardingAnswers = async () => {
+    try {
+      // Only sync if user is authenticated and there are answers
+      if (isAuthenticated && user && Object.keys(onboardingAnswers).length > 0) {
+        await updateUserProfile({ 
+          onboarding_answers: onboardingAnswers
+        });
+      }
+    } catch (error) {
+      console.error('Error syncing onboarding answers:', error);
+    }
+  };
+
+  // Sync onboarding answers when they change
+  useEffect(() => {
+    if (isAuthenticated && user && Object.keys(onboardingAnswers).length > 0) {
+      // Debounce the sync to avoid too many API calls
+      const timeoutId = setTimeout(() => {
+        syncOnboardingAnswers();
+      }, 1000); // Wait 1 second after last change
+      
+      return () => clearTimeout(timeoutId);
+    }
+  }, [onboardingAnswers, isAuthenticated, user]);
+
+  // Sync wisdom data when onboarding answers change (legacy support)
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      // Check if any wisdom-related answers exist
+      const hasWisdomData = onboardingAnswers['SHARER_TRACK_1'] || 
+                           onboardingAnswers['SHARER_TRACK_2'] || 
+                           onboardingAnswers['SHARER_TRACK_3'];
+      
+      if (hasWisdomData) {
+        syncSharerInsights();
+      }
+    }
+  }, [onboardingAnswers['SHARER_TRACK_1'], onboardingAnswers['SHARER_TRACK_2'], onboardingAnswers['SHARER_TRACK_3']]);
 
   const value = {
     screen,

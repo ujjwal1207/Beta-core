@@ -1,7 +1,7 @@
 // Theme configuration and color utilities
 
-export const MOOD_LABELS = ['Overwhelmed', 'Just... okay', 'Feeling Good', 'Great!'];
-export const MOOD_COLORS = ['#f43f5e', '#f59e0b', '#22c55e', '#3b82f6']; // Rose, Amber, Green, Blue
+export const MOOD_LABELS = ['Calm', 'Happy', 'Anxious', 'Overwhelmed'];
+export const MOOD_COLORS = ['#22c55e', '#3b82f6', '#f59e0b', '#f43f5e']; // Green, Blue, Amber, Rose
 
 export const getMoodColor = (moodIndex) => MOOD_COLORS[moodIndex] || MOOD_COLORS[1];
 

@@ -3,6 +3,7 @@ import { X, ImageIcon, VideoIcon, Loader } from 'lucide-react';
 import Button from '../../../components/ui/Button';
 import feedService from '../../../services/feedService';
 import { useAppContext } from '../../../context/AppContext';
+import { MOOD_LABELS, MOOD_COLORS } from '../../../config/theme';
 
 const AddMomentModal = ({ isOpen, onClose, onPostCreated }) => {
   const { user } = useAppContext();
@@ -13,8 +14,8 @@ const AddMomentModal = ({ isOpen, onClose, onPostCreated }) => {
   const fileInputRef = useRef(null);
 
   const handlePost = async () => {
-    if (!momentText.trim()) {
-      setError('Please enter some text');
+    if (!momentText.trim() && !selectedFile) {
+      setError('Please enter some text or select a file');
       return;
     }
 
@@ -22,14 +23,35 @@ const AddMomentModal = ({ isOpen, onClose, onPostCreated }) => {
     setError('');
 
     try {
-      // Note: For now, we're not handling file uploads
-      // You can implement file upload to a service like Cloudinary later
+      const currentMood = user?.mood ?? 1;
+      console.log('[AddMomentModal] Creating post with mood:', currentMood, 'User mood:', user?.mood);
+      
       const postData = {
         content: momentText,
         type: 'moment',
-        mood_at_time: user?.mood || 0, // Use user's current mood (0-3), default to Calm (0)
-        // image_url and video_url can be added after implementing file upload
+        mood_at_time: currentMood, // Use user's current mood (0-3), default to 1 (Just... okay)
       };
+
+      // If there's a file, convert it to base64
+      if (selectedFile) {
+        const reader = new FileReader();
+        const base64Promise = new Promise((resolve, reject) => {
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(selectedFile);
+        });
+        
+        const base64Data = await base64Promise;
+        
+        // Determine if it's an image or video based on file type
+        if (selectedFile.type.startsWith('image/')) {
+          postData.image_url = base64Data;
+        } else if (selectedFile.type.startsWith('video/')) {
+          postData.video_url = base64Data;
+        }
+        
+        console.log('Uploading file:', selectedFile.name, 'type:', selectedFile.type, 'size:', base64Data.length);
+      }
 
       await feedService.createPost(postData);
       
@@ -53,8 +75,15 @@ const AddMomentModal = ({ isOpen, onClose, onPostCreated }) => {
   const handleFileChange = (event) => {
     const file = event.target.files[0];
     if (file) {
-      console.log("File selected:", file.name, file.type);
+      // Validate file size (max 10MB)
+      if (file.size > 10 * 1024 * 1024) {
+        setError('File size must be less than 10MB');
+        return;
+      }
+      
+      console.log("File selected:", file.name, file.type, "size:", (file.size / 1024 / 1024).toFixed(2) + "MB");
       setSelectedFile(file);
+      setError(''); // Clear any previous errors
     }
   };
 
@@ -76,7 +105,14 @@ const AddMomentModal = ({ isOpen, onClose, onPostCreated }) => {
             <X className="w-6 h-6 text-slate-600" />
           </button>
         </div>
-        <div className="p-6 overflow-y-auto flex-grow">
+        <div className="px-6 pt-3 pb-0">
+          <div className="text-sm text-slate-600">
+            Posting as: <span className="font-semibold" style={{ color: MOOD_COLORS[user?.mood ?? 1] }}>
+              {MOOD_LABELS[user?.mood ?? 1]}
+            </span>
+          </div>
+        </div>
+        <div className="p-6 pt-3 overflow-y-auto flex-grow">
           {error && (
             <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
               {error}

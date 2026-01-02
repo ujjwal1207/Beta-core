@@ -8,6 +8,7 @@ import IncomingRequests from './components/IncomingRequests';
 import MoodDisplay from '../../components/ui/MoodDisplay';
 import { POPULAR_TOPICS } from '../../data/mockData';
 import connectionsService from '../../services/connectionsService';
+import { getAvatarUrlWithSize } from '../../lib/avatarUtils';
 
 // Swipeable People Screen
 const SwipeablePeopleScreen = () => {
@@ -69,7 +70,7 @@ const SwipeablePeopleScreen = () => {
                         name: person.full_name,
                         age: person.age,
                         role: person.role,
-                        image: `https://i.pravatar.cc/400?u=${person.id}`,
+                        image: getAvatarUrlWithSize(person, 400),
                         mood: person.mood,
                         location: person.location,
                         tags: person.tags || [],
@@ -121,8 +122,8 @@ const PersonResultCard = ({ person }) => {
   return (
     <>
       <div className="bg-white p-3 rounded-xl shadow-sm border border-slate-100 flex items-center mb-3 w-full">
-        <div className="w-12 h-12 rounded-full bg-cover bg-center mr-3 flex-shrink-0 relative">
-          <img src={`https://i.pravatar.cc/100?u=${person.id}`} alt={person.full_name} className="w-12 h-12 rounded-full" />
+        <div className="w-12 h-12 rounded-full bg-cover bg-center mr-3 flex-shrink-0 relative overflow-hidden">
+          <img src={getAvatarUrlWithSize(person, 100)} alt={person.full_name} className="w-12 h-12 rounded-full object-cover" />
           {isSuperLinker && (
             <div className="absolute -bottom-1 -right-1 flex items-center justify-center w-5 h-5 bg-amber-400 rounded-full border-2 border-white">
               <Star className="w-3 h-3 text-white fill-white" />
@@ -295,8 +296,8 @@ const SuperListenLinkerScreen = () => {
       <>
         <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex items-center mb-3 w-full">
           <div 
-            className="w-16 h-16 rounded-full bg-cover bg-center mr-4 flex-shrink-0" 
-            style={{backgroundImage: `url(https://i.pravatar.cc/100?u=${person.id})`}}
+            className="w-16 h-16 rounded-full bg-cover bg-center mr-4 flex-shrink-0 overflow-hidden" 
+            style={{backgroundImage: `url(${getAvatarUrlWithSize(person, 100)})`}}
           ></div>
           <div className="flex-grow min-w-0">
             <button onClick={handleNameClick} className="text-left">

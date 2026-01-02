@@ -3,6 +3,7 @@ import { Loader, Plus } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import TopTabBar from '../components/layout/TopTabBar';
 import chatService from '../services/chatService';
+import { getAvatarUrlWithSize } from '../lib/avatarUtils';
 
 const ChatHistoryScreen = () => {
   const { setScreen, setSelectedPerson, setSelectedConversation, setPreviousScreen } = useAppContext();
@@ -60,14 +61,14 @@ const ChatHistoryScreen = () => {
   return (
     <div className="relative flex flex-col h-full bg-slate-50">
       <TopTabBar setScreen={setScreen} currentScreen="CHAT_HISTORY" />
-      <div className="flex-grow overflow-y-auto pt-[121px] p-4">
+      <div className="grow overflow-y-auto pt-30.25 p-4">
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-3xl font-extrabold text-slate-800">Messages</h1>
           <button
             onClick={handleNewChat}
-            className="p-3 bg-indigo-600 text-white rounded-full shadow-lg hover:bg-indigo-700 transition-all"
+            className=" m-1 p-2 bg-indigo-600 text-white rounded-full shadow-lg hover:bg-indigo-700 transition-all"
           >
-            <Plus className="  w-3 h-3" />
+            <Plus className="w-3 h-3" />
           </button>
         </div>
         
@@ -90,7 +91,7 @@ const ChatHistoryScreen = () => {
               >
                 <div className="w-12 h-12 flex-shrink-0 rounded-full mr-3 overflow-hidden">
                   <img 
-                    src={`https://i.pravatar.cc/100?u=${conversation.other_user.id}`} 
+                    src={getAvatarUrlWithSize(conversation.other_user, 100)} 
                     alt={conversation.other_user.full_name}
                     className="w-full h-full object-cover"
                   />

@@ -1,8 +1,18 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { MOOD_LABELS, MOOD_COLORS, getMoodGradient } from '../../../config/theme';
+import { useAppContext } from '../../../context/AppContext';
 
 const ProfileProgress = () => {
-  const [mood, setMood] = useState(1);
+  const { user, updateUserMood } = useAppContext();
+  const mood = user?.mood ?? 1; // Use nullish coalescing to allow 0 value
+
+  const handleMoodChange = async (newMood) => {
+    try {
+      await updateUserMood(newMood);
+    } catch (error) {
+      console.error('Error updating mood:', error);
+    }
+  };
 
   return (
     <div className="bg-white p-4 rounded-xl shadow-sm mb-4 border border-slate-100 w-full"> 
@@ -16,7 +26,7 @@ const ProfileProgress = () => {
           max="3" 
           step="1" 
           value={mood} 
-          onChange={(e) => setMood(parseInt(e.target.value))} 
+          onChange={(e) => handleMoodChange(parseInt(e.target.value))} 
           className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer range-slider-fix" 
           style={{ background: getMoodGradient() }}
         />

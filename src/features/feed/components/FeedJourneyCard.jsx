@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { X, ChevronRight, Zap, Smile } from 'lucide-react';
-import { quizFlow, TRACK_Q1_KEYS, TRACK_Q2_KEYS, SHARER_TRACK_KEYS } from '../../../data/quizFlow';
+import { quizFlow, TRACK_Q1_KEYS, TRACK_Q2_KEYS } from '../../../data/quizFlow';
 import { MOOD_LABELS, MOOD_COLORS, getMoodGradient } from '../../../config/theme';
 
 const FeedJourneyCard = ({ onboardingAnswers, setScreen, onClose }) => {
@@ -16,28 +16,18 @@ const FeedJourneyCard = ({ onboardingAnswers, setScreen, onClose }) => {
 
   const completedVibeStep = hasAnswer('VIBE_QUIZ') ? 1 : 0;
   const vibeAnswers = onboardingAnswers['VIBE_QUIZ'] || [];
-  const isSharer = vibeAnswers.includes('KNOWLEDGE_SHARER');
   
-  const totalStepsForTrack = isSharer 
-    ? 1 + 3 + 1 
-    : 1 + 1 + 1 + 1;
+  const totalStepsForTrack = 1 + 1 + 1 + 1; // VIBE_QUIZ + Track 1 + NEW_GENERATION + optional GIVE_ADVICE
     
   let completedSteps = completedVibeStep ? 1 : 0;
 
-  if (isSharer) {
-    if (hasAnswer('SHARER_TRACK_1')) completedSteps++;
-    if (hasAnswer('SHARER_TRACK_2')) completedSteps++;
-    if (hasAnswer('SHARER_TRACK_3')) completedSteps++;
-    if (hasAnswer('NEW_GENERATION')) completedSteps++;
-  } else {
-    const nextTrackStep1Key = quizFlow['VIBE_QUIZ'].nextStepLogic(vibeAnswers, onboardingAnswers);
-    if (nextTrackStep1Key && TRACK_Q1_KEYS.includes(nextTrackStep1Key) && hasAnswer(nextTrackStep1Key)) {
-      completedSteps++;
-    }
-    if (hasAnswer('NEW_GENERATION')) completedSteps++;
-    if (quizFlow['NEW_GENERATION'].nextStepLogic(onboardingAnswers['NEW_GENERATION'], onboardingAnswers) === 'GIVE_ADVICE_QUIZ' && hasAnswer('GIVE_ADVICE_QUIZ')) {
-      completedSteps++;
-    }
+  const nextTrackStep1Key = quizFlow['VIBE_QUIZ'].nextStepLogic(vibeAnswers, onboardingAnswers);
+  if (nextTrackStep1Key && TRACK_Q1_KEYS.includes(nextTrackStep1Key) && hasAnswer(nextTrackStep1Key)) {
+    completedSteps++;
+  }
+  if (hasAnswer('NEW_GENERATION')) completedSteps++;
+  if (quizFlow['NEW_GENERATION'].nextStepLogic(onboardingAnswers['NEW_GENERATION'], onboardingAnswers) === 'GIVE_ADVICE_QUIZ' && hasAnswer('GIVE_ADVICE_QUIZ')) {
+    completedSteps++;
   }
   
   const percentage = Math.round((completedSteps / totalStepsForTrack) * 100);
@@ -47,23 +37,16 @@ const FeedJourneyCard = ({ onboardingAnswers, setScreen, onClose }) => {
       return () => setScreen('VIBE_QUIZ');
     }
     const nextTrackStep1Key = quizFlow['VIBE_QUIZ'].nextStepLogic(vibeAnswers, onboardingAnswers);
-    if (nextTrackStep1Key && (TRACK_Q1_KEYS.includes(nextTrackStep1Key) || SHARER_TRACK_KEYS.includes(nextTrackStep1Key)) && !hasAnswer(nextTrackStep1Key)) {
+    if (nextTrackStep1Key && TRACK_Q1_KEYS.includes(nextTrackStep1Key) && !hasAnswer(nextTrackStep1Key)) {
       return () => setScreen(nextTrackStep1Key);
     }
     if (nextTrackStep1Key && hasAnswer(nextTrackStep1Key)) {
       const nextTrackStep2Key = quizFlow[nextTrackStep1Key]?.nextStepLogic(onboardingAnswers[nextTrackStep1Key], onboardingAnswers);
-      if (nextTrackStep2Key && (TRACK_Q2_KEYS.includes(nextTrackStep2Key) || SHARER_TRACK_KEYS.includes(nextTrackStep2Key)) && !hasAnswer(nextTrackStep2Key)) {
+      if (nextTrackStep2Key && TRACK_Q2_KEYS.includes(nextTrackStep2Key) && !hasAnswer(nextTrackStep2Key)) {
         return () => setScreen(nextTrackStep2Key);
-      }
-      if (nextTrackStep2Key && hasAnswer(nextTrackStep2Key) && SHARER_TRACK_KEYS.includes(nextTrackStep2Key)) {
-        const nextTrackStep3Key = quizFlow[nextTrackStep2Key]?.nextStepLogic(onboardingAnswers[nextTrackStep2Key], onboardingAnswers);
-        if (nextTrackStep3Key && (SHARER_TRACK_KEYS.includes(nextTrackStep3Key) || nextTrackStep3Key === 'NEW_GENERATION') && !hasAnswer(nextTrackStep3Key)) {
-          return () => setScreen(nextTrackStep3Key);
-        }
       }
     }
     if (!hasAnswer('NEW_GENERATION')) {
-      if (isSharer && !hasAnswer('SHARER_TRACK_3')) return () => setScreen('SHARER_TRACK_3');
       return () => setScreen('NEW_GENERATION');
     }
     const nextStepAfterGen = quizFlow['NEW_GENERATION'].nextStepLogic(onboardingAnswers['NEW_GENERATION'], onboardingAnswers);
@@ -113,32 +96,6 @@ const FeedJourneyCard = ({ onboardingAnswers, setScreen, onClose }) => {
           >
             Continue <ChevronRight className="w-4 h-4 ml-1 group-hover:translate-x-0.5 transition-transform" />
           </button>
-        </div>
-
-        <div className="pt-4 border-t border-white/10">
-          <div className="flex justify-between items-center mb-3">
-            <div className="flex items-center text-indigo-100">
-              <Smile className="w-4 h-4 mr-2 opacity-80" />
-              <span className="text-xs font-bold uppercase tracking-wide opacity-90">Daily Check-in</span>
-            </div>
-            <span className="text-xs font-bold px-2 py-1 rounded-lg bg-white/20 text-white backdrop-blur-md shadow-sm border border-white/10">
-              {MOOD_LABELS[mood]}
-            </span>
-          </div>
-          <input 
-            type="range" 
-            min="0" 
-            max="3" 
-            step="1" 
-            value={mood} 
-            onChange={(e) => setMood(parseInt(e.target.value))} 
-            className="w-full h-2 bg-black/20 rounded-lg appearance-none cursor-pointer range-slider-fix" 
-            style={{ backgroundImage: getMoodGradient() }}
-          />
-          <div className="flex justify-between mt-1.5 px-1">
-            <span className="text-[10px] text-indigo-200/70 font-medium">Overwhelmed</span>
-            <span className="text-[10px] text-indigo-200/70 font-medium">Great!</span>
-          </div>
         </div>
       </div>
     </div>

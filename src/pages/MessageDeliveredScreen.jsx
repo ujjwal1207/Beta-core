@@ -11,9 +11,9 @@ const MessageDeliveredScreen = () => {
       <div className="bg-green-500 p-5 rounded-full mb-6 shadow-lg">
         <CheckCircle className="w-12 h-12 text-white" />
       </div>
-      <h1 className="text-3xl font-extrabold text-slate-900 mb-2">Message Sent!</h1>
+      <h1 className="text-3xl font-extrabold text-slate-900 mb-2">Chat request Sent!</h1>
       <p className="text-lg text-slate-500 mb-10">
-        Your chat request is on its way. We'll let you know when they respond.
+        Your chat request is on its way. We'll let you know when they accept.
       </p>
       <div className="w-full max-w-sm">
         <Button primary onClick={() => setScreen('CONNECTIONS_DASHBOARD')}>

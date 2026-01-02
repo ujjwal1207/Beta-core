@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Loader, UserPlus, UserCheck, X, Clock } from 'lucide-react';
 import { useAppContext } from '../../context/AppContext';
 import connectionsService from '../../services/connectionsService';
+import { getAvatarUrlWithSize } from '../../lib/avatarUtils';
 
 const ConnectionRequestsScreen = () => {
-  const { setScreen } = useAppContext();
+  const { setScreen, setSelectedPerson, setPreviousScreen } = useAppContext();
   const [requests, setRequests] = useState([]);
   const [sentRequests, setSentRequests] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -62,7 +63,11 @@ const ConnectionRequestsScreen = () => {
       });
     }
   };
-
+  const handleViewProfile = (person) => {
+    setSelectedPerson(person);
+    setPreviousScreen('CONNECTION_REQUESTS');
+    setScreen('PROFILE_DETAIL');
+  };
   return (
     <div className="flex flex-col h-full bg-slate-50">
       {/* Header */}
@@ -128,14 +133,20 @@ const ConnectionRequestsScreen = () => {
                       key={request.id} 
                       className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex items-center"
                     >
-                      <div className="w-14 h-14 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white text-xl font-bold mr-3 flex-shrink-0">
+                      <div 
+                        onClick={() => handleViewProfile(sender)}
+                        className="w-14 h-14 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white text-xl font-bold mr-3 flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity overflow-hidden"
+                      >
                         <img 
-                          src={`https://i.pravatar.cc/100?u=${sender.id}`} 
+                          src={getAvatarUrlWithSize(sender, 100)} 
                           alt={sender.full_name} 
-                          className="w-14 h-14 rounded-full"
+                          className="w-14 h-14 rounded-full object-cover"
                         />
                       </div>
-                      <div className="flex-grow min-w-0">
+                      <div 
+                        onClick={() => handleViewProfile(sender)}
+                        className="flex-grow min-w-0 cursor-pointer hover:bg-slate-50 -m-2 p-2 rounded-lg transition-colors"
+                      >
                         <p className="font-semibold text-base text-slate-800 truncate">
                           {sender.full_name || 'Unknown User'}
                         </p>
@@ -193,14 +204,20 @@ const ConnectionRequestsScreen = () => {
                       key={request.id} 
                       className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex items-center"
                     >
-                      <div className="w-14 h-14 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white text-xl font-bold mr-3 flex-shrink-0">
+                      <div 
+                        onClick={() => handleViewProfile(receiver)}
+                        className="w-14 h-14 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white text-xl font-bold mr-3 flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity overflow-hidden"
+                      >
                         <img 
-                          src={`https://i.pravatar.cc/100?u=${receiver.id}`} 
+                          src={getAvatarUrlWithSize(receiver, 100)} 
                           alt={receiver.full_name} 
-                          className="w-14 h-14 rounded-full"
+                          className="w-14 h-14 rounded-full object-cover"
                         />
                       </div>
-                      <div className="flex-grow min-w-0">
+                      <div 
+                        onClick={() => handleViewProfile(receiver)}
+                        className="flex-grow min-w-0 cursor-pointer hover:bg-slate-50 -m-2 p-2 rounded-lg transition-colors"
+                      >
                         <p className="font-semibold text-base text-slate-800 truncate">
                           {receiver.full_name || 'Unknown User'}
                         </p>

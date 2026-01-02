@@ -26,7 +26,6 @@ export const quizFlow = {
     prompt: "What's bringing you here today?",
     allowMultiple: false,
     options: [
-      { id: 'KNOWLEDGE_SHARER', text: "I'm here to share my knowledge and experiences.", icon: <IconKnowledgeSharer /> },
       { id: 'CAREER_GROWTH', text: "I'm focused on my next career step, but not sure what it is.", icon: <IconCareerGrowth /> },
       { id: 'BURNOUT_BALANCE', text: "Feeling the blur... just trying to find work-life *sanity*.", icon: <IconBurnout /> },
       { id: 'IMPOSTOR_PRESSURE', text: "Dealing with pressure, impostor feelings, or just feeling 'stuck'.", icon: <IconPressure /> },
@@ -34,7 +33,6 @@ export const quizFlow = {
       { id: 'JUST_LISTENING', text: "I'm here to listen and take in other perspectives for now.", icon: <IconListen /> }
     ],
     nextStepLogic: (selectedIds, allAnswers) => {
-      if (selectedIds.includes('KNOWLEDGE_SHARER')) return 'SHARER_TRACK_1';
       if (selectedIds.includes('IMPOSTOR_PRESSURE')) return 'TRACK_PRESSURE_1';
       if (selectedIds.includes('BURNOUT_BALANCE')) return 'TRACK_BALANCE_1';
       if (selectedIds.includes('CAREER_GROWTH')) return 'TRACK_CAREER_1';
@@ -42,29 +40,6 @@ export const quizFlow = {
       if (selectedIds.includes('JUST_LISTENING')) return 'TRACK_LISTENER_1';
       return 'NEW_GENERATION';
     }
-  },
-
-  'SHARER_TRACK_1': {
-    type: 'PROFILE_BUILDER',
-    prompt: "That's wonderful! This space is built on sharing wisdom. Let's start with a big one:",
-    question: "What insights would you give to your younger self?",
-    inputLabel: "Your insights...",
-    placeholder: "e.g., 'Don't be afraid to take that risk,' or 'Focus more on people than on titles...'",
-    nextStepLogic: (textInput, allAnswers) => 'SHARER_TRACK_2'
-  },
-  'SHARER_TRACK_2': {
-    type: 'EXPERIENCE_BUILDER',
-    prompt: "Deep insights often come from experience. Let's add one or two key ones.",
-    question: "Add your key work/life experiences and lessons.",
-    nextStepLogic: (experiences, allAnswers) => 'SHARER_TRACK_3'
-  },
-  'SHARER_TRACK_3': {
-    type: 'PROFILE_BUILDER',
-    prompt: "Looking forward, what's a change you're passionate about?",
-    question: "What change do you want to see in the human society?",
-    inputLabel: "The change you hope for...",
-    placeholder: "e.g., 'More empathy in the workplace,' or 'Better access to education for everyone...'",
-    nextStepLogic: (textInput, allAnswers) => 'NEW_GENERATION'
   },
 
   'TRACK_CAREER_1': {
@@ -201,6 +176,5 @@ export const quizFlow = {
 
 // Keys for progress tracking
 export const TRACK_Q1_KEYS = ['TRACK_CAREER_1', 'TRACK_BALANCE_1', 'TRACK_CONNECTION_1', 'TRACK_PRESSURE_1', 'TRACK_LISTENER_1'];
-export const SHARER_TRACK_KEYS = ['SHARER_TRACK_1', 'SHARER_TRACK_2', 'SHARER_TRACK_3'];
-export const TRACK_STARTER_KEYS = [...TRACK_Q1_KEYS, 'SHARER_TRACK_1'];
+export const TRACK_STARTER_KEYS = [...TRACK_Q1_KEYS];
 export const TRACK_Q2_KEYS = ['TRACK_CAREER_2', 'TRACK_BALANCE_2', 'TRACK_CONNECTION_2', 'TRACK_PRESSURE_2'];
