@@ -54,3 +54,23 @@ export const getUserInitials = (user) => {
   
   return (names[0][0] + names[names.length - 1][0]).toUpperCase();
 };
+
+/**
+ * Get a consistent color for a user based on their ID
+ * @param {number} userId - User ID
+ * @returns {string} Hex color code
+ */
+export const getAvatarColor = (userId) => {
+  const colors = [
+    '#6366f1', // Indigo
+    '#8b5cf6', // Violet
+    '#ec4899', // Pink
+    '#f59e0b', // Amber
+    '#10b981', // Emerald
+    '#3b82f6', // Blue
+    '#ef4444', // Red
+    '#06b6d4', // Cyan
+  ];
+  
+  return colors[userId % colors.length];
+};

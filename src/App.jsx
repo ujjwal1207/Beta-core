@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useMemo } from 'react';
 import './App.css';
 import { AppProvider, useAppContext } from './context/AppContext';
 import { quizFlow } from './data/quizFlow';
@@ -21,6 +21,10 @@ import ExperienceBuilderScreen from './features/onboarding/ExperienceBuilderScre
 import AddMomentModal from './features/feed/components/AddMomentModal';
 import AddReflectionModal from './features/feed/components/AddReflectionModal';
 import StoryViewerModal from './features/feed/components/StoryViewerModal';
+import { VideoCallScreen } from './features/calls';
+import IncomingCallScreen from './features/calls/IncomingCallScreen';
+import callsService from './services/callsService';
+import chatService from './services/chatService';
 
 /**
  * ListenLink App - Modular Architecture
@@ -37,7 +41,20 @@ const AppContent = () => {
     isAddReflectionModalOpen,
     setIsAddReflectionModalOpen,
     viewingStory,
-    setViewingStory
+    setViewingStory,
+    inVideoCall,
+    setInVideoCall,
+    callRecipient,
+    setCallRecipient,
+    incomingCall,
+    setIncomingCall,
+    activeCallChannel,
+    setActiveCallChannel,
+    callDeclined,
+    outgoingInvitation,
+    setOutgoingInvitation,
+    isVoiceCall,
+    setIsVoiceCall
   } = useAppContext();
 
   // Callback to refresh feed after post creation
@@ -46,6 +63,73 @@ const AppContent = () => {
     window.dispatchEvent(new CustomEvent('postCreated'));
   };
 
+  const handleCallEnd = useCallback(async (duration = 0) => {
+    // Log call duration if it was a valid call (duration > 0)
+    // Only the caller sends the log message to avoid duplicates
+    if (callRecipient && duration > 0 && outgoingInvitation) {
+      try {
+        const mins = Math.floor(duration / 60);
+        const secs = duration % 60;
+        const timeString = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        const typeStr = isVoiceCall ? 'VOICE' : 'VIDEO';
+        
+        // Send a system message with call log
+        await chatService.sendMessage(callRecipient.id, `[CALL_LOG] ${typeStr} ${timeString}`);
+      } catch (error) {
+        console.error('Failed to log call:', error);
+      }
+    }
+    
+    setInVideoCall(false);
+    setIsVoiceCall(false); // Reset voice call mode
+    setCallRecipient(null);
+    setOutgoingInvitation(null); // Clear outgoing invitation
+  }, [setInVideoCall, setCallRecipient, callRecipient, outgoingInvitation, setOutgoingInvitation, setIsVoiceCall, isVoiceCall]);
+
+  const handleAcceptCall = useCallback(async () => {
+    if (!incomingCall) return;
+
+    try {
+      // Accept the invitation
+      await callsService.updateInvitation(incomingCall.id, 'accepted');
+      
+      // Set call recipient and start call
+      setCallRecipient(incomingCall.caller);
+      setActiveCallChannel(incomingCall.channel_name);
+      
+      // Determine if it's a voice call
+      const isVoice = incomingCall.call_type === 'voice';
+      setIsVoiceCall(isVoice);
+      
+      setIncomingCall(null);
+      setInVideoCall(true);
+    } catch (error) {
+      console.error('Failed to accept call:', error);
+      setIncomingCall(null);
+    }
+  }, [incomingCall, setIncomingCall, setInVideoCall, setCallRecipient, setActiveCallChannel, setIsVoiceCall]);
+
+  const handleRejectCall = useCallback(async () => {
+    if (!incomingCall) return;
+
+    try {
+      // Reject the invitation
+      await callsService.updateInvitation(incomingCall.id, 'rejected');
+      
+      // Log the missed call
+      const typeStr = incomingCall.call_type === 'voice' ? 'MISSED_VOICE' : 'MISSED_VIDEO';
+      if (incomingCall.caller) {
+         await chatService.sendMessage(incomingCall.caller.id, `[CALL_LOG] ${typeStr}`);
+      }
+      
+      setIncomingCall(null);
+    } catch (error) {
+      console.error('Failed to reject call:', error);
+      setIncomingCall(null);
+    }
+  }, [incomingCall, setIncomingCall]);
+
+  // IMPORTANT: Define all hooks BEFORE any conditional returns
   const renderScreen = useCallback(() => {
     // Check if current screen is a quiz step
     const quizStep = quizFlow[screen];
@@ -81,6 +165,53 @@ const AppContent = () => {
     return screens[screen] || <WelcomePage />;
   }, [screen]);
 
+  // Show incoming call screen if there's an incoming call
+  if (incomingCall && !inVideoCall) {
+    return (
+      <IncomingCallScreen
+        caller={incomingCall.caller}
+        callType={incomingCall.call_type}
+        onAccept={handleAcceptCall}
+        onReject={handleRejectCall}
+      />
+    );
+  }
+
+  // If in video call, show video call screen
+  if (inVideoCall && callRecipient) {
+    return (
+      <div className="relative w-full h-full">
+        <VideoCallScreen 
+          key={`call-${callRecipient.id}`}
+          recipientUser={callRecipient} 
+          channelName={activeCallChannel}
+          onCallEnd={handleCallEnd}
+        />
+        
+        {/* Call Declined Notification Overlay */}
+        {callDeclined && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-md animate-in fade-in duration-300">
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 max-w-sm w-full mx-4 text-center shadow-2xl transform scale-100 animate-in zoom-in-95 duration-300">
+              <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-bold text-white mb-2">Call Declined</h3>
+              <p className="text-slate-400 mb-6">
+                {callRecipient.full_name || callRecipient.name} is not available right now.
+              </p>
+              <div className="w-full bg-slate-800 rounded-full h-1.5 mb-2 overflow-hidden">
+                <div className="bg-red-500 h-1.5 rounded-full animate-[width_3s_linear_forwards]" style={{ width: '0%' }}></div>
+              </div>
+              <p className="text-xs text-slate-500">Returning to chat...</p>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-200 flex justify-center items-center p-0 sm:p-4 font-sans">
       <div className="relative w-full h-screen sm:w-[390px] sm:h-[844px] bg-slate-50 shadow-2xl rounded-none sm:rounded-3xl overflow-hidden flex flex-col">
@@ -111,6 +242,7 @@ const AppContent = () => {
 // Style injection component
 const StyleInjector = () => {
   useEffect(() => {
+    // Inject Inter font and custom styles
     const style = document.createElement('style');
     style.innerHTML = `
       @import url('https://rsms.me/inter/inter.css');

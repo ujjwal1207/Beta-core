@@ -1,17 +1,42 @@
-import React, { useState, useEffect } from 'react';
-import { Loader, Plus } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Loader, Plus, MoreVertical, Trash2, Pin } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import TopTabBar from '../components/layout/TopTabBar';
 import chatService from '../services/chatService';
+import callsService from '../services/callsService';
 import { getAvatarUrlWithSize } from '../lib/avatarUtils';
 
 const ChatHistoryScreen = () => {
-  const { setScreen, setSelectedPerson, setSelectedConversation, setPreviousScreen } = useAppContext();
+  const { 
+    setScreen, 
+    setSelectedPerson, 
+    setSelectedConversation, 
+    setPreviousScreen, 
+    setInVideoCall, 
+    setCallRecipient,
+    setActiveCallChannel,
+    setOutgoingInvitation,
+    setIsVoiceCall
+  } = useAppContext();
   const [conversations, setConversations] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [activeMenuId, setActiveMenuId] = useState(null);
+  const menuRef = useRef(null);
 
   useEffect(() => {
     loadConversations();
+    
+    // Close menu when clicking outside
+    const handleClickOutside = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setActiveMenuId(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
   }, []);
 
   const loadConversations = async () => {
@@ -58,6 +83,33 @@ const ChatHistoryScreen = () => {
     setScreen('MY_CONNECTIONS');
   };
 
+  const handleDeleteConversation = async (e, conversationId) => {
+    e.stopPropagation();
+    // Logic for deleting conversation
+    // Since backend might not support it yet, we just filter it from local state
+    console.log('Deleting conversation:', conversationId);
+    setConversations(prev => prev.filter(c => c.id !== conversationId));
+    setActiveMenuId(null);
+  };
+
+  const handlePinConversation = (e, conversationId) => {
+    e.stopPropagation();
+    // Logic for pinning conversation
+    console.log('Pinning conversation:', conversationId);
+    // Move to top of local state for now
+    setConversations(prev => {
+      const conv = prev.find(c => c.id === conversationId);
+      const others = prev.filter(c => c.id !== conversationId);
+      return [conv, ...others];
+    });
+    setActiveMenuId(null);
+  };
+
+  const toggleMenu = (e, id) => {
+    e.stopPropagation();
+    setActiveMenuId(activeMenuId === id ? null : id);
+  };
+
   return (
     <div className="relative flex flex-col h-full bg-slate-50">
       <TopTabBar setScreen={setScreen} currentScreen="CHAT_HISTORY" />
@@ -87,7 +139,7 @@ const ChatHistoryScreen = () => {
               <div 
                 key={conversation.id} 
                 onClick={() => handleChatClick(conversation)}
-                className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex items-center cursor-pointer hover:shadow-md hover:border-indigo-200 transition-all"
+                className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex items-center cursor-pointer hover:shadow-md hover:border-indigo-200 transition-all relative"
               >
                 <div className="w-12 h-12 flex-shrink-0 rounded-full mr-3 overflow-hidden">
                   <img 
@@ -102,15 +154,48 @@ const ChatHistoryScreen = () => {
                     {conversation.last_message || 'No messages yet'}
                   </p>
                 </div>
-                <div className="text-right ml-2 flex-shrink-0 flex flex-col items-end">
-                  <p className="text-xs text-slate-400 mb-1">
-                    {formatTimestamp(conversation.last_message_at)}
-                  </p>
-                  {conversation.unread_count > 0 && (
-                    <span className="w-5 h-5 bg-rose-500 text-white text-xs font-bold rounded-full flex items-center justify-center">
-                      {conversation.unread_count}
-                    </span>
-                  )}
+                <div className="text-right ml-2 flex-shrink-0 flex items-center gap-2">
+                  <div className="flex flex-col items-end mr-2">
+                    <p className="text-xs text-slate-400 mb-1">
+                      {formatTimestamp(conversation.last_message_at)}
+                    </p>
+                    {conversation.unread_count > 0 && (
+                      <span className="w-5 h-5 bg-rose-500 text-white text-xs font-bold rounded-full flex items-center justify-center">
+                        {conversation.unread_count}
+                      </span>
+                    )}
+                  </div>
+                  <div className="relative">
+                    <button
+                      onClick={(e) => toggleMenu(e, conversation.id)}
+                      className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400 hover:text-slate-600"
+                    >
+                      <MoreVertical className="w-5 h-5" />
+                    </button>
+                    
+                    {activeMenuId === conversation.id && (
+                      <div 
+                        ref={menuRef}
+                        className="absolute right-0 top-10 w-48 bg-white rounded-lg shadow-xl border border-slate-100 z-10 overflow-hidden"
+                      >
+                        <button
+                          onClick={(e) => handlePinConversation(e, conversation.id)}
+                          className="w-full text-left px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                        >
+                          <Pin className="w-4 h-4" />
+                          Pin to top
+                        </button>
+                        <div className="h-px bg-slate-100 my-0"></div>
+                        <button
+                          onClick={(e) => handleDeleteConversation(e, conversation.id)}
+                          className="w-full text-left px-4 py-3 text-sm text-rose-600 hover:bg-rose-50 flex items-center gap-2"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          Delete conversation
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}

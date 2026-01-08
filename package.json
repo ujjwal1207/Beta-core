@@ -11,6 +11,8 @@
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.1.18",
+    "agora-rtc-react": "^2.3.0",
+    "agora-rtc-sdk-ng": "^4.22.0",
     "axios": "^1.13.2",
     "lucide-react": "^0.560.0",
     "react": "^19.2.0",

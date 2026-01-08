@@ -5,3 +5,4 @@ export { default as userService } from './userService';
 export { default as feedService } from './feedService';
 export { default as connectionsService } from './connectionsService';
 export { default as engagementService } from './engagementService';
+export { default as callsService } from './callsService';

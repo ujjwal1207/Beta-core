@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import authService from '../services/authService';
 import userService from '../services/userService';
+import callsService from '../services/callsService';
 
 const AppContext = createContext();
 
@@ -18,6 +19,15 @@ export const AppProvider = ({ children }) => {
   const [selectedPerson, setSelectedPerson] = useState(null);  const [selectedConversation, setSelectedConversation] = useState(null);  const [isAddMomentModalOpen, setIsAddMomentModalOpen] = useState(false);
   const [isAddReflectionModalOpen, setIsAddReflectionModalOpen] = useState(false);
   const [viewingStory, setViewingStory] = useState(null);
+  
+  // Video call state
+  const [inVideoCall, setInVideoCall] = useState(false);
+  const [isVoiceCall, setIsVoiceCall] = useState(false); // New state for voice-only calls
+  const [callRecipient, setCallRecipient] = useState(null);
+  const [incomingCall, setIncomingCall] = useState(null); // Stores incoming call invitation
+  const [outgoingInvitation, setOutgoingInvitation] = useState(null); // Stores outgoing call invitation for status tracking
+  const [activeCallChannel, setActiveCallChannel] = useState(null); // Stores the Agora channel name
+  const [callDeclined, setCallDeclined] = useState(false); // Flag to show "Call Declined" message
   
   // User authentication state
   const [user, setUser] = useState(null);
@@ -59,6 +69,13 @@ export const AppProvider = ({ children }) => {
         setUser(userData);
         setIsAuthenticated(true);
         
+        // Set user as online
+        try {
+          await userService.setOnline();
+        } catch (error) {
+          console.error('Failed to set online status:', error);
+        }
+        
         // Load onboarding answers from backend
         if (userData.onboarding_answers && Object.keys(userData.onboarding_answers).length > 0) {
           setOnboardingAnswers(userData.onboarding_answers);
@@ -99,6 +116,118 @@ export const AppProvider = ({ children }) => {
     checkAuth();
   }, []);
 
+  // Poll for incoming call invitations
+  useEffect(() => {
+    if (!isAuthenticated || !user) return;
+
+    let interval = null;
+
+    const pollInvitations = async () => {
+      // Skip polling if page is hidden
+      if (document.hidden) return;
+      
+      try {
+        const invitations = await callsService.getPendingInvitations();
+        if (invitations && invitations.length > 0) {
+          // Only update if the invitation ID is different
+          setIncomingCall(prev => {
+            if (!prev || prev.id !== invitations[0].id) {
+              return invitations[0];
+            }
+            return prev;
+          });
+        } else {
+          // Clear incoming call if no pending invitations
+          setIncomingCall(prev => prev ? null : prev);
+        }
+      } catch (error) {
+        console.error('Failed to poll invitations:', error);
+      }
+    };
+
+    // Start polling
+    interval = setInterval(pollInvitations, 3000);
+    
+    // Initial poll
+    pollInvitations();
+
+    // Handle visibility change
+    const handleVisibilityChange = () => {
+      if (!document.hidden && interval) {
+        // Resume polling when page becomes visible
+        pollInvitations();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [isAuthenticated, user]);
+
+  // Poll for outgoing call invitation status (to detect if call was declined)
+  useEffect(() => {
+    if (!isAuthenticated || !user || !outgoingInvitation || !inVideoCall) {
+      return;
+    }
+
+    let interval = null;
+
+    const pollOutgoingInvitationStatus = async () => {
+      // Skip polling if page is hidden
+      if (document.hidden) return;
+      
+      try {
+        console.log('Polling outgoing invitation:', outgoingInvitation.id);
+        const invitation = await callsService.getInvitation(outgoingInvitation.id);
+        console.log('Invitation status:', invitation.status);
+        
+        // Check if the invitation was rejected
+        if (invitation.status === 'rejected') {
+          console.log('Call rejected! Showing notification.');
+          setCallDeclined(true);
+          setOutgoingInvitation(null);
+          
+          // Auto-clear the declined message and exit call after 3 seconds
+          setTimeout(() => {
+            console.log('Exiting call after rejection.');
+            setCallDeclined(false);
+            setInVideoCall(false);
+            setCallRecipient(null);
+            setActiveCallChannel(null);
+          }, 3000);
+        } else if (invitation.status === 'accepted') {
+          // Stop polling once call is accepted
+          clearInterval(interval);
+        }
+      } catch (error) {
+        console.error('Failed to poll outgoing invitation status:', error);
+      }
+    };
+
+    // Start polling every 2 seconds
+    interval = setInterval(pollOutgoingInvitationStatus, 2000);
+    
+    // Initial poll
+    pollOutgoingInvitationStatus();
+
+    // Handle visibility change
+    const handleVisibilityChange = () => {
+      if (!document.hidden && interval) {
+        pollOutgoingInvitationStatus();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [isAuthenticated, user, outgoingInvitation, inVideoCall]);
+
   // Login function
   const login = async (credentials) => {
     setAuthError(null);
@@ -107,6 +236,14 @@ export const AppProvider = ({ children }) => {
       const response = await authService.login(credentials);
       setUser(response.user);
       setIsAuthenticated(true);
+      
+      // Set user as online
+      try {
+        await userService.setOnline();
+      } catch (error) {
+        console.error('Failed to set online status:', error);
+      }
+      
       setScreen('FEED');
       return response;
     } catch (error) {
@@ -125,6 +262,14 @@ export const AppProvider = ({ children }) => {
       const newUser = await authService.signup(userData);
       setUser(newUser);
       setIsAuthenticated(true);
+      
+      // Set user as online
+      try {
+        await userService.setOnline();
+      } catch (error) {
+        console.error('Failed to set online status:', error);
+      }
+      
       setScreen('FEED'); // Navigate to main feed
       return newUser;
     } catch (error) {
@@ -138,6 +283,13 @@ export const AppProvider = ({ children }) => {
   // Logout function
   const logout = async () => {
     try {
+      // Set user as offline before logout
+      try {
+        await userService.setOffline();
+      } catch (error) {
+        console.error('Failed to set offline status:', error);
+      }
+      
       await authService.logout();
       setUser(null);
       setIsAuthenticated(false);
@@ -251,6 +403,21 @@ export const AppProvider = ({ children }) => {
     setIsAddReflectionModalOpen,
     viewingStory,
     setViewingStory,
+    // Video call state
+    inVideoCall,
+    setInVideoCall,
+    isVoiceCall,
+    setIsVoiceCall,
+    callRecipient,
+    setCallRecipient,
+    incomingCall,
+    setIncomingCall,
+    outgoingInvitation,
+    setOutgoingInvitation,
+    activeCallChannel,
+    setActiveCallChannel,
+    callDeclined,
+    setCallDeclined,
     // Auth state and methods
     user,
     setUser,

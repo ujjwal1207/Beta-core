@@ -1,12 +1,25 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, Phone, Video, Send, Paperclip, Loader } from 'lucide-react';
+import { ArrowLeft, Phone, Video, Send, Paperclip, Loader, Download, FileText, X, Eye, PhoneMissed, VideoOff, MoreVertical, Trash2, Pin } from 'lucide-react';
 import { useAppContext } from '../../context/AppContext';
 import chatService from '../../services/chatService';
 import authService from '../../services/authService';
+import callsService from '../../services/callsService';
+import userService from '../../services/userService';
 import { getAvatarUrlWithSize } from '../../lib/avatarUtils';
 
 const ChatRoomScreen = () => {
-  const { setScreen, previousScreen, selectedPerson, selectedConversation, setSelectedConversation } = useAppContext();
+  const { 
+    setScreen, 
+    previousScreen, 
+    selectedPerson, 
+    selectedConversation, 
+    setSelectedConversation, 
+    setInVideoCall, 
+    setCallRecipient, 
+    setActiveCallChannel,
+    setOutgoingInvitation,
+    setIsVoiceCall
+  } = useAppContext();
   const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -15,10 +28,48 @@ const ChatRoomScreen = () => {
   const [conversationId, setConversationId] = useState(null);
   const [selectedFile, setSelectedFile] = useState(null);
   const [isAtBottom, setIsAtBottom] = useState(true);
+  const [viewingImage, setViewingImage] = useState(null);
+  const [showMenu, setShowMenu] = useState(false);
+  const [isPersonOnline, setIsPersonOnline] = useState(false);
   const messagesEndRef = useRef(null);
   const messagesContainerRef = useRef(null);
   const pollingIntervalRef = useRef(null);
   const fileInputRef = useRef(null);
+  const menuRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setShowMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  // Poll for user online status
+  useEffect(() => {
+    if (!selectedPerson) return;
+
+    const checkOnlineStatus = async () => {
+      try {
+        const status = await userService.getUserOnlineStatus(selectedPerson.id);
+        setIsPersonOnline(status.is_online);
+      } catch (error) {
+        console.error('Failed to check online status:', error);
+      }
+    };
+
+    // Initial check
+    checkOnlineStatus();
+
+    // Poll every 10 seconds
+    const statusInterval = setInterval(checkOnlineStatus, 10000);
+
+    return () => clearInterval(statusInterval);
+  }, [selectedPerson]);
 
   // Load current user and messages
   useEffect(() => {
@@ -72,7 +123,9 @@ const ChatRoomScreen = () => {
             id: msg.id,
             text: msg.content,
             sender: msg.sender_id === user.id ? 'me' : 'them',
-            time: msgDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            time: msgDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            attachment_url: msg.attachment_url,
+            attachment_type: msg.attachment_type
           };
         });
         
@@ -98,13 +151,19 @@ const ChatRoomScreen = () => {
           id: msg.id,
           text: msg.content,
           sender: msg.sender_id === currentUserId ? 'me' : 'them',
-          time: msgDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          time: msgDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          attachment_url: msg.attachment_url,
+          attachment_type: msg.attachment_type
         };
       });
       
       // Only update if we have new messages
       if (transformedMessages.length > messages.length) {
+        // Check scroll position BEFORE updating
+        const wasAtBottom = checkIfAtBottom();
         setMessages(transformedMessages);
+        // Update isAtBottom state to match actual position
+        setIsAtBottom(wasAtBottom);
       }
     } catch (error) {
       console.error('Failed to load new messages:', error);
@@ -120,8 +179,12 @@ const ChatRoomScreen = () => {
   };
 
   // Auto-scroll to bottom only if user is already at bottom
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  const scrollToBottom = (smooth = true) => {
+    if (smooth) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    } else {
+      messagesEndRef.current?.scrollIntoView({ behavior: "auto" });
+    }
   };
 
   useEffect(() => {
@@ -129,7 +192,20 @@ const ChatRoomScreen = () => {
     if (isAtBottom) {
       scrollToBottom();
     }
-  }, [messages]);
+  }, [messages, isAtBottom]);
+
+  const handlePinConversation = () => {
+    console.log('Pinning conversation');
+    // Implement pinning logic here
+    setShowMenu(false);
+  };
+
+  const handleDeleteConversation = () => {
+    console.log('Deleting conversation');
+    // Implement deleting logic here
+    setScreen(previousScreen || 'CHAT_HISTORY');
+    setShowMenu(false);
+  };
 
   // Track scroll position
   const handleScroll = () => {
@@ -138,15 +214,27 @@ const ChatRoomScreen = () => {
 
   const handleSend = async (e) => {
     e.preventDefault();
-    if (!inputText.trim() || isSending || !selectedPerson) return;
+    if ((!inputText.trim() && !selectedFile) || isSending || !selectedPerson) return;
 
     const messageText = inputText.trim();
+    const fileToSend = selectedFile;
     setInputText('');
+    setSelectedFile(null);
     setIsSending(true);
 
     try {
-      // Send message to backend
-      const sentMessage = await chatService.sendMessage(selectedPerson.id, messageText);
+      let sentMessage;
+      
+      // Send message with or without file
+      if (fileToSend) {
+        sentMessage = await chatService.sendMessageWithFile(
+          selectedPerson.id, 
+          messageText, 
+          fileToSend
+        );
+      } else {
+        sentMessage = await chatService.sendMessage(selectedPerson.id, messageText);
+      }
 
       // Add to local state
       const msgDate = new Date(sentMessage.created_at + 'Z'); // Add 'Z' to indicate UTC
@@ -155,16 +243,23 @@ const ChatRoomScreen = () => {
         text: sentMessage.content,
         sender: 'me',
         time: msgDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        attachment_url: sentMessage.attachment_url,
+        attachment_type: sentMessage.attachment_type
       };
 
       setMessages(prev => [...prev, newMessage]);
+      
+      // Always scroll to bottom when user sends a message
+      setIsAtBottom(true);
       
       // Immediately check for new messages after sending
       loadNewMessages();
     } catch (error) {
       console.error('Failed to send message:', error);
-      // Restore input text on error
+      // Restore input text and file on error
       setInputText(messageText);
+      setSelectedFile(fileToSend);
+      alert('Failed to send message. Please try again.');
     } finally {
       setIsSending(false);
     }
@@ -199,17 +294,67 @@ const ChatRoomScreen = () => {
             </div>
             <div className="text-left">
               <h2 className="font-bold text-slate-800 text-sm">{selectedPerson.full_name || selectedPerson.name}</h2>
-              <p className="text-xs text-green-600 flex items-center gap-1">
-                <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
-                Online
+              <p className={`text-xs flex items-center gap-1 ${isPersonOnline ? 'text-green-600' : 'text-slate-500'}`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${isPersonOnline ? 'bg-green-500 animate-pulse' : 'bg-slate-400'}`}></span>
+                {isPersonOnline ? 'Online' : 'Offline'}
               </p>
             </div>
           </button>
         </div>
 
         <div className="flex items-center gap-1 text-slate-600">
-          <button className="p-2 hover:bg-slate-100 rounded-full"><Phone className="w-5 h-5" /></button>
-          <button className="p-2 hover:bg-slate-100 rounded-full"><Video className="w-5 h-5" /></button>
+          <button 
+            disabled={!isPersonOnline}
+            onClick={async () => {
+              try {
+                console.log('Sending voice call invitation...');
+                setIsVoiceCall(true);
+                const invitation = await callsService.sendCallInvitation(selectedPerson.id, 'voice');
+                console.log('Invitation sent:', invitation);
+                setOutgoingInvitation(invitation);
+                setCallRecipient(selectedPerson);
+                setActiveCallChannel(invitation.channel_name);
+                setInVideoCall(true);
+              } catch (error) {
+                console.error('Failed to send call invitation:', error);
+                alert('Failed to send call invitation. Please try again.');
+              }
+            }}
+            className={`p-2 rounded-full transition-colors ${
+              isPersonOnline 
+                ? 'hover:bg-green-100' 
+                : 'opacity-50 cursor-not-allowed'
+            }`}
+            title={isPersonOnline ? "Voice Call" : "User is offline"}
+          >
+            <Phone className={`w-5 h-5 ${isPersonOnline ? 'text-green-600' : 'text-slate-400'}`} />
+          </button>
+          <button 
+            disabled={!isPersonOnline}
+            onClick={async () => {
+              try {
+                console.log('Sending video call invitation...');
+                setIsVoiceCall(false);
+                const invitation = await callsService.sendCallInvitation(selectedPerson.id, 'video');
+                console.log('Invitation sent:', invitation);
+                setOutgoingInvitation(invitation);
+                setCallRecipient(selectedPerson);
+                setActiveCallChannel(invitation.channel_name);
+                setInVideoCall(true);
+              } catch (error) {
+                console.error('Failed to send call invitation:', error);
+                alert('Failed to send call invitation. Please try again.');
+              }
+            }}
+            className={`p-2 rounded-full transition-colors ${
+              isPersonOnline 
+                ? 'hover:bg-blue-100' 
+                : 'opacity-50 cursor-not-allowed'
+            }`}
+            title={isPersonOnline ? "Video Call" : "User is offline"}
+          >
+            <Video className={`w-5 h-5 ${isPersonOnline ? 'text-blue-600' : 'text-slate-400'}`} />
+          </button>
         </div>
       </div>
 
@@ -228,29 +373,139 @@ const ChatRoomScreen = () => {
             <p>No messages yet. Start the conversation!</p>
           </div>
         ) : (
-          messages.map((msg) => (
-          <div 
-            key={msg.id} 
-            className={`flex ${msg.sender === 'me' ? 'justify-end' : 'justify-start'}`}
-          >
+          messages.map((msg) => {
+            const isCallLog = msg.text && msg.text.startsWith('[CALL_LOG]');
+            let callDuration = '';
+            let isVoiceCallLog = false;
+            let isMissedCall = false;
+
+            if (isCallLog) {
+              const content = msg.text.replace('[CALL_LOG] ', '');
+              if (content.startsWith('VOICE ')) {
+                isVoiceCallLog = true;
+                callDuration = content.replace('VOICE ', '');
+              } else if (content.startsWith('VIDEO ')) {
+                callDuration = content.replace('VIDEO ', '');
+              } else if (content === 'MISSED_VOICE') {
+                isVoiceCallLog = true;
+                isMissedCall = true;
+              } else if (content === 'MISSED_VIDEO') {
+                isMissedCall = true;
+              } else {
+                callDuration = content;
+              }
+            }
+
+            return (
             <div 
-              className={`
-                max-w-[75%] px-4 py-3 rounded-2xl text-sm shadow-sm relative group
-                ${msg.sender === 'me' 
-                  ? 'bg-indigo-600 text-white rounded-tr-none' 
-                  : 'bg-white text-slate-800 rounded-tl-none border border-slate-100'
-                }
-              `}
+              key={msg.id} 
+              className={`flex ${msg.sender === 'me' ? 'justify-end' : 'justify-start'}`}
             >
-              <p>{msg.text}</p>
-              <span 
-                className={`text-[10px] mt-1 block opacity-70 ${msg.sender === 'me' ? 'text-indigo-200' : 'text-slate-400'}`}
+              <div 
+                className={`
+                  max-w-[75%] px-4 py-3 rounded-2xl text-sm shadow-sm relative group
+                  ${isCallLog 
+                    ? (msg.sender === 'me' ? 'bg-slate-100 text-slate-600 border border-slate-200' : 'bg-slate-100 text-slate-600 border border-slate-200')
+                    : (msg.sender === 'me' 
+                      ? 'bg-indigo-600 text-white rounded-tr-none' 
+                      : 'bg-white text-slate-800 rounded-tl-none border border-slate-100')
+                  }
+                `}
               >
-                {msg.time}
-              </span>
+                {isCallLog ? (
+                  <div className="flex items-center gap-3">
+                    <div className={`p-2 ${isMissedCall ? 'bg-red-100' : (isVoiceCallLog ? 'bg-green-100' : 'bg-slate-200')} rounded-full`}>
+                      {isMissedCall ? (
+                        isVoiceCallLog ? 
+                          <PhoneMissed className="w-4 h-4 text-red-600" /> : 
+                          <VideoOff className="w-4 h-4 text-red-600" />
+                      ) : (
+                        isVoiceCallLog ? (
+                          <Phone className="w-4 h-4 text-green-600" />
+                        ) : (
+                          <Video className="w-4 h-4 text-slate-600" />
+                        )
+                      )}
+                    </div>
+                    <div>
+                      <p className={`font-medium ${isMissedCall ? 'text-red-800' : ''}`}>
+                        {isMissedCall 
+                          ? (isVoiceCallLog ? 'Missed Voice Call' : 'Missed Video Call')
+                          : (isVoiceCallLog ? 'Voice Call Ended' : 'Video Call Ended')
+                        }
+                      </p>
+                      {!isMissedCall && <p className="text-xs opacity-80">{callDuration}</p>}
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    {/* Image attachment */}
+                    {msg.attachment_type === 'image' && msg.attachment_url && (
+                      <div className="mb-2 relative group">
+                        <img 
+                          src={msg.attachment_url} 
+                          alt="Shared image" 
+                          className="max-w-full rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
+                          onClick={() => setViewingImage(msg.attachment_url)}
+                        />
+                        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setViewingImage(msg.attachment_url);
+                            }}
+                            className="p-2 bg-black/60 hover:bg-black/80 rounded-full text-white transition-colors"
+                            title="View full size"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
+                          <a
+                            href={msg.attachment_url}
+                            download="image.jpg"
+                            onClick={(e) => e.stopPropagation()}
+                            className="p-2 bg-black/60 hover:bg-black/80 rounded-full text-white transition-colors"
+                            title="Download image"
+                          >
+                            <Download className="w-4 h-4" />
+                          </a>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* PDF attachment */}
+                    {msg.attachment_type === 'pdf' && msg.attachment_url && (
+                      <div className="mb-2 p-3 bg-slate-100 rounded-lg flex items-center gap-3 cursor-pointer hover:bg-slate-200 transition-colors">
+                        <div className="p-2 bg-red-100 rounded-lg">
+                          <FileText className="w-5 h-5 text-red-600" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-slate-800 truncate">PDF Document</p>
+                          <p className="text-xs text-slate-500">Click to view</p>
+                        </div>
+                        <a 
+                          href={msg.attachment_url} 
+                          download 
+                          onClick={(e) => e.stopPropagation()}
+                          className="p-2 hover:bg-slate-300 rounded-full transition-colors"
+                        >
+                          <Download className="w-4 h-4 text-slate-600" />
+                        </a>
+                      </div>
+                    )}
+                    
+                    {/* Text content */}
+                    {msg.text && <p>{msg.text}</p>}
+                  </>
+                )}
+                <span 
+                  className={`text-[10px] mt-1 block opacity-70 ${msg.sender === 'me' && !isCallLog ? 'text-indigo-200' : 'text-slate-400'}`}
+                >
+                  {msg.time}
+                </span>
+              </div>
             </div>
-          </div>
-          ))
+            );
+          })
         )}
         <div ref={messagesEndRef} />
       </div>
@@ -258,11 +513,29 @@ const ChatRoomScreen = () => {
       {/* Input Area */}
       <div className="bg-white p-3 border-t border-slate-200">
         {selectedFile && (
-          <div className="mb-2 px-3 py-2 bg-indigo-50 rounded-lg flex items-center justify-between">
-            <span className="text-sm text-indigo-700 font-medium truncate">{selectedFile.name}</span>
+          <div className="mb-2 px-3 py-2 bg-indigo-50 rounded-lg flex items-center gap-3">
+            {selectedFile.type.startsWith('image/') ? (
+              <img 
+                src={URL.createObjectURL(selectedFile)} 
+                alt="Preview" 
+                className="w-12 h-12 object-cover rounded"
+              />
+            ) : (
+              <div className="w-12 h-12 bg-red-100 rounded flex items-center justify-center">
+                <FileText className="w-6 h-6 text-red-600" />
+              </div>
+            )}
+            <div className="flex-1 min-w-0">
+              <span className="text-sm text-indigo-700 font-medium truncate block">
+                {selectedFile.name}
+              </span>
+              <span className="text-xs text-indigo-500">
+                {(selectedFile.size / 1024).toFixed(1)} KB
+              </span>
+            </div>
             <button 
               onClick={() => setSelectedFile(null)}
-              className="ml-2 text-indigo-400 hover:text-indigo-600"
+              className="ml-2 text-indigo-400 hover:text-indigo-600 text-xl leading-none"
             >
               ×
             </button>
@@ -276,6 +549,14 @@ const ChatRoomScreen = () => {
             onChange={(e) => {
               const file = e.target.files[0];
               if (file) {
+                // Validate file type
+                const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'];
+                if (!allowedTypes.includes(file.type)) {
+                  alert('Only images (JPEG, PNG, GIF, WebP) and PDF files are allowed');
+                  return;
+                }
+                
+                // Validate file size
                 if (file.size > 10 * 1024 * 1024) {
                   alert('File size must be less than 10MB');
                   return;
@@ -283,7 +564,7 @@ const ChatRoomScreen = () => {
                 setSelectedFile(file);
               }
             }}
-            accept="image/*,video/*,.pdf,.doc,.docx"
+            accept="image/*,.pdf"
           />
           <button 
             type="button" 
@@ -314,6 +595,36 @@ const ChatRoomScreen = () => {
           </button>
         </form>
       </div>
+
+      {/* Image Viewer Modal */}
+      {viewingImage && (
+        <div 
+          className="fixed inset-0 bg-black/90 z-[200] flex items-center justify-center p-4"
+          onClick={() => setViewingImage(null)}
+        >
+          <button
+            onClick={() => setViewingImage(null)}
+            className="absolute top-4 right-4 p-2 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors"
+          >
+            <X className="w-6 h-6" />
+          </button>
+          <a
+            href={viewingImage}
+            download="image.jpg"
+            onClick={(e) => e.stopPropagation()}
+            className="absolute top-4 right-16 p-2 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors"
+            title="Download image"
+          >
+            <Download className="w-6 h-6" />
+          </a>
+          <img 
+            src={viewingImage} 
+            alt="Full size" 
+            className="max-w-full max-h-full object-contain rounded-lg"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
     </div>
   );
 };

@@ -60,6 +60,49 @@ const userService = {
       throw error;
     }
   },
+
+  /**
+   * Set user as online
+   * @returns {Promise<Object>} Status update response
+   */
+  setOnline: async () => {
+    try {
+      const response = await api.post('/users/me/online');
+      return response.data;
+    } catch (error) {
+      console.error('Failed to set online status:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Set user as offline
+   * @returns {Promise<Object>} Status update response
+   */
+  setOffline: async () => {
+    try {
+      const response = await api.post('/users/me/offline');
+      return response.data;
+    } catch (error) {
+      console.error('Failed to set offline status:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get a user's online status
+   * @param {number} userId - The user ID
+   * @returns {Promise<Object>} Online status data
+   */
+  getUserOnlineStatus: async (userId) => {
+    try {
+      const response = await api.get(`/users/${userId}/status`);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to get user status:', error);
+      throw error;
+    }
+  },
 };
 
 export default userService;

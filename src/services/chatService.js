@@ -35,6 +35,37 @@ export const chatService = {
   },
 
   /**
+   * Upload a file and send a message with the attachment
+   * @param {number} receiverId - The user to send message to
+   * @param {string} content - The message content (caption)
+   * @param {File} file - The file to upload
+   * @returns {Promise<Object>} The created message
+   */
+  async sendMessageWithFile(receiverId, content, file) {
+    // First, upload the file
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    const uploadResponse = await api.post('/chat/upload', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    
+    const { attachment_url, attachment_type } = uploadResponse.data;
+    
+    // Then, send the message with attachment info
+    const response = await api.post('/chat/messages', {
+      receiver_id: receiverId,
+      content: content || '', // Empty content is allowed if there's an attachment
+      attachment_url,
+      attachment_type
+    });
+    
+    return response.data;
+  },
+
+  /**
    * Get or create a private conversation with a specific user
    * @param {number} otherUserId - The other user's ID
    * @returns {Promise<Object>} Conversation details
