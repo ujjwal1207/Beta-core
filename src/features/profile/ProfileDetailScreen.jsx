@@ -28,6 +28,7 @@ const ProfileDetailScreen = () => {
   const [notification, setNotification] = useState(null);
   const [showConfirmation, setShowConfirmation] = useState(null);
   const menuRef = useRef(null);
+  const notificationTimeoutRef = useRef(null);
   
   useEffect(() => {
     const fetchUserProfile = async () => {
@@ -107,8 +108,15 @@ const ProfileDetailScreen = () => {
   }, [selectedPerson]);
 
   const showNotification = (message, type = 'success') => {
+    // Clear any existing timeout to prevent premature clearing
+    if (notificationTimeoutRef.current) {
+      clearTimeout(notificationTimeoutRef.current);
+    }
     setNotification({ message, type });
-    setTimeout(() => setNotification(null), 3000);
+    notificationTimeoutRef.current = setTimeout(() => {
+      setNotification(null);
+      notificationTimeoutRef.current = null;
+    }, 3000);
   };
 
   const handleSendRequest = async () => {

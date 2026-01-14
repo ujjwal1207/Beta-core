@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Search, Users, Star, MessageSquare, Calendar, Frown, Loader, Filter, X, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 import { useAppContext } from '../../context/AppContext';
 import TopTabBar from '../../components/layout/TopTabBar';
@@ -17,10 +17,18 @@ const SwipeablePeopleScreen = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [notification, setNotification] = useState(null);
+  const notificationTimeoutRef = useRef(null);
   
   const showNotification = (message, type = 'success') => {
+    // Clear any existing timeout to prevent premature clearing
+    if (notificationTimeoutRef.current) {
+      clearTimeout(notificationTimeoutRef.current);
+    }
     setNotification({ message, type });
-    setTimeout(() => setNotification(null), 3000);
+    notificationTimeoutRef.current = setTimeout(() => {
+      setNotification(null);
+      notificationTimeoutRef.current = null;
+    }, 3000);
   };
 
   useEffect(() => {
@@ -139,10 +147,18 @@ const PersonResultCard = ({ person }) => {
   const { setScreen, setSelectedPerson, setPreviousScreen } = useAppContext();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [notification, setNotification] = useState(null);
+  const notificationTimeoutRef = useRef(null);
   
   const showNotification = (message, type = 'success') => {
+    // Clear any existing timeout to prevent premature clearing
+    if (notificationTimeoutRef.current) {
+      clearTimeout(notificationTimeoutRef.current);
+    }
     setNotification({ message, type });
-    setTimeout(() => setNotification(null), 3000);
+    notificationTimeoutRef.current = setTimeout(() => {
+      setNotification(null);
+      notificationTimeoutRef.current = null;
+    }, 3000);
   };
   
   const handleNameClick = () => {
