@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { X, Calendar } from 'lucide-react';
 import Button from '../../../components/ui/Button';
 
-const ScheduleCallModal = ({ isOpen, onClose, person, setScreen }) => {
+const ScheduleCallModal = ({ isOpen, onClose, person, onSuccess }) => {
   const today = new Date();
   const tomorrow = new Date(today);
   tomorrow.setDate(tomorrow.getDate() + 1);
@@ -21,7 +21,10 @@ const ScheduleCallModal = ({ isOpen, onClose, person, setScreen }) => {
 
   const handleSend = () => {
     onClose();
-    setScreen('MESSAGE_DELIVERED');
+    // Call onSuccess callback to show notification
+    if (onSuccess) {
+      onSuccess('Call request sent! We\'ll let you know when they respond.');
+    }
   };
 
   return (

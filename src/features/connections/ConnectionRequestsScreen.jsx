@@ -5,7 +5,7 @@ import connectionsService from '../../services/connectionsService';
 import { getAvatarUrlWithSize } from '../../lib/avatarUtils';
 
 const ConnectionRequestsScreen = () => {
-  const { setScreen, setSelectedPerson, setPreviousScreen } = useAppContext();
+  const { setScreen, setSelectedPerson, setPreviousScreen, setPendingRequestsCount } = useAppContext();
   const [requests, setRequests] = useState([]);
   const [sentRequests, setSentRequests] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -25,6 +25,8 @@ const ConnectionRequestsScreen = () => {
       ]);
       setRequests(received);
       setSentRequests(sent);
+      // Update pending requests count immediately
+      setPendingRequestsCount(received.length);
     } catch (error) {
       console.error('Error fetching requests:', error);
     } finally {
@@ -35,10 +37,16 @@ const ConnectionRequestsScreen = () => {
   const handleAccept = async (requestId) => {
     setProcessingIds(prev => new Set([...prev, requestId]));
     try {
+      // Optimistic update - remove from list and update count immediately
+      const newRequests = requests.filter(req => req.id !== requestId);
+      setRequests(newRequests);
+      setPendingRequestsCount(newRequests.length);
+      
       await connectionsService.respondToRequest(requestId, 'accepted');
-      setRequests(prev => prev.filter(req => req.id !== requestId));
     } catch (error) {
       console.error('Error accepting request:', error);
+      // Revert on error
+      fetchRequests();
     } finally {
       setProcessingIds(prev => {
         const next = new Set(prev);
@@ -51,10 +59,16 @@ const ConnectionRequestsScreen = () => {
   const handleReject = async (requestId) => {
     setProcessingIds(prev => new Set([...prev, requestId]));
     try {
+      // Optimistic update - remove from list and update count immediately
+      const newRequests = requests.filter(req => req.id !== requestId);
+      setRequests(newRequests);
+      setPendingRequestsCount(newRequests.length);
+      
       await connectionsService.respondToRequest(requestId, 'rejected');
-      setRequests(prev => prev.filter(req => req.id !== requestId));
     } catch (error) {
       console.error('Error rejecting request:', error);
+      // Revert on error
+      fetchRequests();
     } finally {
       setProcessingIds(prev => {
         const next = new Set(prev);

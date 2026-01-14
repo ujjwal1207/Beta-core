@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import AgoraRTC from 'agora-rtc-sdk-ng';
-import { Video, VideoOff, Mic, MicOff, PhoneOff, User } from 'lucide-react';
+import { Video, VideoOff, Mic, MicOff, PhoneOff, User, Minimize2 } from 'lucide-react';
 import { callsService } from '../../services';
 
 import { useAppContext } from '../../context/AppContext';
@@ -63,7 +63,7 @@ const RemoteVideoPlayer = ({ remoteUser, recipientName }) => {
  */
 const VideoCallScreen = ({ recipientUser, channelName, onCallEnd }) => {
   // Get voice call setting from context if not available in props
-  const { isVoiceCall, setInVideoCall } = useAppContext();
+  const { isVoiceCall, setInVideoCall, setIsCallMinimized, setCallState, setCallControls } = useAppContext();
   
   // State
   const [loading, setLoading] = useState(true);
@@ -92,7 +92,7 @@ const VideoCallScreen = ({ recipientUser, channelName, onCallEnd }) => {
     onCallEndRef.current = onCallEnd;
   }, [onCallEnd]);
 
-  // Timer effect
+  // Timer effect - also update shared call state
   useEffect(() => {
     const timer = setInterval(() => {
       setCallDuration(prev => {
@@ -103,6 +103,16 @@ const VideoCallScreen = ({ recipientUser, channelName, onCallEnd }) => {
     }, 1000);
     return () => clearInterval(timer);
   }, []);
+
+  // Sync call state to shared context (separate effect to avoid render issues)
+  useEffect(() => {
+    setCallState(prevState => ({ 
+      ...prevState, 
+      duration: callDuration,
+      isMicOn,
+      isCameraOn
+    }));
+  }, [callDuration, isMicOn, isCameraOn, setCallState]);
 
   // Format time helper
   const formatTime = (seconds) => {
@@ -334,8 +344,8 @@ const VideoCallScreen = ({ recipientUser, channelName, onCallEnd }) => {
     }
   }, [loading, remoteUsers.length]); // Re-run if remote users change (to handle PIP switching)
 
-  // Toggle controls
-  const toggleCamera = async () => {
+  // Toggle controls - use useCallback to create stable references
+  const toggleCamera = useCallback(async () => {
     if (localVideoTrackRef.current) {
       const newState = !isCameraOn;
       
@@ -358,19 +368,38 @@ const VideoCallScreen = ({ recipientUser, channelName, onCallEnd }) => {
         console.error('Error toggling camera:', err);
       }
     }
-  };
+  }, [isCameraOn]);
 
-  const toggleMic = async () => {
+  const toggleMic = useCallback(async () => {
     if (localAudioTrackRef.current) {
       const newState = !isMicOn;
       await localAudioTrackRef.current.setEnabled(newState);
       setIsMicOn(newState);
     }
-  };
+  }, [isMicOn]);
 
-  const endCall = () => {
+  // Expose toggle functions to context for minimized widget
+  useEffect(() => {
+    const maximizeCall = () => {
+      setIsCallMinimized(false);
+      setInVideoCall(true);
+    };
+    
+    setCallControls({
+      toggleMic,
+      toggleCamera,
+      endCall: () => onCallEnd(callDuration),
+      maximizeCall
+    });
+  }, [toggleMic, toggleCamera, onCallEnd, callDuration, setIsCallMinimized, setInVideoCall, setCallControls]);
+
+  const endCall = useCallback(() => {
     onCallEnd(callDuration);
-  };
+  }, [onCallEnd, callDuration]);
+
+  const handleMinimize = useCallback(() => {
+    setIsCallMinimized(true);
+  }, [setIsCallMinimized]);
 
   if (loading) {
     return (
@@ -394,10 +423,17 @@ const VideoCallScreen = ({ recipientUser, channelName, onCallEnd }) => {
     );
   }
 
-  console.log('🎨 Rendering VideoCallScreen, remoteUsers:', remoteUsers.length);
-
   return (
     <div className="fixed inset-0 bg-slate-950 z-[100] flex flex-col h-screen overflow-hidden">
+      {/* Minimize Button */}
+      <button
+        onClick={handleMinimize}
+        className="absolute top-6 right-6 z-50 p-3 bg-black/40 backdrop-blur-md rounded-full border border-white/10 hover:bg-black/60 transition-colors"
+        aria-label="Minimize call"
+      >
+        <Minimize2 className="w-5 h-5 text-white" />
+      </button>
+
       {/* Call Timer */}
       <div className="absolute top-6 left-1/2 transform -translate-x-1/2 z-40 bg-black/40 backdrop-blur-md px-4 py-1.5 rounded-full border border-white/10">
         <span className="text-white font-mono text-sm tracking-wider font-medium">

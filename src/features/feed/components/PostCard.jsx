@@ -69,6 +69,20 @@ const PostCard = ({ post, onUpdate, onHide, showNotInterested = true }) => {
     handleNameClick();
   };
 
+  const handleCommenterClick = (comment) => {
+    setPreviousScreen('FEED');
+    // Create a user object from comment data for ProfileDetailScreen
+    const userObject = {
+      id: comment.user_id,
+      name: comment.user_name,
+      full_name: comment.user_name,
+      role: comment.user_role,
+      profile_photo: comment.user_profile_photo
+    };
+    setSelectedPerson(userObject);
+    setScreen('PROFILE_DETAIL');
+  };
+
   const handleNotInterested = () => {
     setShowMenu(false);
     if (onHide) {
@@ -452,11 +466,26 @@ const PostCard = ({ post, onUpdate, onHide, showNotInterested = true }) => {
                 ) : (
                   comments.map((comment) => (
                     <div key={comment.id} className="flex space-x-2">
-                      <div className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-200 text-slate-700 font-bold text-xs flex-shrink-0">
-                        {comment.user_name[0]}
+                      <div className="w-8 h-8 flex-shrink-0 rounded-full overflow-hidden mt-2">
+                        {comment.user_profile_photo ? (
+                          <img 
+                            src={comment.user_profile_photo} 
+                            alt={comment.user_name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center bg-slate-200 text-slate-700 font-bold text-xs">
+                            {comment.user_name[0]}
+                          </div>
+                        )}
                       </div>
                       <div className="flex-1 bg-slate-50 rounded-lg p-2">
-                        <p className="text-xs font-semibold text-slate-800">{comment.user_name}</p>
+                        <button 
+                          onClick={() => handleCommenterClick(comment)}
+                          className="text-xs font-semibold text-slate-800 hover:text-indigo-600 hover:underline transition-colors"
+                        >
+                          {comment.user_name}
+                        </button>
                         <p className="text-sm text-slate-700">{comment.content}</p>
                       </div>
                     </div>

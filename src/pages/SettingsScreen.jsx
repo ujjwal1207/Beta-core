@@ -7,7 +7,8 @@ import {
   HelpCircle, 
   Mail, 
   LogOut, 
-  ChevronRight 
+  ChevronRight,
+  UserX
 } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 
@@ -61,6 +62,11 @@ export const SettingsScreen = () => {
           icon={Lock} 
           text="Privacy & Security" 
           onClick={() => console.log('Privacy clicked')}
+        />
+        <SettingItem 
+          icon={UserX} 
+          text="Blocked Users" 
+          onClick={() => setScreen('BLOCKED_USERS')}
         />
         
         <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider px-2 pt-4">Support</h3>

@@ -73,6 +73,16 @@ export const chatService = {
   async getPrivateConversation(otherUserId) {
     const response = await api.get(`/chat/private/${otherUserId}`);
     return response.data;
+  },
+
+  /**
+   * Toggle pin status for a conversation
+   * @param {number} conversationId - The conversation ID
+   * @returns {Promise<Object>} Updated pin status
+   */
+  async togglePinConversation(conversationId) {
+    const response = await api.post(`/chat/${conversationId}/pin`);
+    return response.data;
   }
 };
 

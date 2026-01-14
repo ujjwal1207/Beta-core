@@ -16,7 +16,8 @@ const ChatHistoryScreen = () => {
     setCallRecipient,
     setActiveCallChannel,
     setOutgoingInvitation,
-    setIsVoiceCall
+    setIsVoiceCall,
+    setUnreadMessagesCount
   } = useAppContext();
   const [conversations, setConversations] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -44,6 +45,9 @@ const ChatHistoryScreen = () => {
       setIsLoading(true);
       const data = await chatService.getConversations();
       setConversations(data);
+      // Update unread messages count in context
+      const totalUnread = data.reduce((sum, conv) => sum + (conv.unread_count || 0), 0);
+      setUnreadMessagesCount(totalUnread);
     } catch (error) {
       console.error('Failed to load conversations:', error);
     } finally {
@@ -87,21 +91,19 @@ const ChatHistoryScreen = () => {
     e.stopPropagation();
     // Logic for deleting conversation
     // Since backend might not support it yet, we just filter it from local state
-    console.log('Deleting conversation:', conversationId);
     setConversations(prev => prev.filter(c => c.id !== conversationId));
     setActiveMenuId(null);
   };
 
-  const handlePinConversation = (e, conversationId) => {
+  const handlePinConversation = async (e, conversationId) => {
     e.stopPropagation();
-    // Logic for pinning conversation
-    console.log('Pinning conversation:', conversationId);
-    // Move to top of local state for now
-    setConversations(prev => {
-      const conv = prev.find(c => c.id === conversationId);
-      const others = prev.filter(c => c.id !== conversationId);
-      return [conv, ...others];
-    });
+    try {
+      await chatService.togglePinConversation(conversationId);
+      // Reload conversations to get updated pin status and sorting
+      await loadConversations();
+    } catch (error) {
+      console.error('Failed to pin conversation:', error);
+    }
     setActiveMenuId(null);
   };
 
@@ -113,14 +115,14 @@ const ChatHistoryScreen = () => {
   return (
     <div className="relative flex flex-col h-full bg-slate-50">
       <TopTabBar setScreen={setScreen} currentScreen="CHAT_HISTORY" />
-      <div className="grow overflow-y-auto pt-30.25 p-4">
-        <div className="flex items-center justify-between mb-4">
-          <h1 className="text-3xl font-extrabold text-slate-800">Messages</h1>
+      <div className="grow overflow-y-auto pt-[120px] sm:pt-[126px] p-3 sm:p-4">
+        <div className="flex items-center justify-between mb-3 sm:mb-4">
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-800">Messages</h1>
           <button
             onClick={handleNewChat}
-            className=" m-1 p-2 bg-indigo-600 text-white rounded-full shadow-lg hover:bg-indigo-700 transition-all"
+            className="p-2.5 sm:p-3 bg-indigo-600 text-white rounded-full shadow-lg active:bg-indigo-700 transition-all touch-manipulation"
           >
-            <Plus className="w-3 h-3" />
+            <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
         </div>
         
@@ -134,14 +136,14 @@ const ChatHistoryScreen = () => {
             <p className="text-sm mt-2">Start chatting with your connections!</p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-2 sm:space-y-3">
             {conversations.map(conversation => (
               <div 
                 key={conversation.id} 
                 onClick={() => handleChatClick(conversation)}
-                className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex items-center cursor-pointer hover:shadow-md hover:border-indigo-200 transition-all relative"
+                className="bg-white p-3 sm:p-4 rounded-xl shadow-sm border border-slate-100 flex items-center cursor-pointer active:shadow-md active:border-indigo-200 transition-all relative touch-manipulation"
               >
-                <div className="w-12 h-12 flex-shrink-0 rounded-full mr-3 overflow-hidden">
+                <div className="w-12 h-12 sm:w-14 sm:h-14 flex-shrink-0 rounded-full mr-2 sm:mr-3 overflow-hidden">
                   <img 
                     src={getAvatarUrlWithSize(conversation.other_user, 100)} 
                     alt={conversation.other_user.full_name}
@@ -149,18 +151,21 @@ const ChatHistoryScreen = () => {
                   />
                 </div>
                 <div className="flex-grow overflow-hidden">
-                  <p className="font-semibold text-base text-slate-800">{conversation.other_user.full_name}</p>
-                  <p className="text-sm text-slate-500 truncate">
+                  <p className="font-semibold text-sm sm:text-base text-slate-800">{conversation.other_user.full_name}</p>
+                  <p className="text-xs sm:text-sm text-slate-500 truncate">
                     {conversation.last_message || 'No messages yet'}
                   </p>
                 </div>
-                <div className="text-right ml-2 flex-shrink-0 flex items-center gap-2">
-                  <div className="flex flex-col items-end mr-2">
-                    <p className="text-xs text-slate-400 mb-1">
+                <div className="text-right ml-2 flex-shrink-0 flex items-center gap-1 sm:gap-2">
+                  {conversation.is_pinned && (
+                    <Pin className="w-4 h-4 text-indigo-500" />
+                  )}
+                  <div className="flex flex-col items-end mr-1 sm:mr-2">
+                    <p className="text-[10px] sm:text-xs text-slate-400 mb-1">
                       {formatTimestamp(conversation.last_message_at)}
                     </p>
                     {conversation.unread_count > 0 && (
-                      <span className="w-5 h-5 bg-rose-500 text-white text-xs font-bold rounded-full flex items-center justify-center">
+                      <span className="w-4 h-4 sm:w-5 sm:h-5 bg-rose-500 text-white text-[10px] sm:text-xs font-bold rounded-full flex items-center justify-center">
                         {conversation.unread_count}
                       </span>
                     )}
@@ -168,9 +173,9 @@ const ChatHistoryScreen = () => {
                   <div className="relative">
                     <button
                       onClick={(e) => toggleMenu(e, conversation.id)}
-                      className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400 hover:text-slate-600"
+                      className="p-1.5 sm:p-2 active:bg-slate-100 rounded-full transition-colors text-slate-400 active:text-slate-600 touch-manipulation"
                     >
-                      <MoreVertical className="w-5 h-5" />
+                      <MoreVertical className="w-4 h-4 sm:w-5 sm:h-5" />
                     </button>
                     
                     {activeMenuId === conversation.id && (
@@ -183,7 +188,7 @@ const ChatHistoryScreen = () => {
                           className="w-full text-left px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
                         >
                           <Pin className="w-4 h-4" />
-                          Pin to top
+                          {conversation.is_pinned ? 'Unpin' : 'Pin to top'}
                         </button>
                         <div className="h-px bg-slate-100 my-0"></div>
                         <button

@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Star, Users, ThumbsUp, Clock, Briefcase, Calendar, MessageSquare, Loader, UserPlus, Image as ImageIcon } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { ArrowLeft, Star, Users, ThumbsUp, Clock, Briefcase, Calendar, MessageSquare, Loader, UserPlus, Image as ImageIcon, MoreVertical, UserMinus, Ban, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 import { useAppContext } from '../../context/AppContext';
 import MoodDisplay from '../../components/ui/MoodDisplay';
 import ScheduleCallModal from '../connections/components/ScheduleCallModal';
@@ -23,6 +23,11 @@ const ProfileDetailScreen = () => {
   const [activeTab, setActiveTab] = useState('bio'); // 'bio' or 'posts'
   const [isConnected, setIsConnected] = useState(false);
   const [conversations, setConversations] = useState([]);
+  const [showMenu, setShowMenu] = useState(false);
+  const [connectionId, setConnectionId] = useState(null);
+  const [notification, setNotification] = useState(null);
+  const [showConfirmation, setShowConfirmation] = useState(null);
+  const menuRef = useRef(null);
   
   useEffect(() => {
     const fetchUserProfile = async () => {
@@ -39,11 +44,16 @@ const ProfileDetailScreen = () => {
         
         // Check if this user is already a connection
         const myConnections = await connectionsService.getMyConnections();
-        const connected = myConnections.some(conn => conn.id === selectedPerson.id);
-        setIsConnected(connected);
+        const connectedUser = myConnections.find(conn => conn.id === selectedPerson.id);
+        setIsConnected(!!connectedUser);
+        
+        // Store connection ID if connected (for removal)
+        if (connectedUser && connectedUser.connection_id) {
+          setConnectionId(connectedUser.connection_id);
+        }
         
         // If connected, also fetch conversations for chat functionality
-        if (connected) {
+        if (connectedUser) {
           const convs = await chatService.getConversations();
           setConversations(convs);
         }
@@ -57,6 +67,25 @@ const ProfileDetailScreen = () => {
 
     fetchUserProfile();
   }, [selectedPerson, setScreen]);
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setShowMenu(false);
+      }
+    };
+
+    if (showMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('touchstart', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [showMenu]);
 
   useEffect(() => {
     const fetchUserPosts = async () => {
@@ -77,6 +106,11 @@ const ProfileDetailScreen = () => {
     fetchUserPosts();
   }, [selectedPerson]);
 
+  const showNotification = (message, type = 'success') => {
+    setNotification({ message, type });
+    setTimeout(() => setNotification(null), 3000);
+  };
+
   const handleSendRequest = async () => {
     if (!person) return;
     
@@ -84,13 +118,11 @@ const ProfileDetailScreen = () => {
       setIsSendingRequest(true);
       await connectionsService.sendRequest(person.id);
       setRequestSent(true);
-      // Navigate to message delivered screen
-      setTimeout(() => {
-        setScreen('MESSAGE_DELIVERED');
-      }, 500);
+      // Show notification instead of navigating
+      showNotification('Connection request sent! We\'ll let you know when they accept.', 'success');
     } catch (error) {
       console.error('Error sending connection request:', error);
-      alert('Failed to send connection request. Please try again.');
+      showNotification('Failed to send connection request. Please try again.', 'error');
     } finally {
       setIsSendingRequest(false);
     }
@@ -116,10 +148,60 @@ const ProfileDetailScreen = () => {
       setScreen('CHAT_ROOM');
     } catch (error) {
       console.error('Failed to open chat:', error);
-      alert('Failed to open chat. Please try again.');
+      showNotification('Failed to open chat. Please try again.', 'error');
     } finally {
       setIsSendingRequest(false);
     }
+  };
+
+  const handleRemoveConnection = async () => {
+    if (!person || !connectionId) {
+      showNotification('Unable to remove connection. Please try again.', 'error');
+      return;
+    }
+
+    setShowConfirmation({
+      title: 'Remove Connection',
+      message: `Are you sure you want to remove ${person.full_name} from your connections? You can reconnect later if you change your mind.`,
+      confirmText: 'Remove',
+      confirmAction: async () => {
+        try {
+          await connectionsService.removeConnection(connectionId);
+          setShowMenu(false);
+          setIsConnected(false);
+          setConnectionId(null);
+          showNotification(`${person.full_name} has been removed from your connections.`, 'success');
+        } catch (error) {
+          console.error('Failed to remove connection:', error);
+          showNotification('Failed to remove connection. Please try again.', 'error');
+        }
+        setShowConfirmation(null);
+      },
+      cancelAction: () => setShowConfirmation(null)
+    });
+  };
+
+  const handleBlockUser = async () => {
+    if (!person) return;
+
+    setShowConfirmation({
+      title: 'Block User',
+      message: `Are you sure you want to block ${person.full_name}? They will not be able to contact you or see your profile.`,
+      confirmText: 'Block',
+      confirmAction: async () => {
+        try {
+          await connectionsService.blockUser(person.id);
+          setShowMenu(false);
+          showNotification(`${person.full_name} has been blocked.`, 'success');
+          setScreen(previousScreen || 'CONNECTIONS_DASHBOARD');
+        } catch (error) {
+          console.error('Failed to block user:', error);
+          showNotification('Failed to block user. Please try again.', 'error');
+        }
+        setShowConfirmation(null);
+      },
+      cancelAction: () => setShowConfirmation(null)
+    });
   };
 
   if (isLoading) {
@@ -136,6 +218,54 @@ const ProfileDetailScreen = () => {
 
   return (
     <>
+      {/* Notification */}
+      {notification && (
+        <div className="fixed top-4 left-4 right-4 z-50">
+          <div className={`p-4 rounded-xl shadow-lg border backdrop-blur-sm ${
+            notification.type === 'success' 
+              ? 'bg-green-50 border-green-200 text-green-800' 
+              : notification.type === 'error'
+              ? 'bg-red-50 border-red-200 text-red-800'
+              : 'bg-blue-50 border-blue-200 text-blue-800'
+          }`}>
+            <div className="flex items-center gap-3">
+              {notification.type === 'success' && <CheckCircle className="w-5 h-5 text-green-600" />}
+              {notification.type === 'error' && <XCircle className="w-5 h-5 text-red-600" />}
+              {notification.type === 'warning' && <AlertCircle className="w-5 h-5 text-blue-600" />}
+              <p className="font-medium">{notification.message}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirmation Modal */}
+      {showConfirmation && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6">
+            <h3 className="text-xl font-bold text-slate-800 mb-2">{showConfirmation.title}</h3>
+            <p className="text-slate-600 mb-6">{showConfirmation.message}</p>
+            <div className="flex gap-3">
+              <button
+                onClick={showConfirmation.cancelAction}
+                className="flex-1 py-3 px-4 border border-slate-300 rounded-xl text-slate-700 font-semibold hover:bg-slate-50 transition-colors touch-manipulation"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={showConfirmation.confirmAction}
+                className={`flex-1 py-3 px-4 rounded-xl font-semibold transition-colors touch-manipulation ${
+                  showConfirmation.title === 'Block User'
+                    ? 'bg-red-600 text-white hover:bg-red-700'
+                    : 'bg-orange-600 text-white hover:bg-orange-700'
+                }`}
+              >
+                {showConfirmation.confirmText}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-col h-full bg-slate-100">
         <div className="flex-grow overflow-y-auto pb-28">
           <div className="relative w-full h-64 bg-cover bg-center" style={{ backgroundImage: `url(${getAvatarUrlWithSize(person, 400)})` }}>
@@ -143,8 +273,47 @@ const ProfileDetailScreen = () => {
             <button onClick={() => setScreen(previousScreen || 'FEED')} className="absolute top-4 left-4 p-2 bg-black/30 backdrop-blur-sm rounded-full text-white hover:bg-black/50 transition-colors z-10">
               <ArrowLeft className="w-6 h-6" />
             </button>
+            
+            {/* Three-dot menu button */}
+            <div className="absolute top-4 right-4 z-10" ref={menuRef}>
+              <button 
+                onClick={() => setShowMenu(!showMenu)}
+                className="p-2 bg-black/30 backdrop-blur-sm rounded-full text-white hover:bg-black/50 transition-colors"
+              >
+                <MoreVertical className="w-6 h-6" />
+              </button>
+              
+              {/* Dropdown menu */}
+              {showMenu && (
+                <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-2xl border border-slate-200 overflow-hidden">
+                  {isConnected && (
+                    <button
+                      onClick={handleRemoveConnection}
+                      className="w-full px-4 py-3 text-left flex items-center gap-3 hover:bg-slate-50 active:bg-slate-100 transition-colors touch-manipulation"
+                    >
+                      <UserMinus className="w-5 h-5 text-orange-600" />
+                      <div>
+                        <p className="font-semibold text-slate-800 text-sm">Remove Connection</p>
+                        <p className="text-xs text-slate-500">You can reconnect later</p>
+                      </div>
+                    </button>
+                  )}
+                  <button
+                    onClick={handleBlockUser}
+                    className="w-full px-4 py-3 text-left flex items-center gap-3 hover:bg-red-50 active:bg-red-100 transition-colors border-t border-slate-100 touch-manipulation"
+                  >
+                    <Ban className="w-5 h-5 text-red-600" />
+                    <div>
+                      <p className="font-semibold text-red-700 text-sm">Block User</p>
+                      <p className="text-xs text-red-500">They won't see your profile</p>
+                    </div>
+                  </button>
+                </div>
+              )}
+            </div>
+            
             {isSuperLinker && (
-              <div className="absolute top-4 right-4 flex items-center px-3 py-1.5 bg-gradient-to-r from-amber-400 to-yellow-500 rounded-full shadow-lg text-white font-bold text-sm">
+              <div className="absolute top-16 right-4 flex items-center px-3 py-1.5 bg-gradient-to-r from-amber-400 to-yellow-500 rounded-full shadow-lg text-white font-bold text-sm">
                 <Star className="w-5 h-5 mr-1.5 fill-white" />
                 Super ListenLinker
               </div>
@@ -156,7 +325,34 @@ const ProfileDetailScreen = () => {
               <h1 className="text-3xl font-extrabold text-slate-800">{person.full_name}{person.age ? `, ${person.age}` : ''}</h1>
               <MoodDisplay moodIndex={person.mood} />
             </div>
-            <p className="text-base font-semibold text-indigo-600 mb-4">{person.role || 'No role specified'}</p>
+            {(person.role || person.company) && (
+              <p className="text-base font-semibold text-indigo-600 mb-4">
+                {person.role && person.company ? `${person.role} at ${person.company}` : person.role || person.company}
+              </p>
+            )}
+            {!person.role && !person.company && <p className="text-base font-semibold text-slate-500 mb-4">No role or company specified</p>}
+            
+            {/* Education Section */}
+            {person.education && person.education.length > 0 && (
+              <div className="mb-6 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                <div className="flex items-center gap-2 mb-3">
+                  <Briefcase className="w-5 h-5 text-indigo-600" />
+                  <h3 className="text-sm font-bold text-slate-800 uppercase">Education</h3>
+                </div>
+                <div className="space-y-3">
+                  {person.education.map((school, index) => (
+                    <div key={index} className="flex items-start">
+                      <div className="flex-1">
+                        <p className="font-semibold text-slate-800">{school.name}</p>
+                        <p className="text-sm text-slate-500">
+                          {school.entry_year} - {school.passing_year || 'Present'}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             
             {isSuperLinker && (
               <div className="flex items-center space-x-4 mb-6 p-4 bg-slate-50 rounded-xl border border-slate-200">

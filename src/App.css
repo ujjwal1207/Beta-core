@@ -1,5 +1,35 @@
 @import "tailwindcss";
 
+/* Mobile-first global styles */
+* {
+  -webkit-tap-highlight-color: rgba(99, 102, 241, 0.1);
+  touch-action: manipulation;
+}
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  overscroll-behavior-y: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Improve button touch responsiveness */
+button {
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+/* Smooth scrolling for better mobile UX */
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
 @keyframes progress {
   from {
     width: 0%;

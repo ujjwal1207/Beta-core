@@ -5,9 +5,9 @@ import { quizFlow } from './data/quizFlow';
 import { WelcomePage } from './pages/WelcomePage';
 import { AuthForm } from './features/auth/AuthForm';
 import { SettingsScreen } from './pages/SettingsScreen';
+import BlockedUsersScreen from './pages/BlockedUsersScreen';
 import CallHistoryScreen from './pages/CallHistoryScreen';
 import ChatHistoryScreen from './pages/ChatHistoryScreen';
-import MessageDeliveredScreen from './pages/MessageDeliveredScreen';
 import FeedScreen from './features/feed/FeedScreen';
 import ConnectionsScreen from './features/connections/ConnectionsScreen';
 import MyConnectionsScreen from './features/connections/MyConnectionsScreen';
@@ -22,6 +22,7 @@ import AddMomentModal from './features/feed/components/AddMomentModal';
 import AddReflectionModal from './features/feed/components/AddReflectionModal';
 import StoryViewerModal from './features/feed/components/StoryViewerModal';
 import { VideoCallScreen } from './features/calls';
+import MinimizedCallWidget from './features/calls/MinimizedCallWidget';
 import IncomingCallScreen from './features/calls/IncomingCallScreen';
 import callsService from './services/callsService';
 import chatService from './services/chatService';
@@ -54,7 +55,11 @@ const AppContent = () => {
     outgoingInvitation,
     setOutgoingInvitation,
     isVoiceCall,
-    setIsVoiceCall
+    setIsVoiceCall,
+    isCallMinimized,
+    setIsCallMinimized,
+    callState,
+    callControls
   } = useAppContext();
 
   // Callback to refresh feed after post creation
@@ -84,7 +89,8 @@ const AppContent = () => {
     setIsVoiceCall(false); // Reset voice call mode
     setCallRecipient(null);
     setOutgoingInvitation(null); // Clear outgoing invitation
-  }, [setInVideoCall, setCallRecipient, callRecipient, outgoingInvitation, setOutgoingInvitation, setIsVoiceCall, isVoiceCall]);
+    setIsCallMinimized(false); // Reset minimized state
+  }, [setInVideoCall, setCallRecipient, callRecipient, outgoingInvitation, setOutgoingInvitation, setIsVoiceCall, isVoiceCall, setIsCallMinimized]);
 
   const handleAcceptCall = useCallback(async () => {
     if (!incomingCall) return;
@@ -150,9 +156,9 @@ const AppContent = () => {
       SIGNUP: <AuthForm isLogin={false} />,
       LOGIN: <AuthForm isLogin={true} />,
       SETTINGS: <SettingsScreen />,
+      BLOCKED_USERS: <BlockedUsersScreen />,
       CALL_HISTORY: <CallHistoryScreen />,
       CHAT_HISTORY: <ChatHistoryScreen />,
-      MESSAGE_DELIVERED: <MessageDeliveredScreen />,
       FEED: <FeedScreen />,
       CONNECTIONS_DASHBOARD: <ConnectionsScreen />,
       MY_CONNECTIONS: <MyConnectionsScreen />,
@@ -177,38 +183,106 @@ const AppContent = () => {
     );
   }
 
-  // If in video call, show video call screen
+  // If in video call, show video call screen (full screen if not minimized)
   if (inVideoCall && callRecipient) {
     return (
-      <div className="relative w-full h-full">
-        <VideoCallScreen 
-          key={`call-${callRecipient.id}`}
-          recipientUser={callRecipient} 
-          channelName={activeCallChannel}
-          onCallEnd={handleCallEnd}
-        />
-        
-        {/* Call Declined Notification Overlay */}
-        {callDeclined && (
-          <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-md animate-in fade-in duration-300">
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 max-w-sm w-full mx-4 text-center shadow-2xl transform scale-100 animate-in zoom-in-95 duration-300">
-              <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
+      <>
+        {/* Always render VideoCallScreen - keep it fully mounted and active, just position it off-screen when minimized */}
+        <div 
+          className={isCallMinimized ? "fixed" : "relative w-full h-full"} 
+          style={isCallMinimized ? { 
+            top: '-9999px', 
+            left: '-9999px', 
+            width: '1px', 
+            height: '1px', 
+            overflow: 'hidden',
+            pointerEvents: 'none',
+            zIndex: -1
+          } : {}}
+        >
+          <VideoCallScreen 
+            key={`call-${callRecipient.id}`}
+            recipientUser={callRecipient} 
+            channelName={activeCallChannel}
+            onCallEnd={handleCallEnd}
+          />
+          
+          {/* Call Declined Notification Overlay */}
+          {callDeclined && !isCallMinimized && (
+            <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-md animate-in fade-in duration-300">
+              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 max-w-sm w-full mx-4 text-center shadow-2xl transform scale-100 animate-in zoom-in-95 duration-300">
+                <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </div>
+                <h3 className="text-xl font-bold text-white mb-2">Call Declined</h3>
+                <p className="text-slate-400 mb-6">
+                  {callRecipient.full_name || callRecipient.name} is not available right now.
+                </p>
+                <div className="w-full bg-slate-800 rounded-full h-1.5 mb-2 overflow-hidden">
+                  <div className="bg-red-500 h-1.5 rounded-full animate-[width_3s_linear_forwards]" style={{ width: '0%' }}></div>
+                </div>
+                <p className="text-xs text-slate-500">Returning to chat...</p>
               </div>
-              <h3 className="text-xl font-bold text-white mb-2">Call Declined</h3>
-              <p className="text-slate-400 mb-6">
-                {callRecipient.full_name || callRecipient.name} is not available right now.
-              </p>
-              <div className="w-full bg-slate-800 rounded-full h-1.5 mb-2 overflow-hidden">
-                <div className="bg-red-500 h-1.5 rounded-full animate-[width_3s_linear_forwards]" style={{ width: '0%' }}></div>
-              </div>
-              <p className="text-xs text-slate-500">Returning to chat...</p>
             </div>
+          )}
+        </div>
+        
+        {/* Show normal app UI when minimized - overlay on top */}
+        {isCallMinimized && (
+          <div className="min-h-screen bg-slate-200 flex justify-center items-center p-0 sm:p-4 font-sans relative z-10">
+            <div className="relative w-full h-screen sm:w-[390px] sm:h-[844px] bg-slate-50 shadow-2xl rounded-none sm:rounded-3xl overflow-hidden flex flex-col">
+              <div key={screen} className="w-full h-full flex flex-col screen-fade-in">
+                {renderScreen()}
+              </div>
+            </div>
+            
+            {/* Minimized Call Widget */}
+            <MinimizedCallWidget
+              callDuration={callState.duration}
+              isMicOn={callState.isMicOn}
+              isCameraOn={callState.isCameraOn}
+              onToggleMic={async () => {
+                if (callControls?.toggleMic) {
+                  await callControls.toggleMic();
+                }
+              }}
+              onToggleCamera={async () => {
+                if (callControls?.toggleCamera) {
+                  await callControls.toggleCamera();
+                }
+              }}
+              onMaximize={() => {
+                if (callControls?.maximizeCall) {
+                  callControls.maximizeCall();
+                }
+              }}
+              onEndCall={() => {
+                if (callControls?.endCall) {
+                  callControls.endCall();
+                }
+              }}
+            />
+            
+            {/* Modal components */}
+            <AddMomentModal 
+              isOpen={isAddMomentModalOpen} 
+              onClose={() => setIsAddMomentModalOpen(false)}
+              onPostCreated={handlePostCreated}
+            />
+            <AddReflectionModal 
+              isOpen={isAddReflectionModalOpen} 
+              onClose={() => setIsAddReflectionModalOpen(false)}
+              onPostCreated={handlePostCreated}
+            />
+            <StoryViewerModal 
+              person={viewingStory} 
+              onClose={() => setViewingStory(null)} 
+            />
           </div>
         )}
-      </div>
+      </>
     );
   }
 

@@ -1,71 +1,78 @@
 import React from 'react';
-import { Phone, PhoneOff, Video, X } from 'lucide-react';
-import { getAvatarColor } from '../../lib/avatarUtils';
+import { Phone, PhoneOff, Video } from 'lucide-react';
+import { getAvatarUrlWithSize } from '../../lib/avatarUtils';
 
 /**
- * IncomingCallScreen - Modal for incoming video/voice calls
+ * IncomingCallScreen - Top notification banner for incoming video/voice calls
  */
 const IncomingCallScreen = ({ caller, callType, onAccept, onReject }) => {
-  const avatarColor = caller?.id ? getAvatarColor(caller.id) : '#666';
   const isVideo = callType !== 'voice';
+  const callerName = caller?.full_name || caller?.name || 'Unknown User';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-80 transition-opacity duration-300">
-      <div className="bg-white rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl transform transition-all duration-400 ease-out">
-        {/* Caller Info */}
-        <div className="text-center mb-8">
-          <div 
-            className="w-24 h-24 rounded-full mx-auto mb-4 flex items-center justify-center text-white text-3xl font-bold border-4 border-indigo-50"
-            style={{ backgroundColor: avatarColor }}
-          >
-            {caller?.name?.[0]?.toUpperCase() || '?'}
-          </div>
-          <h2 className="text-2xl font-bold text-gray-800 mb-1">
-            {caller?.name || 'Unknown User'}
-          </h2>
-          <div className="flex items-center justify-center gap-2 text-gray-500 font-medium">
-            {isVideo ? (
-              <Video className="w-5 h-5 text-indigo-500" />
-            ) : (
-              <Phone className="w-5 h-5 text-green-500" />
-            )}
-            <span>Incoming {isVideo ? 'video' : 'voice'} call...</span>
-          </div>
-        </div>
+    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+      {/* Top notification banner */}
+      <div className="fixed top-0 left-0 right-0 mx-auto max-w-md px-4 pt-4 animate-in slide-in-from-top duration-500">
+        <div className="bg-gradient-to-br from-indigo-600 to-purple-600 rounded-2xl p-6 shadow-2xl border border-white/10">
+          {/* Header */}
+          <div className="flex items-center gap-4 mb-6">
+            {/* Caller Avatar */}
+            <div className="relative">
+              <div className="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center overflow-hidden ring-4 ring-white/20">
+                <img 
+                  src={getAvatarUrlWithSize(caller, 100)} 
+                  alt={callerName}
+                  className="w-16 h-16 rounded-full object-cover"
+                />
+              </div>
+              {/* Pulsing ring animation */}
+              <div className="absolute inset-0 rounded-full border-4 border-white/40 animate-ping"></div>
+            </div>
 
-        {/* Call Actions */}
-        <div className="flex justify-center gap-8">
-          {/* Reject Button */}
-          <div className="flex flex-col items-center gap-2">
+            {/* Caller Info */}
+            <div className="flex-1">
+              <h3 className="text-white font-bold text-lg mb-1">
+                {callerName}
+              </h3>
+              <div className="flex items-center gap-2 text-white/90 text-sm">
+                {isVideo ? (
+                  <Video className="w-4 h-4" />
+                ) : (
+                  <Phone className="w-4 h-4" />
+                )}
+                <span>Incoming {isVideo ? 'video' : 'voice'} call...</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex gap-3">
+            {/* Decline Button */}
             <button
               onClick={onReject}
-              className="w-16 h-16 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center text-white shadow-lg transition-all hover:scale-110 active:scale-95"
-              aria-label="Reject call"
+              className="flex-1 bg-red-500 hover:bg-red-600 text-white font-semibold py-3.5 px-6 rounded-xl transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-2 shadow-lg"
+              aria-label="Decline call"
             >
-              <PhoneOff size={28} strokeWidth={2.5} />
+              <PhoneOff className="w-5 h-5" />
+              <span>Decline</span>
             </button>
-            <span className="text-xs font-medium text-gray-400">Decline</span>
-          </div>
 
-          {/* Accept Button */}
-          <div className="flex flex-col items-center gap-2">
+            {/* Accept Button */}
             <button
               onClick={onAccept}
-              className={`w-16 h-16 rounded-full ${isVideo ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-green-500 hover:bg-green-600'} flex items-center justify-center text-white shadow-lg transition-all hover:scale-110 active:scale-95 animate-pulse`}
+              className="flex-1 bg-green-500 hover:bg-green-600 text-white font-semibold py-3.5 px-6 rounded-xl transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-2 shadow-lg animate-pulse"
               aria-label="Accept call"
             >
-              {isVideo ? <Video size={28} strokeWidth={2.5} /> : <Phone size={28} strokeWidth={2.5} />}
+              {isVideo ? <Video className="w-5 h-5" /> : <Phone className="w-5 h-5" />}
+              <span>Accept</span>
             </button>
-            <span className="text-xs font-medium text-gray-400">Accept</span>
           </div>
-        </div>
 
-        {/* Ringing Animation */}
-        <div className="mt-6 flex justify-center">
-          <div className="flex gap-1">
-            <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-            <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-            <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+          {/* Ringing dots animation */}
+          <div className="mt-4 flex justify-center gap-1.5">
+            <div className="w-2 h-2 bg-white/60 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+            <div className="w-2 h-2 bg-white/60 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+            <div className="w-2 h-2 bg-white/60 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
           </div>
         </div>
       </div>

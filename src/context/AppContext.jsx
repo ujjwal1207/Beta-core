@@ -2,6 +2,8 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import authService from '../services/authService';
 import userService from '../services/userService';
 import callsService from '../services/callsService';
+import connectionsService from '../services/connectionsService';
+import chatService from '../services/chatService';
 
 const AppContext = createContext();
 
@@ -29,11 +31,22 @@ export const AppProvider = ({ children }) => {
   const [activeCallChannel, setActiveCallChannel] = useState(null); // Stores the Agora channel name
   const [callDeclined, setCallDeclined] = useState(false); // Flag to show "Call Declined" message
   
+  // Call minimization state
+  const [isCallMinimized, setIsCallMinimized] = useState(false);
+  const [callState, setCallState] = useState({ duration: 0, isMicOn: true, isCameraOn: false });
+  const [callControls, setCallControls] = useState({ toggleMic: () => {}, toggleCamera: () => {}, endCall: () => {}, maximizeCall: () => {} });
+  
   // User authentication state
   const [user, setUser] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [authError, setAuthError] = useState(null);
+  
+  // Connection requests count
+  const [pendingRequestsCount, setPendingRequestsCount] = useState(0);
+  
+  // Unread messages count
+  const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
   
   const [profileData, setProfileData] = useState({
     name: '',
@@ -180,19 +193,15 @@ export const AppProvider = ({ children }) => {
       if (document.hidden) return;
       
       try {
-        console.log('Polling outgoing invitation:', outgoingInvitation.id);
         const invitation = await callsService.getInvitation(outgoingInvitation.id);
-        console.log('Invitation status:', invitation.status);
         
         // Check if the invitation was rejected
         if (invitation.status === 'rejected') {
-          console.log('Call rejected! Showing notification.');
           setCallDeclined(true);
           setOutgoingInvitation(null);
           
           // Auto-clear the declined message and exit call after 3 seconds
           setTimeout(() => {
-            console.log('Exiting call after rejection.');
             setCallDeclined(false);
             setInVideoCall(false);
             setCallRecipient(null);
@@ -384,6 +393,47 @@ export const AppProvider = ({ children }) => {
     }
   }, [onboardingAnswers['SHARER_TRACK_1'], onboardingAnswers['SHARER_TRACK_2'], onboardingAnswers['SHARER_TRACK_3']]);
 
+  // Fetch pending connection requests count
+  useEffect(() => {
+    const fetchPendingRequests = async () => {
+      if (isAuthenticated) {
+        try {
+          const requests = await connectionsService.getReceivedRequests();
+          setPendingRequestsCount(requests.length);
+        } catch (error) {
+          console.error('Failed to fetch pending requests:', error);
+        }
+      }
+    };
+
+    fetchPendingRequests();
+    // Poll every 30 seconds
+    const interval = setInterval(fetchPendingRequests, 30000);
+    
+    return () => clearInterval(interval);
+  }, [isAuthenticated]);
+
+  // Fetch unread messages count
+  useEffect(() => {
+    const fetchUnreadMessagesCount = async () => {
+      if (isAuthenticated) {
+        try {
+          const conversations = await chatService.getConversations();
+          const totalUnread = conversations.reduce((sum, conv) => sum + (conv.unread_count || 0), 0);
+          setUnreadMessagesCount(totalUnread);
+        } catch (error) {
+          console.error('Failed to fetch unread messages count:', error);
+        }
+      }
+    };
+
+    fetchUnreadMessagesCount();
+    // Poll every 10 seconds for faster updates
+    const interval = setInterval(fetchUnreadMessagesCount, 10000);
+    
+    return () => clearInterval(interval);
+  }, [isAuthenticated]);
+
   const value = {
     screen,
     setScreen,
@@ -429,6 +479,17 @@ export const AppProvider = ({ children }) => {
     logout,
     updateUserMood,
     updateUserProfile,
+    pendingRequestsCount,
+    setPendingRequestsCount,
+    unreadMessagesCount,
+    setUnreadMessagesCount,
+    // Call minimization state
+    isCallMinimized,
+    setIsCallMinimized,
+    callState,
+    setCallState,
+    callControls,
+    setCallControls,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

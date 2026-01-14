@@ -56,7 +56,9 @@ api.interceptors.response.use(
       
       switch (status) {
         case 401:
-          // Silently handle 401 - don't spam console on initial load
+          // Log 401 errors for debugging, but don't auto-logout
+          // Individual components should handle 401 appropriately
+          console.warn('Authentication error (401):', errorMessage);
           break;
         case 403:
           console.error('Forbidden - insufficient permissions');

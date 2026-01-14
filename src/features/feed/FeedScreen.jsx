@@ -38,8 +38,6 @@ const FeedScreen = () => {
       setError(null);
       // Fetch with Vibe Engine enabled
       const feedData = await feedService.getFeed({ limit: 20, useVibe: true });
-      console.log('Fetched posts:', feedData); // Debug log
-      console.log('First post with image:', feedData.find(p => p.image_url)?.image_url?.substring(0, 100)); // Check if image exists
       setPosts(feedData);
     } catch (err) {
       console.error('Error fetching feed:', err);

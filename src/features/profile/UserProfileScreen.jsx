@@ -7,13 +7,15 @@ import userService from '../../services/userService';
 import { MOOD_LABELS, MOOD_COLORS, getMoodGradient } from '../../config/theme';
 import PostCard from '../feed/components/PostCard';
 import feedService from '../../services/feedService';
+import { getAvatarUrlWithSize } from '../../lib/avatarUtils';
 
 const UserProfileScreen = () => {
   const { setScreen, onboardingAnswers, user, updateUserProfile, updateUserMood } = useAppContext();
 
   // Use backend user data instead of local profileData
   const [localName, setLocalName] = useState('');
-  const [localOrg, setLocalOrg] = useState('');
+  const [localRole, setLocalRole] = useState('');
+  const [localCompany, setLocalCompany] = useState('');
   const [localTagline, setLocalTagline] = useState('');
   const [localLocation, setLocalLocation] = useState('');
   const [localIndustry, setLocalIndustry] = useState('');
@@ -31,12 +33,17 @@ const UserProfileScreen = () => {
   const [savedPosts, setSavedPosts] = useState([]);
   const [savedLoading, setSavedLoading] = useState(false);
   const [isAboutMeExpanded, setIsAboutMeExpanded] = useState(false);
+  const [education, setEducation] = useState([]);
+  const [isAddingSchool, setIsAddingSchool] = useState(false);
+  const [editingSchoolIndex, setEditingSchoolIndex] = useState(null);
+  const [newSchool, setNewSchool] = useState({ name: '', entry_year: '', passing_year: '' });
 
   // Load user data from backend
   useEffect(() => {
     if (user) {
       setLocalName(user.full_name || '');
-      setLocalOrg(user.role || '');
+      setLocalRole(user.role || '');
+      setLocalCompany(user.company || '');
       setLocalTagline(user.bio || '');
       setLocalLocation(user.location || '');
       setLocalIndustry(user.industry || '');
@@ -47,6 +54,13 @@ const UserProfileScreen = () => {
       }
     }
   }, [user]);
+
+  // Load education separately to avoid overwriting unsaved changes
+  useEffect(() => {
+    if (user && user.education) {
+      setEducation(user.education);
+    }
+  }, [user?.id]); // Only when user changes (not on every user object update)
 
   // Sync mood separately to ensure it updates when changed from other screens
   useEffect(() => {
@@ -108,11 +122,13 @@ const UserProfileScreen = () => {
     try {
       const updateData = {
         full_name: localName,
-        role: localOrg,
+        role: localRole,
+        company: localCompany,
         bio: localTagline,
         location: localLocation,
         industry: localIndustry,
         expertise: localExpertise,
+        education: education,
       };
 
       // If there's a new profile photo, convert to base64
@@ -127,11 +143,19 @@ const UserProfileScreen = () => {
         console.log('Saving profile photo, size:', updateData.profile_photo.length);
       }
 
-      console.log('Updating profile with data:', { ...updateData, profile_photo: updateData.profile_photo ? `[base64 ${updateData.profile_photo.length} chars]` : 'none' });
+      console.log('Updating profile with data:', { 
+        ...updateData, 
+        profile_photo: updateData.profile_photo ? `[base64 ${updateData.profile_photo.length} chars]` : 'none',
+        education: updateData.education 
+      });
 
       // Update profile via backend API
       const updatedUser = await updateUserProfile(updateData);
-      console.log('Profile updated successfully, photo:', updatedUser.profile_photo ? 'present' : 'missing');
+      console.log('Profile updated successfully:', {
+        photo: updatedUser.profile_photo ? 'present' : 'missing',
+        company: updatedUser.company,
+        education: updatedUser.education
+      });
       
       setIsDirty(false);
       setProfilePhoto(null); // Clear the file object, keep preview from server
@@ -285,6 +309,25 @@ const UserProfileScreen = () => {
             />
           </div>
           
+          {/* Connections Stats */}
+          <div className="flex items-center gap-6 mb-6 bg-slate-50 p-4 rounded-xl border border-slate-200">
+            <button 
+              onClick={() => setScreen('MY_CONNECTIONS')}
+              className="flex-1 text-center hover:bg-white rounded-lg p-2 transition-colors cursor-pointer"
+            >
+              <p className="text-2xl font-bold text-slate-800">{user?.connections_count || 0}</p>
+              <p className="text-xs font-medium text-slate-500 mt-1">Connections</p>
+            </button>
+            <div className="w-px h-10 bg-slate-300"></div>
+            <button 
+              onClick={() => setActiveTab('posts')}
+              className="flex-1 text-center hover:bg-white rounded-lg p-2 transition-colors cursor-pointer"
+            >
+              <p className="text-2xl font-bold text-slate-800">{userPosts?.length || 0}</p>
+              <p className="text-xs font-medium text-slate-500 mt-1">Posts</p>
+            </button>
+          </div>
+
           <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 w-full mb-6">
             <div 
               className="flex items-center justify-between cursor-pointer"
@@ -307,9 +350,15 @@ const UserProfileScreen = () => {
                   setScreen={setScreen}
                 />
                 
-                <div>
-                  <label className="text-sm font-semibold text-slate-700 mb-1.5 block">Role / Company</label>
-                  <input type="text" placeholder="e.g., Acme Inc. or Student" value={localOrg} onChange={(e) => { setLocalOrg(e.target.value); setIsDirty(true); }} className="w-full p-3 bg-slate-50 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-base" />
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-semibold text-slate-700 mb-1.5 block">Role</label>
+                    <input type="text" placeholder="e.g., Product Manager" value={localRole} onChange={(e) => { setLocalRole(e.target.value); setIsDirty(true); }} className="w-full p-3 bg-slate-50 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-base" />
+                  </div>
+                  <div>
+                    <label className="text-sm font-semibold text-slate-700 mb-1.5 block">Company</label>
+                    <input type="text" placeholder="e.g., Acme Inc." value={localCompany} onChange={(e) => { setLocalCompany(e.target.value); setIsDirty(true); }} className="w-full p-3 bg-slate-50 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-base" />
+                  </div>
                 </div>
                 <div>
                   <label className="text-sm font-semibold text-slate-700 mb-1.5 block">Bio</label>
@@ -337,6 +386,180 @@ const UserProfileScreen = () => {
                     onChange={(e) => { setLocalExpertise(e.target.value); setIsDirty(true); }}
                   />
                 </div>
+
+                {/* Education Section */}
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <label className="text-sm font-semibold text-slate-700">Education</label>
+                    <button
+                      onClick={() => setIsAddingSchool(true)}
+                      className="flex items-center gap-1 text-indigo-600 hover:text-indigo-700 text-sm font-semibold transition-colors"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Add School
+                    </button>
+                  </div>
+
+                  {/* School List */}
+                  {education.length > 0 && (
+                    <div className="space-y-2 mb-3">
+                      {education.map((school, index) => (
+                        editingSchoolIndex === index ? (
+                          <div key={index} className="bg-white border-2 border-indigo-300 rounded-lg p-4 space-y-3">
+                            <div>
+                              <label className="text-xs font-semibold text-slate-600 mb-1 block">School Name</label>
+                              <input
+                                type="text"
+                                value={school.name}
+                                onChange={(e) => {
+                                  const updated = [...education];
+                                  updated[index] = { ...updated[index], name: e.target.value };
+                                  setEducation(updated);
+                                }}
+                                className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                              />
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                              <div>
+                                <label className="text-xs font-semibold text-slate-600 mb-1 block">Entry Year</label>
+                                <input
+                                  type="number"
+                                  value={school.entry_year}
+                                  onChange={(e) => {
+                                    const updated = [...education];
+                                    updated[index] = { ...updated[index], entry_year: e.target.value };
+                                    setEducation(updated);
+                                  }}
+                                  className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                                />
+                              </div>
+                              <div>
+                                <label className="text-xs font-semibold text-slate-600 mb-1 block">Passing Year</label>
+                                <input
+                                  type="number"
+                                  value={school.passing_year}
+                                  onChange={(e) => {
+                                    const updated = [...education];
+                                    updated[index] = { ...updated[index], passing_year: e.target.value };
+                                    setEducation(updated);
+                                  }}
+                                  className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                                />
+                              </div>
+                            </div>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => {
+                                  setEditingSchoolIndex(null);
+                                  setIsDirty(true);
+                                }}
+                                className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors text-sm"
+                              >
+                                Done
+                              </button>
+                              <button
+                                onClick={() => setEditingSchoolIndex(null)}
+                                className="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold py-2 px-4 rounded-lg transition-colors text-sm"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div key={index} className="bg-white border border-slate-200 rounded-lg p-3 flex items-start justify-between group hover:border-indigo-300 transition-colors">
+                            <div className="flex-1">
+                              <p className="font-semibold text-slate-800">{school.name}</p>
+                              <p className="text-sm text-slate-500">
+                                {school.entry_year} - {school.passing_year || 'Present'}
+                              </p>
+                            </div>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => setEditingSchoolIndex(index)}
+                                className="text-slate-400 hover:text-indigo-600 opacity-0 group-hover:opacity-100 transition-all"
+                              >
+                                <Edit3 className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setEducation(education.filter((_, i) => i !== index));
+                                  setIsDirty(true);
+                                }}
+                                className="text-slate-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                              </button>
+                            </div>
+                          </div>
+                        )
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Add School Form */}
+                  {isAddingSchool && (
+                    <div className="bg-white border-2 border-indigo-300 rounded-lg p-4 space-y-3">
+                      <div>
+                        <label className="text-xs font-semibold text-slate-600 mb-1 block">School Name</label>
+                        <input
+                          type="text"
+                          placeholder="e.g., Harvard University"
+                          value={newSchool.name}
+                          onChange={(e) => setNewSchool({ ...newSchool, name: e.target.value })}
+                          className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-xs font-semibold text-slate-600 mb-1 block">Entry Year</label>
+                          <input
+                            type="number"
+                            placeholder="2020"
+                            value={newSchool.entry_year}
+                            onChange={(e) => setNewSchool({ ...newSchool, entry_year: e.target.value })}
+                            className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs font-semibold text-slate-600 mb-1 block">Passing Year</label>
+                          <input
+                            type="number"
+                            placeholder="2024"
+                            value={newSchool.passing_year}
+                            onChange={(e) => setNewSchool({ ...newSchool, passing_year: e.target.value })}
+                            className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                          />
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => {
+                            if (newSchool.name && newSchool.entry_year) {
+                              setEducation([...education, newSchool]);
+                              setNewSchool({ name: '', entry_year: '', passing_year: '' });
+                              setIsAddingSchool(false);
+                              setIsDirty(true);
+                            }
+                          }}
+                          className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors text-sm"
+                        >
+                          Add
+                        </button>
+                        <button
+                          onClick={() => {
+                            setIsAddingSchool(false);
+                            setNewSchool({ name: '', entry_year: '', passing_year: '' });
+                          }}
+                          className="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold py-2 px-4 rounded-lg transition-colors text-sm"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>
@@ -344,10 +567,10 @@ const UserProfileScreen = () => {
 
         {/* Tab Navigation */}
         <div className="sticky top-0 bg-white z-30 border-b border-slate-200 mb-4">
-          <div className="flex gap-4 px-4">
+          <div className="flex gap-4 px-4 overflow-x-auto hide-scrollbar">
             <button
               onClick={() => setActiveTab('bio')}
-              className={`py-3 px-1 font-semibold text-sm transition-all ${
+              className={`py-3 px-1 font-semibold text-sm transition-all whitespace-nowrap ${
                 activeTab === 'bio'
                   ? 'text-indigo-600 border-b-2 border-indigo-600'
                   : 'text-slate-500 hover:text-slate-700'
@@ -357,7 +580,7 @@ const UserProfileScreen = () => {
             </button>
             <button
               onClick={() => setActiveTab('posts')}
-              className={`py-3 px-1 font-semibold text-sm transition-all ${
+              className={`py-3 px-1 font-semibold text-sm transition-all whitespace-nowrap ${
                 activeTab === 'posts'
                   ? 'text-indigo-600 border-b-2 border-indigo-600'
                   : 'text-slate-500 hover:text-slate-700'
@@ -367,7 +590,7 @@ const UserProfileScreen = () => {
             </button>
             <button
               onClick={() => setActiveTab('saved')}
-              className={`py-3 px-1 font-semibold text-sm transition-all ${
+              className={`py-3 px-1 font-semibold text-sm transition-all whitespace-nowrap ${
                 activeTab === 'saved'
                   ? 'text-indigo-600 border-b-2 border-indigo-600'
                   : 'text-slate-500 hover:text-slate-700'
@@ -478,6 +701,8 @@ const UserProfileScreen = () => {
             )}
           </div>
         )}
+
+
       </div>
       
       {isDirty && (

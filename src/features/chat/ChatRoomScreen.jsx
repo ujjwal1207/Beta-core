@@ -18,7 +18,8 @@ const ChatRoomScreen = () => {
     setCallRecipient, 
     setActiveCallChannel,
     setOutgoingInvitation,
-    setIsVoiceCall
+    setIsVoiceCall,
+    setUnreadMessagesCount
   } = useAppContext();
   const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState('');
@@ -130,6 +131,15 @@ const ChatRoomScreen = () => {
         });
         
         setMessages(transformedMessages);
+        
+        // Scroll to bottom after initial load, but wait for DOM to update
+        // Use setTimeout to ensure the container is rendered
+        setTimeout(() => {
+          if (messagesContainerRef.current) {
+            const container = messagesContainerRef.current;
+            container.scrollTop = container.scrollHeight;
+          }
+        }, 100);
       }
     } catch (error) {
       console.error('Failed to load messages:', error);
@@ -164,9 +174,24 @@ const ChatRoomScreen = () => {
         setMessages(transformedMessages);
         // Update isAtBottom state to match actual position
         setIsAtBottom(wasAtBottom);
+        
+        // Update unread count when new messages arrive (if we're viewing this conversation, it's read)
+        // But we should still update the global count by fetching conversations
+        updateUnreadCount();
       }
     } catch (error) {
       console.error('Failed to load new messages:', error);
+    }
+  };
+  
+  // Update unread messages count
+  const updateUnreadCount = async () => {
+    try {
+      const conversations = await chatService.getConversations();
+      const totalUnread = conversations.reduce((sum, conv) => sum + (conv.unread_count || 0), 0);
+      setUnreadMessagesCount(totalUnread);
+    } catch (error) {
+      console.error('Failed to update unread count:', error);
     }
   };
 
@@ -180,28 +205,42 @@ const ChatRoomScreen = () => {
 
   // Auto-scroll to bottom only if user is already at bottom
   const scrollToBottom = (smooth = true) => {
+    if (!messagesContainerRef.current) return;
+    
+    // Use scrollTop instead of scrollIntoView to avoid scrolling the entire page
+    const container = messagesContainerRef.current;
+    const scrollHeight = container.scrollHeight;
+    
     if (smooth) {
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      container.scrollTo({
+        top: scrollHeight,
+        behavior: "smooth"
+      });
     } else {
-      messagesEndRef.current?.scrollIntoView({ behavior: "auto" });
+      container.scrollTop = scrollHeight;
     }
   };
 
   useEffect(() => {
-    // Only auto-scroll if user is at bottom
-    if (isAtBottom) {
-      scrollToBottom();
+    // Only auto-scroll if user is at bottom and messages container exists
+    // Skip if loading to prevent scroll during initial load
+    if (!isLoading && isAtBottom && messagesContainerRef.current && messages.length > 0) {
+      // Use a small delay to ensure DOM has updated
+      const timeoutId = setTimeout(() => {
+        if (messagesContainerRef.current) {
+          scrollToBottom(false); // Use instant scroll to avoid smooth scroll issues on mobile
+        }
+      }, 100);
+      return () => clearTimeout(timeoutId);
     }
-  }, [messages, isAtBottom]);
+  }, [messages, isAtBottom, isLoading]);
 
   const handlePinConversation = () => {
-    console.log('Pinning conversation');
     // Implement pinning logic here
     setShowMenu(false);
   };
 
   const handleDeleteConversation = () => {
-    console.log('Deleting conversation');
     // Implement deleting logic here
     setScreen(previousScreen || 'CHAT_HISTORY');
     setShowMenu(false);
@@ -307,10 +346,8 @@ const ChatRoomScreen = () => {
             disabled={!isPersonOnline}
             onClick={async () => {
               try {
-                console.log('Sending voice call invitation...');
                 setIsVoiceCall(true);
                 const invitation = await callsService.sendCallInvitation(selectedPerson.id, 'voice');
-                console.log('Invitation sent:', invitation);
                 setOutgoingInvitation(invitation);
                 setCallRecipient(selectedPerson);
                 setActiveCallChannel(invitation.channel_name);
@@ -333,10 +370,8 @@ const ChatRoomScreen = () => {
             disabled={!isPersonOnline}
             onClick={async () => {
               try {
-                console.log('Sending video call invitation...');
                 setIsVoiceCall(false);
                 const invitation = await callsService.sendCallInvitation(selectedPerson.id, 'video');
-                console.log('Invitation sent:', invitation);
                 setOutgoingInvitation(invitation);
                 setCallRecipient(selectedPerson);
                 setActiveCallChannel(invitation.channel_name);
