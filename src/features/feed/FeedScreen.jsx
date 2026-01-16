@@ -225,7 +225,7 @@ const FeedScreen = () => {
                   name: post.user_name,
                   role: post.user_role,
                   trustScore: post.user_trust_score,
-                  image: post.user_profile_photo || `https://i.pravatar.cc/150?u=${post.user_id}`,
+                  image: getAvatarUrlWithSize({ profile_photo: post.user_profile_photo, full_name: post.user_name }, 150),
                   content: post.content,
                   likes: post.likes_count,
                   comments: post.comments_count,

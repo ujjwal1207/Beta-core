@@ -315,13 +315,11 @@ const UserProfileScreen = () => {
           <div className="flex items-center mb-6">
             <div className="relative">
               <div className="w-20 h-20 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white text-3xl font-bold mr-4 flex-shrink-0 overflow-hidden">
-                {photoPreview ? (
-                  <img src={photoPreview} alt="Profile" className="w-full h-full object-cover" />
-                ) : user?.profile_photo ? (
-                  <img src={user.profile_photo} alt="Profile" className="w-full h-full object-cover" />
-                ) : (
-                  localName ? localName[0] : <User className="w-10 h-10" />
-                )}
+                <img 
+                  src={getAvatarUrlWithSize({ ...user, full_name: localName }, 80)} 
+                  alt="Profile" 
+                  className="w-full h-full object-cover rounded-full" 
+                />
               </div>
               <button
                 onClick={handlePhotoClick}
