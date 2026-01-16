@@ -10,7 +10,7 @@ import feedService from '../../services/feedService';
 import { getAvatarUrlWithSize } from '../../lib/avatarUtils';
 
 const UserProfileScreen = () => {
-  const { setScreen, onboardingAnswers, user, updateUserProfile, updateUserMood } = useAppContext();
+  const { setScreen, onboardingAnswers, setOnboardingAnswers, user, updateUserProfile, updateUserMood } = useAppContext();
 
   // Use backend user data instead of local profileData
   const [localName, setLocalName] = useState('');
@@ -32,11 +32,32 @@ const UserProfileScreen = () => {
   const [postsLoading, setPostsLoading] = useState(false);
   const [savedPosts, setSavedPosts] = useState([]);
   const [savedLoading, setSavedLoading] = useState(false);
-  const [isAboutMeExpanded, setIsAboutMeExpanded] = useState(false);
+  // Calculate if user has incomplete profile (should show expanded About Me section)
+  const hasIncompleteProfile = () => {
+    if (!user) return true; // New users should see expanded section
+    
+    // Check basic profile fields
+    const basicFieldsIncomplete = !user.full_name?.trim() || !user.bio?.trim() || 
+                                  !user.location?.trim() || !user.industry?.trim() || 
+                                  !user.role?.trim() || !user.expertise?.trim();
+    
+    // Check if onboarding journey is incomplete
+    const onboardingIncomplete = !onboardingAnswers || Object.keys(onboardingAnswers).length === 0;
+    
+    return basicFieldsIncomplete || onboardingIncomplete;
+  };
+
+  const [isAboutMeExpanded, setIsAboutMeExpanded] = useState(hasIncompleteProfile());
   const [education, setEducation] = useState([]);
   const [isAddingSchool, setIsAddingSchool] = useState(false);
   const [editingSchoolIndex, setEditingSchoolIndex] = useState(null);
   const [newSchool, setNewSchool] = useState({ name: '', entry_year: '', passing_year: '' });
+  const [isEditingSharerInsights, setIsEditingSharerInsights] = useState(false);
+  const [editingSharerInsights, setEditingSharerInsights] = useState({
+    youngerSelf: '',
+    lifeLessons: [],
+    societyChange: ''
+  });
 
   // Load user data from backend
   useEffect(() => {
@@ -53,14 +74,25 @@ const UserProfileScreen = () => {
         setPhotoPreview(user.profile_photo);
       }
     }
-  }, [user]);
+  }, [user?.id]); // Only when user changes (not on every user object update)
 
   // Load education separately to avoid overwriting unsaved changes
   useEffect(() => {
-    if (user && user.education) {
+    if (user && user.education && education.length === 0) {
       setEducation(user.education);
     }
-  }, [user?.id]); // Only when user changes (not on every user object update)
+  }, [user?.id]); // Only when user ID changes (first load for this user)
+
+  // Load sharer insights separately
+  useEffect(() => {
+    if (user && user.sharer_insights) {
+      setEditingSharerInsights({
+        youngerSelf: user.sharer_insights.youngerSelf || '',
+        lifeLessons: user.sharer_insights.lifeLessons || [],
+        societyChange: user.sharer_insights.societyChange || ''
+      });
+    }
+  }, [user?.id]); // Only when user changes
 
   // Sync mood separately to ensure it updates when changed from other screens
   useEffect(() => {
@@ -105,7 +137,10 @@ const UserProfileScreen = () => {
     }
   }, [activeTab, user?.id]);
 
-  const sharerInsights = {
+  // Only set About Me expansion state on mount
+  // (Do not auto-collapse/expand on every user/onboardingAnswers change)
+
+  const sharerInsights = user?.sharer_insights || {
     youngerSelf: onboardingAnswers['SHARER_TRACK_1'],
     lifeLessons: onboardingAnswers['SHARER_TRACK_2'],
     societyChange: onboardingAnswers['SHARER_TRACK_3'],
@@ -120,6 +155,27 @@ const UserProfileScreen = () => {
     setSaveError(null);
     
     try {
+      // Sync sharer insights data to onboarding answers
+      const sharerInsightsData = {
+        youngerSelf: editingSharerInsights.youngerSelf.trim(),
+        lifeLessons: editingSharerInsights.lifeLessons.filter(l => l.lesson.trim() || l.where.trim()),
+        societyChange: editingSharerInsights.societyChange.trim()
+      };
+      
+      // Update onboarding answers for compatibility
+      const updatedOnboardingAnswers = { ...onboardingAnswers };
+      if (sharerInsightsData.youngerSelf) updatedOnboardingAnswers['SHARER_TRACK_1'] = sharerInsightsData.youngerSelf;
+      else delete updatedOnboardingAnswers['SHARER_TRACK_1'];
+      
+      if (sharerInsightsData.lifeLessons.length > 0) updatedOnboardingAnswers['SHARER_TRACK_2'] = sharerInsightsData.lifeLessons;
+      else delete updatedOnboardingAnswers['SHARER_TRACK_2'];
+      
+      if (sharerInsightsData.societyChange) updatedOnboardingAnswers['SHARER_TRACK_3'] = sharerInsightsData.societyChange;
+      else delete updatedOnboardingAnswers['SHARER_TRACK_3'];
+      
+      // Update the state
+      setOnboardingAnswers(updatedOnboardingAnswers);
+      
       const updateData = {
         full_name: localName,
         role: localRole,
@@ -129,6 +185,7 @@ const UserProfileScreen = () => {
         industry: localIndustry,
         expertise: localExpertise,
         education: education,
+        onboarding_answers: updatedOnboardingAnswers,
       };
 
       // If there's a new profile photo, convert to base64
@@ -158,6 +215,7 @@ const UserProfileScreen = () => {
       });
       
       setIsDirty(false);
+      setIsEditingSharerInsights(false);
       setProfilePhoto(null); // Clear the file object, keep preview from server
     } catch (error) {
       console.error('Error saving profile:', error);
@@ -334,8 +392,16 @@ const UserProfileScreen = () => {
               onClick={() => setIsAboutMeExpanded(!isAboutMeExpanded)}
             >
               <div>
-                <h3 className="text-base font-bold text-slate-800">About me</h3>
-                <p className="text-sm text-slate-500 mt-1">Completing your journey helps us find you the best connections.</p>
+                <div className="flex items-center gap-2 mb-1">
+                  <h3 className="text-base font-bold text-slate-800">About me</h3>
+                  {hasIncompleteProfile() && (
+                    <ProfileCompletionNudge
+                      onboardingAnswers={onboardingAnswers}
+                      setScreen={setScreen}
+                    />
+                  )}
+                </div>
+                <p className="text-sm text-slate-500">Completing your journey helps us find you the best connections.</p>
               </div>
               <div className={`transform transition-transform ${isAboutMeExpanded ? 'rotate-180' : ''}`}>
                 <svg className="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -345,10 +411,6 @@ const UserProfileScreen = () => {
             </div>
             {isAboutMeExpanded && (
               <div className="mt-4 space-y-4">
-                <ProfileCompletionNudge
-                  onboardingAnswers={onboardingAnswers}
-                  setScreen={setScreen}
-                />
                 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
@@ -415,6 +477,7 @@ const UserProfileScreen = () => {
                                   const updated = [...education];
                                   updated[index] = { ...updated[index], name: e.target.value };
                                   setEducation(updated);
+                                  setIsDirty(true);
                                 }}
                                 className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-sm"
                               />
@@ -429,6 +492,7 @@ const UserProfileScreen = () => {
                                     const updated = [...education];
                                     updated[index] = { ...updated[index], entry_year: e.target.value };
                                     setEducation(updated);
+                                    setIsDirty(true);
                                   }}
                                   className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-sm"
                                 />
@@ -442,6 +506,7 @@ const UserProfileScreen = () => {
                                     const updated = [...education];
                                     updated[index] = { ...updated[index], passing_year: e.target.value };
                                     setEducation(updated);
+                                    setIsDirty(true);
                                   }}
                                   className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-sm"
                                 />
@@ -466,7 +531,7 @@ const UserProfileScreen = () => {
                             </div>
                           </div>
                         ) : (
-                          <div key={index} className="bg-white border border-slate-200 rounded-lg p-3 flex items-start justify-between group hover:border-indigo-300 transition-colors">
+                          <div key={index} className="bg-white border border-slate-200 rounded-lg p-3 flex items-start justify-between hover:border-indigo-300 transition-colors">
                             <div className="flex-1">
                               <p className="font-semibold text-slate-800">{school.name}</p>
                               <p className="text-sm text-slate-500">
@@ -476,7 +541,7 @@ const UserProfileScreen = () => {
                             <div className="flex gap-2">
                               <button
                                 onClick={() => setEditingSchoolIndex(index)}
-                                className="text-slate-400 hover:text-indigo-600 opacity-0 group-hover:opacity-100 transition-all"
+                                className="text-slate-400 hover:text-indigo-600 transition-all"
                               >
                                 <Edit3 className="w-4 h-4" />
                               </button>
@@ -485,7 +550,7 @@ const UserProfileScreen = () => {
                                   setEducation(education.filter((_, i) => i !== index));
                                   setIsDirty(true);
                                 }}
-                                className="text-slate-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
+                                className="text-slate-400 hover:text-red-500 transition-all"
                               >
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -604,39 +669,149 @@ const UserProfileScreen = () => {
         {/* Bio Tab Content */}
         {activeTab === 'bio' && (
           <div>
-            <InfoBlock title="My Shared Wisdom" onEdit={() => setScreen('SHARER_TRACK_1')} editScreenKey={'SHARER_TRACK_1'}>
-              {!hasSharerInsights ? (
-                <EmptyStateButton text="Add Your Wisdom & Insights" onClick={() => setScreen('SHARER_TRACK_1')} />
-              ) : (
-                <div className="space-y-4">
-                  {sharerInsights.youngerSelf && (
-                    <div>
-                      <h4 className="text-sm font-bold text-slate-600 mb-1">Advice to Younger Self</h4>
-                      <p className="text-sm text-slate-700 italic">"{sharerInsights.youngerSelf}"</p>
+            {/* My Shared Wisdom Section */}
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 w-full mb-6">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-xl font-extrabold text-slate-800">My Shared Wisdom</h3>
+                {!isEditingSharerInsights && (
+                  <button
+                    onClick={() => setIsEditingSharerInsights(true)}
+                    className="p-2 rounded-full hover:bg-slate-100"
+                    aria-label="Edit Shared Wisdom"
+                  >
+                    <Edit3 className="w-5 h-5 text-indigo-600" />
+                  </button>
+                )}
+              </div>
+              
+              {isEditingSharerInsights ? (
+                <div className="space-y-6">
+                  {/* Advice to Younger Self */}
+                  <div>
+                    <label className="text-sm font-bold text-slate-600 mb-2 block">Advice to Younger Self</label>
+                    <textarea
+                      value={editingSharerInsights.youngerSelf}
+                      onChange={(e) => {
+                        setEditingSharerInsights(prev => ({ ...prev, youngerSelf: e.target.value }));
+                        setIsDirty(true);
+                      }}
+                      placeholder="What advice would you give your younger self?"
+                      className="w-full p-3 bg-slate-50 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-sm resize-none"
+                      rows="3"
+                    />
+                  </div>
+                  
+                  {/* Key Life Lessons */}
+                  <div>
+                    <label className="text-sm font-bold text-slate-600 mb-2 block">Key Life Lessons</label>
+                    <div className="space-y-3">
+                      {editingSharerInsights.lifeLessons.map((lesson, index) => (
+                        <div key={index} className="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                          <textarea
+                            value={lesson.lesson}
+                            onChange={(e) => {
+                              const updated = [...editingSharerInsights.lifeLessons];
+                              updated[index] = { ...updated[index], lesson: e.target.value };
+                              setEditingSharerInsights(prev => ({ ...prev, lifeLessons: updated }));
+                              setIsDirty(true);
+                            }}
+                            placeholder="What lesson did you learn?"
+                            className="w-full p-2 bg-white border border-slate-300 rounded mb-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm resize-none"
+                            rows="2"
+                          />
+                          <input
+                            type="text"
+                            value={lesson.where}
+                            onChange={(e) => {
+                              const updated = [...editingSharerInsights.lifeLessons];
+                              updated[index] = { ...updated[index], where: e.target.value };
+                              setEditingSharerInsights(prev => ({ ...prev, lifeLessons: updated }));
+                              setIsDirty(true);
+                            }}
+                            placeholder="Where did you learn this?"
+                            className="w-full p-2 bg-white border border-slate-300 rounded focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                          />
+                          <button
+                            onClick={() => {
+                              const updated = editingSharerInsights.lifeLessons.filter((_, i) => i !== index);
+                              setEditingSharerInsights(prev => ({ ...prev, lifeLessons: updated }));
+                              setIsDirty(true);
+                            }}
+                            className="mt-2 text-red-500 hover:text-red-700 text-sm font-medium"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      ))}
+                      <button
+                        onClick={() => {
+                          setEditingSharerInsights(prev => ({
+                            ...prev,
+                            lifeLessons: [...prev.lifeLessons, { lesson: '', where: '' }]
+                          }));
+                          setIsDirty(true);
+                        }}
+                        className="w-full p-3 border-2 border-dashed border-slate-300 rounded-lg text-slate-500 font-semibold text-sm hover:bg-slate-50 hover:border-slate-400 transition-all"
+                      >
+                        <Plus className="w-4 h-4 inline mr-2" /> Add Life Lesson
+                      </button>
                     </div>
-                  )}
-                  {sharerInsights.lifeLessons && sharerInsights.lifeLessons.length > 0 && (
-                    <div>
-                      <h4 className="text-sm font-bold text-slate-600 mb-2">Key Life Lessons</h4>
-                      <div className="space-y-2">
-                        {sharerInsights.lifeLessons.map((lesson, i) => (
-                          <div key={i} className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-                            <p className="text-sm font-semibold text-slate-800 italic">"{lesson.lesson}"</p>
-                            <p className="text-xs text-slate-500 mt-1">Learned at: <span className="font-medium">{lesson.where}</span></p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  {sharerInsights.societyChange && (
-                    <div>
-                      <h4 className="text-sm font-bold text-slate-600 mb-1">Change I Want to See</h4>
-                      <p className="text-sm text-slate-700 italic">"{sharerInsights.societyChange}"</p>
-                    </div>
-                  )}
+                  </div>
+                  
+                  {/* Change I Want to See */}
+                  <div>
+                    <label className="text-sm font-bold text-slate-600 mb-2 block">Change I Want to See in Society</label>
+                    <textarea
+                      value={editingSharerInsights.societyChange}
+                      onChange={(e) => {
+                        setEditingSharerInsights(prev => ({ ...prev, societyChange: e.target.value }));
+                        setIsDirty(true);
+                      }}
+                      placeholder="What change would you like to see in the world?"
+                      className="w-full p-3 bg-slate-50 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-sm resize-none"
+                      rows="3"
+                    />
+                  </div>
                 </div>
+              ) : (
+                !hasSharerInsights ? (
+                  <button
+                    onClick={() => setIsEditingSharerInsights(true)}
+                    className="flex items-center justify-center w-full p-4 border-2 border-dashed border-slate-300 rounded-xl text-slate-500 font-semibold text-sm hover:bg-slate-50 hover:border-slate-400 transition-all"
+                  >
+                    <Plus className="w-5 h-5 mr-2" /> Add Your Wisdom & Insights
+                  </button>
+                ) : (
+                  <div className="space-y-4">
+                    {sharerInsights.youngerSelf && (
+                      <div>
+                        <h4 className="text-sm font-bold text-slate-600 mb-1">Advice to Younger Self</h4>
+                        <p className="text-sm text-slate-700 italic">"{sharerInsights.youngerSelf}"</p>
+                      </div>
+                    )}
+                    {sharerInsights.lifeLessons && sharerInsights.lifeLessons.length > 0 && (
+                      <div>
+                        <h4 className="text-sm font-bold text-slate-600 mb-2">Key Life Lessons</h4>
+                        <div className="space-y-2">
+                          {sharerInsights.lifeLessons.map((lesson, i) => (
+                            <div key={i} className="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                              <p className="text-sm font-semibold text-slate-800 italic">"{lesson.lesson}"</p>
+                              <p className="text-xs text-slate-500 mt-1">Learned at: <span className="font-medium">{lesson.where}</span></p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {sharerInsights.societyChange && (
+                      <div>
+                        <h4 className="text-sm font-bold text-slate-600 mb-1">Change I Want to See</h4>
+                        <p className="text-sm text-slate-700 italic">"{sharerInsights.societyChange}"</p>
+                      </div>
+                    )}
+                  </div>
+                )
               )}
-            </InfoBlock>
+            </div>
           </div>
         )}
 

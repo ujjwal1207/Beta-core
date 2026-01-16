@@ -4,6 +4,9 @@ import { useAppContext } from '../../../context/AppContext';
 import feedService from '../../../services/feedService';
 
 const StoryViewerModal = ({ person, onClose }) => {
+    const [replyText, setReplyText] = useState("");
+    const [isReplying, setIsReplying] = useState(false);
+    const [replySent, setReplySent] = useState(false);
   const { setScreen, setPreviousScreen, setSelectedPerson, user } = useAppContext();
   
   // Check if this is a story group (with stories array) or single story/person
@@ -32,7 +35,9 @@ const StoryViewerModal = ({ person, onClose }) => {
     setIsLoadingViewers(true);
     try {
       const data = await feedService.getStoryViewers(currentStory.id);
-      setViewers(data.viewers || []);
+      // Filter out the current user from viewers list
+      const filteredViewers = (data.viewers || []).filter(viewer => viewer.user_id !== user.id);
+      setViewers(filteredViewers);
     } catch (error) {
       console.error('Error fetching story viewers:', error);
     } finally {
@@ -151,7 +156,7 @@ const StoryViewerModal = ({ person, onClose }) => {
       onClick={onClose}
     >
       <div 
-        className={`relative ${backgroundColor} rounded-2xl shadow-2xl w-full max-w-md h-full sm:h-[90vh] sm:max-h-[700px] overflow-hidden flex flex-col p-4`}
+        className={`relative ${backgroundColor} rounded-2xl shadow-2xl w-full max-w-md h-full sm:h-[90vh] sm:max-h-175 overflow-hidden flex flex-col p-4`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Progress Bars */}
@@ -212,39 +217,41 @@ const StoryViewerModal = ({ person, onClose }) => {
               {currentIndex + 1}/{stories.length}
             </span>
           )}
-          {isOwnStory && (
+          <div className="flex items-center ml-auto gap-2">
+            {isOwnStory && (
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowViewers(!showViewers);
+                }} 
+                className="p-2 rounded-full hover:bg-white/20 transition-all"
+                aria-label="View story viewers"
+              >
+                <Eye className="w-5 h-5 text-white" />
+              </button>
+            )}
             <button 
               onClick={(e) => {
                 e.stopPropagation();
-                setShowViewers(!showViewers);
+                setIsPaused(!isPaused);
               }} 
-              className="p-2 rounded-full hover:bg-white/20 transition-all mr-1"
-              aria-label="View story viewers"
+              className="p-2 rounded-full hover:bg-white/20 transition-all"
+              aria-label={isPaused ? "Play" : "Pause"}
             >
-              <Eye className="w-5 h-5 text-white" />
+              {isPaused ? (
+                <Play className="w-5 h-5 text-white" />
+              ) : (
+                <Pause className="w-5 h-5 text-white" />
+              )}
             </button>
-          )}
-          <button 
-            onClick={(e) => {
-              e.stopPropagation();
-              setIsPaused(!isPaused);
-            }} 
-            className="p-2 rounded-full hover:bg-white/20 transition-all"
-            aria-label={isPaused ? "Play" : "Pause"}
-          >
-            {isPaused ? (
-              <Play className="w-5 h-5 text-white" />
-            ) : (
-              <Pause className="w-5 h-5 text-white" />
-            )}
-          </button>
-          <button onClick={onClose} className="p-2 rounded-full hover:bg-white/20">
-            <X className="w-6 h-6 text-white" />
-          </button>
+            <button onClick={onClose} className="p-2 rounded-full hover:bg-white/20">
+              <X className="w-6 h-6 text-white" />
+            </button>
+          </div>
         </div>
 
         {/* Content */}
-        <div className="flex-grow flex flex-col justify-center items-center text-center p-6">
+        <div className="grow flex flex-col justify-center items-center text-center p-6">
           {storyImage ? (
             <div className="w-full h-full flex flex-col items-center justify-center">
               <img 
@@ -278,14 +285,46 @@ const StoryViewerModal = ({ person, onClose }) => {
           )}
         </div>
 
-        {/* Footer */}
-        <div className="w-full p-2 z-10">
-          <input 
-            type="text" 
-            placeholder="Send a message..." 
-            className="w-full p-3 bg-white/20 border border-white/30 rounded-full text-white placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-white" 
-          />
-        </div>
+        {/* Footer - Only show reply for other users' stories */}
+        {!isOwnStory && (
+          <div className="w-full p-2 z-10 flex gap-2 items-center">
+            <input
+              type="text"
+              value={replyText}
+              onChange={e => setReplyText(e.target.value)}
+              placeholder="Reply to this story..."
+              className="flex-1 p-3 bg-white/20 border border-white/30 rounded-full text-white placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-white"
+              disabled={isReplying}
+            />
+            <button
+              onClick={async () => {
+                if (!replyText.trim() || isReplying) return;
+                setIsReplying(true);
+                try {
+                  // Send reply to story author via chat
+                  const receiverId = currentStory.user_id;
+                  await import("../../../services/chatService").then(({ chatService }) =>
+                    chatService.sendMessage(receiverId, `[Story Reply] ${replyText}`)
+                  );
+                  setReplySent(true);
+                  setReplyText("");
+                  setTimeout(() => setReplySent(false), 2000);
+                } catch (err) {
+                  alert("Failed to send reply. Try again.");
+                } finally {
+                  setIsReplying(false);
+                }
+              }}
+              className="px-4 py-2 bg-indigo-600 text-white rounded-full disabled:opacity-50 hover:bg-indigo-700 transition-all"
+              disabled={!replyText.trim() || isReplying}
+            >
+              Send
+            </button>
+            {replySent && (
+              <span className="ml-2 text-green-400 font-semibold">Reply sent!</span>
+            )}
+          </div>
+        )}
 
         {/* Viewers List Modal */}
         {showViewers && isOwnStory && (
@@ -320,7 +359,7 @@ const StoryViewerModal = ({ person, onClose }) => {
                       key={viewer.user_id} 
                       className="flex items-center gap-3 p-3 bg-white/10 rounded-lg hover:bg-white/20 transition-all"
                     >
-                      <div className="w-12 h-12 rounded-full bg-slate-200 flex items-center justify-center overflow-hidden flex-shrink-0">
+                      <div className="w-12 h-12 rounded-full bg-slate-200 flex items-center justify-center overflow-hidden shrink-0">
                         {viewer.user_profile_photo ? (
                           <img 
                             src={viewer.user_profile_photo} 

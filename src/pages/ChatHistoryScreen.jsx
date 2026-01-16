@@ -64,20 +64,21 @@ const ChatHistoryScreen = () => {
 
   const formatTimestamp = (timestamp) => {
     if (!timestamp) return '';
-    const date = new Date(timestamp);
+    // Ensure UTC parsing by appending 'Z' if not present
+    let date = typeof timestamp === 'string' && !timestamp.endsWith('Z') ? new Date(timestamp + 'Z') : new Date(timestamp);
     const now = new Date();
     const diff = now - date;
-    
+
     // Less than 24 hours
     if (diff < 24 * 60 * 60 * 1000) {
       return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     }
-    
+
     // Less than 7 days
     if (diff < 7 * 24 * 60 * 60 * 1000) {
       return date.toLocaleDateString([], { weekday: 'short' });
     }
-    
+
     // Older
     return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
   };

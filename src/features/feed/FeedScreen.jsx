@@ -8,6 +8,7 @@ import FeedJourneyCard from './components/FeedJourneyCard';
 import ProfileProgress from './components/ProfileProgress';
 import feedService from '../../services/feedService';
 import { getAvatarUrlWithSize } from '../../lib/avatarUtils';
+import { quizFlow, TRACK_Q1_KEYS } from '../../data/quizFlow';
 
 const FeedScreen = () => {
   const { 
@@ -17,10 +18,13 @@ const FeedScreen = () => {
     setViewingStory,
     onboardingAnswers,
     user,
-    isAuthenticated
+    isAuthenticated,
+    setSearchQuery,
+    setConnectionsMode,
   } = useAppContext();
   
   const [showNudge, setShowNudge] = useState(true);
+  const [searchValue, setSearchValue] = useState("");
   const [posts, setPosts] = useState([]);
   const [isLoadingPosts, setIsLoadingPosts] = useState(true);
   const [error, setError] = useState(null);
@@ -66,33 +70,73 @@ const FeedScreen = () => {
     setHiddenPostIds(prev => new Set([...prev, postId]));
   };
 
+  // Helper: check if onboarding quiz is complete (100%)
+  const isJourneyComplete = (() => {
+    // Replicate FeedJourneyCard logic for completion
+    // If onboardingAnswers is empty, treat as 0% complete
+    if (!onboardingAnswers || Object.keys(onboardingAnswers).length === 0) {
+      return false;
+    }
+    const hasAnswer = (key) => {
+      const answer = onboardingAnswers[key];
+      if (Array.isArray(answer)) return answer.length > 0;
+      if (typeof answer === 'string') return answer.trim().length > 0;
+      if (typeof answer === 'object' && answer !== null && !Array.isArray(answer)) return Object.keys(answer).length > 0;
+      return false;
+    };
+    const completedVibeStep = hasAnswer('VIBE_QUIZ') ? 1 : 0;
+    const vibeAnswers = onboardingAnswers['VIBE_QUIZ'] || [];
+    const totalStepsForTrack = 1 + 1 + 1 + 1;
+    let completedSteps = completedVibeStep ? 1 : 0;
+    const nextTrackStep1Key = quizFlow['VIBE_QUIZ'].nextStepLogic(vibeAnswers, onboardingAnswers);
+    if (nextTrackStep1Key && TRACK_Q1_KEYS.includes(nextTrackStep1Key) && hasAnswer(nextTrackStep1Key)) {
+      completedSteps++;
+    }
+    if (hasAnswer('NEW_GENERATION')) completedSteps++;
+    if (quizFlow['NEW_GENERATION'].nextStepLogic(onboardingAnswers['NEW_GENERATION'], onboardingAnswers) === 'GIVE_ADVICE_QUIZ' && hasAnswer('GIVE_ADVICE_QUIZ')) {
+      completedSteps++;
+    }
+    const percentage = Math.round((completedSteps / totalStepsForTrack) * 100);
+    return percentage >= 100;
+  })();
+
   return (
     <div className="relative flex flex-col h-full bg-slate-50">
       <TopTabBar setScreen={setScreen} currentScreen="FEED" />
-      <div className="flex-grow overflow-y-auto pt-[121px]">
+      <div className="grow overflow-y-auto pt-30.25">
         <div className="p-4">
-          {/* Daily Check-in - Always visible */}
-          <ProfileProgress />
-          
-          {showNudge && (
+          {/* Show journey card until quiz is complete, then show ProfileProgress */}
+          {!isJourneyComplete && showNudge && (
             <FeedJourneyCard 
               onboardingAnswers={onboardingAnswers} 
               setScreen={setScreen} 
               onClose={() => setShowNudge(false)} 
             />
           )}
-          
+          {isJourneyComplete && <ProfileProgress />}
+
           <div className="relative mb-4">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400"/>
-            <input 
-              type="text" 
-              placeholder="Find people, stories, or support" 
-              className="w-full p-3 pl-12 border border-slate-300 rounded-xl focus:ring-indigo-500 focus:border-indigo-500 text-base shadow-sm"
-            />
+            <form onSubmit={e => {
+              e.preventDefault();
+              if (searchValue.trim()) {
+                setSearchQuery(searchValue.trim());
+                setConnectionsMode('SEARCH');
+                setScreen('CONNECTIONS_DASHBOARD');
+              }
+            }}>
+              <input
+                type="text"
+                placeholder="Find people, stories, or support"
+                className="w-full p-3 pl-12 border border-slate-300 rounded-xl focus:ring-indigo-500 focus:border-indigo-500 text-base shadow-sm"
+                value={searchValue}
+                onChange={e => setSearchValue(e.target.value)}
+              />
+            </form>
           </div>
           
           <div className="bg-white p-3 rounded-xl shadow-sm border border-slate-100 w-full flex items-center gap-3 my-4">
-            <div className="w-10 h-10 rounded-full bg-slate-200 flex-shrink-0 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-full bg-slate-200 shrink-0 flex items-center justify-center">
               {user?.full_name ? (
                 <span className="text-sm font-semibold text-slate-600">
                   {user.full_name.charAt(0).toUpperCase()}

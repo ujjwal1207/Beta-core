@@ -66,6 +66,23 @@ export const chatService = {
   },
 
   /**
+   * Send a post-share as a chat message (attachment_type = 'post')
+   * @param {number} receiverId
+   * @param {number|string} postId
+   */
+  async sendPostShare(receiverId, postId) {
+    const body = {
+      receiver_id: receiverId,
+      content: '',
+      attachment_type: 'post',
+      attachment_url: `/posts/${postId}`,
+      attachment_meta: { post_id: postId }
+    };
+    const response = await api.post('/chat/messages', body);
+    return response.data;
+  },
+
+  /**
    * Get or create a private conversation with a specific user
    * @param {number} otherUserId - The other user's ID
    * @returns {Promise<Object>} Conversation details

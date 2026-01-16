@@ -13,6 +13,7 @@ import ConnectionsScreen from './features/connections/ConnectionsScreen';
 import MyConnectionsScreen from './features/connections/MyConnectionsScreen';
 import ConnectionRequestsScreen from './features/connections/ConnectionRequestsScreen';
 import ChatRoomScreen from './features/chat/ChatRoomScreen';
+import PostShareScreen from './features/chat/PostShareScreen';
 import UserProfileScreen from './features/profile/UserProfileScreen';
 import ProfileDetailScreen from './features/profile/ProfileDetailScreen';
 import QuizScreen from './features/onboarding/QuizScreen';
@@ -164,6 +165,7 @@ const AppContent = () => {
       MY_CONNECTIONS: <MyConnectionsScreen />,
       CONNECTION_REQUESTS: <ConnectionRequestsScreen />,
       CHAT_ROOM: <ChatRoomScreen />,
+      POST_SHARE: <PostShareScreen />,
       USER_PROFILE: <UserProfileScreen />,
       PROFILE_DETAIL: <ProfileDetailScreen />,
     };

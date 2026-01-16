@@ -48,6 +48,37 @@ const engagementService = {
       throw error;
     }
   },
+
+  /**
+   * Update a comment
+   * @param {number} postId - ID of the post
+   * @param {number} commentId - ID of the comment to update
+   * @param {string} content - New comment content
+   * @returns {Promise<Object>} Updated comment with user info
+   */
+  updateComment: async (postId, commentId, content) => {
+    try {
+      const response = await api.put(`/feed/${postId}/comment/${commentId}`, { content });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  /**
+   * Delete a comment
+   * @param {number} postId - ID of the post
+   * @param {number} commentId - ID of the comment to delete
+   * @returns {Promise<Object>} Success message
+   */
+  deleteComment: async (postId, commentId) => {
+    try {
+      const response = await api.delete(`/feed/${postId}/comment/${commentId}`);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
 };
 
 export default engagementService;

@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, Phone, Video, Send, Paperclip, Loader, Download, FileText, X, Eye, PhoneMissed, VideoOff, MoreVertical, Trash2, Pin } from 'lucide-react';
+import { ArrowLeft, Phone, Video, Send, Paperclip, Loader, Download, FileText, X, Eye, PhoneMissed, VideoOff, MoreVertical, Trash2, Pin, MessageCircle } from 'lucide-react';
 import { useAppContext } from '../../context/AppContext';
 import chatService from '../../services/chatService';
 import authService from '../../services/authService';
 import callsService from '../../services/callsService';
 import userService from '../../services/userService';
+import feedService from '../../services/feedService';
+import PostCard from '../feed/components/PostCard';
 import { getAvatarUrlWithSize } from '../../lib/avatarUtils';
 
 const ChatRoomScreen = () => {
@@ -30,6 +32,8 @@ const ChatRoomScreen = () => {
   const [selectedFile, setSelectedFile] = useState(null);
   const [isAtBottom, setIsAtBottom] = useState(true);
   const [viewingImage, setViewingImage] = useState(null);
+  const [viewingPost, setViewingPost] = useState(null);
+  const [postCache, setPostCache] = useState(new Map());
   const [showMenu, setShowMenu] = useState(false);
   const [isPersonOnline, setIsPersonOnline] = useState(false);
   const messagesEndRef = useRef(null);
@@ -71,6 +75,26 @@ const ChatRoomScreen = () => {
 
     return () => clearInterval(statusInterval);
   }, [selectedPerson]);
+
+  // Load post data for post attachments
+  useEffect(() => {
+    const postMessages = messages.filter(msg => msg.attachment_type === 'post' && msg.attachment_url);
+    postMessages.forEach(msg => {
+      const postId = msg.attachment_url.split('/').pop();
+      if (postId && !postCache.has(postId)) {
+        fetchPostData(postId);
+      }
+    });
+  }, [messages]);
+
+  const fetchPostData = async (postId) => {
+    try {
+      const postData = await feedService.getPostById(postId);
+      setPostCache(prev => new Map(prev).set(postId, postData));
+    } catch (error) {
+      console.error('Failed to fetch post data:', error);
+    }
+  };
 
   // Load current user and messages
   useEffect(() => {
@@ -413,6 +437,8 @@ const ChatRoomScreen = () => {
             let callDuration = '';
             let isVoiceCallLog = false;
             let isMissedCall = false;
+            let isStoryReply = false;
+            let storyReplyText = '';
 
             if (isCallLog) {
               const content = msg.text.replace('[CALL_LOG] ', '');
@@ -429,6 +455,9 @@ const ChatRoomScreen = () => {
               } else {
                 callDuration = content;
               }
+            } else if (msg.text && msg.text.startsWith('[Story Reply] ')) {
+              isStoryReply = true;
+              storyReplyText = msg.text.replace('[Story Reply] ', '');
             }
 
             return (
@@ -439,7 +468,7 @@ const ChatRoomScreen = () => {
               <div 
                 className={`
                   max-w-[75%] px-4 py-3 rounded-2xl text-sm shadow-sm relative group
-                  ${isCallLog 
+                  ${isCallLog || isStoryReply
                     ? (msg.sender === 'me' ? 'bg-slate-100 text-slate-600 border border-slate-200' : 'bg-slate-100 text-slate-600 border border-slate-200')
                     : (msg.sender === 'me' 
                       ? 'bg-indigo-600 text-white rounded-tr-none' 
@@ -470,6 +499,16 @@ const ChatRoomScreen = () => {
                         }
                       </p>
                       {!isMissedCall && <p className="text-xs opacity-80">{callDuration}</p>}
+                    </div>
+                  </div>
+                ) : isStoryReply ? (
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 bg-gradient-to-br from-pink-100 to-purple-100 rounded-full">
+                      <MessageCircle className="w-4 h-4 text-purple-600" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium text-purple-800 text-xs mb-1">Story Reply</p>
+                      <p className="text-slate-700">{storyReplyText}</p>
                     </div>
                   </div>
                 ) : (
@@ -527,13 +566,78 @@ const ChatRoomScreen = () => {
                         </a>
                       </div>
                     )}
+
+                    {/* Post attachment */}
+                    {msg.attachment_type === 'post' && msg.attachment_url && (
+                      <div className="border border-slate-200 rounded-lg p-3 bg-slate-50">
+                        <div className="flex items-center gap-2 mb-2">
+                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-white font-bold text-xs">
+                            P
+                          </div>
+                          <span className="text-xs text-slate-600">Shared Post</span>
+                        </div>
+                        {(() => {
+                          const postId = msg.attachment_url.split('/').pop();
+                          const postData = postCache.get(postId);
+                          return postData ? (
+                            <div className="space-y-2">
+                              {/* Post content preview */}
+                              <p className="text-sm text-slate-800 line-clamp-2">
+                                {postData.content || postData.text || 'Shared a post'}
+                              </p>
+                              
+                              {/* Post image preview */}
+                              {postData.image_url && (
+                                <div className="rounded-md overflow-hidden border border-slate-200">
+                                  <img
+                                    src={postData.image_url}
+                                    alt="Post image"
+                                    className="w-full h-20 object-cover"
+                                  />
+                                </div>
+                              )}
+                              
+                              {/* Post video preview */}
+                              {postData.video_url && (
+                                <div className="rounded-md overflow-hidden border border-slate-200">
+                                  <video
+                                    src={postData.video_url}
+                                    className="w-full h-20 object-cover"
+                                    preload="metadata"
+                                    muted
+                                  >
+                                    <div className="w-full h-20 bg-slate-200 flex items-center justify-center text-slate-500 text-xs">
+                                      Video
+                                    </div>
+                                  </video>
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <p className="text-sm text-slate-600">Loading post...</p>
+                          );
+                        })()}
+                        <button
+                          onClick={() => {
+                            const postId = msg.attachment_url.split('/').pop();
+                            const postData = postCache.get(postId);
+                            if (postData) {
+                              setViewingPost(postData);
+                            }
+                          }}
+                          className="text-xs text-indigo-600 hover:text-indigo-800 font-medium mt-2"
+                        >
+                          View
+                        </button>
+                      </div>
+                    )}
                     
                     {/* Text content */}
                     {msg.text && <p>{msg.text}</p>}
                   </>
                 )}
                 <span 
-                  className={`text-[10px] mt-1 block opacity-70 ${msg.sender === 'me' && !isCallLog ? 'text-indigo-200' : 'text-slate-400'}`}
+                  className={`text-[10px] mt-1 block opacity-70 ${msg.sender === 'me' && !isCallLog && !isStoryReply ? 'text-indigo-200' : 'text-slate-400'}`}
                 >
                   {msg.time}
                 </span>
@@ -658,6 +762,26 @@ const ChatRoomScreen = () => {
             className="max-w-full max-h-full object-contain rounded-lg"
             onClick={(e) => e.stopPropagation()}
           />
+        </div>
+      )}
+
+      {/* Post Viewer Modal */}
+      {viewingPost && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-md w-full max-h-[80vh] overflow-y-auto">
+            <div className="p-4 border-b border-slate-200 flex items-center justify-between">
+              <h3 className="font-semibold text-slate-800">Shared Post</h3>
+              <button
+                onClick={() => setViewingPost(null)}
+                className="p-1 hover:bg-slate-100 rounded-full transition-colors"
+              >
+                <X className="w-5 h-5 text-slate-600" />
+              </button>
+            </div>
+            <div className="p-4">
+              <PostCard post={viewingPost} />
+            </div>
+          </div>
         </div>
       )}
     </div>

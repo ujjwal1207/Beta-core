@@ -47,6 +47,13 @@ export const AppProvider = ({ children }) => {
   
   // Unread messages count
   const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
+
+  // Global search query (used when redirecting from feed search to connections search)
+  const [searchQuery, setSearchQuery] = useState('');
+  // Connections screen mode (null or one of 'SWIPE'|'SEARCH'|'ALUMNI'|'SUPER')
+  const [connectionsMode, setConnectionsMode] = useState(null);
+  // Payload used when sharing content into chat (cleared after consumption)
+  const [sharePayload, setSharePayload] = useState(null);
   
   const [profileData, setProfileData] = useState({
     name: '',
@@ -236,91 +243,6 @@ export const AppProvider = ({ children }) => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [isAuthenticated, user, outgoingInvitation, inVideoCall]);
-
-  // Heartbeat mechanism: Keep user marked as online while active
-  useEffect(() => {
-    if (!isAuthenticated || !user) return;
-
-    // Send heartbeat every 1 minute to keep user marked as online
-    // Shorter interval ensures faster offline detection when browser closes
-    const heartbeatInterval = setInterval(async () => {
-      try {
-        await userService.setOnline(); // This updates last_seen
-      } catch (error) {
-        console.error('Failed to send heartbeat:', error);
-      }
-    }, 60000); // 1 minute
-
-    return () => clearInterval(heartbeatInterval);
-  }, [isAuthenticated, user]);
-
-  // Mark user offline when browser/tab is closed
-  useEffect(() => {
-    if (!isAuthenticated || !user) return;
-
-    const handleBeforeUnload = () => {
-      // Use fetch with keepalive for reliable offline call even if page is closing
-      const token = localStorage.getItem('access_token');
-      if (token) {
-        const apiBaseUrl = import.meta.env.VITE_API_URL;
-        if (apiBaseUrl) {
-          const url = `${apiBaseUrl}/api/users/me/offline`;
-          
-          // Use fetch with keepalive - this ensures the request completes even if page closes
-          // Note: Even if this fails, the time-based validation (3 minutes) will mark users offline
-          fetch(url, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json'
-            },
-            keepalive: true, // Critical: ensures request completes even if page closes
-            body: JSON.stringify({})
-          }).catch(() => {
-            // Silently fail - page is closing anyway
-            // The time-based validation will handle marking users offline
-          });
-        }
-      }
-    };
-
-    // Also handle visibility change - mark offline when tab becomes hidden for extended period
-    let hiddenTimeout = null;
-    const handleVisibilityChange = async () => {
-      if (document.hidden) {
-        // If tab is hidden for more than 3 minutes, mark as offline
-        hiddenTimeout = setTimeout(async () => {
-          try {
-            await userService.setOffline();
-          } catch (error) {
-            console.error('Failed to set offline on visibility change:', error);
-          }
-        }, 180000); // 3 minutes
-      } else {
-        // Tab is visible again - clear timeout and mark online
-        if (hiddenTimeout) {
-          clearTimeout(hiddenTimeout);
-          hiddenTimeout = null;
-        }
-        try {
-          await userService.setOnline();
-        } catch (error) {
-          console.error('Failed to set online on visibility change:', error);
-        }
-      }
-    };
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      if (hiddenTimeout) {
-        clearTimeout(hiddenTimeout);
-      }
-    };
-  }, [isAuthenticated, user]);
 
   // Login function
   const login = async (credentials) => {
@@ -575,6 +497,13 @@ export const AppProvider = ({ children }) => {
     setCallState,
     callControls,
     setCallControls,
+    // Global search state
+    searchQuery,
+    setSearchQuery,
+    connectionsMode,
+    setConnectionsMode,
+    sharePayload,
+    setSharePayload,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

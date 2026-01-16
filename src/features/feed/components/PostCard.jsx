@@ -7,7 +7,7 @@ import feedService from '../../../services/feedService';
 import { getUserInitials } from '../../../lib/avatarUtils';
 
 const PostCard = ({ post, onUpdate, onHide, showNotInterested = true }) => {
-  const { setScreen, setSelectedPerson, setPreviousScreen, user } = useAppContext();
+  const { setScreen, setSelectedPerson, setPreviousScreen, user, setSharePayload } = useAppContext();
   const [isLiked, setIsLiked] = useState(post.isLiked || post.is_liked || false);
   const [isSaved, setIsSaved] = useState(post.isSaved || post.is_saved || false);
   const [likesCount, setLikesCount] = useState(post.likes || 0);
@@ -30,6 +30,11 @@ const PostCard = ({ post, onUpdate, onHide, showNotInterested = true }) => {
   const [viewingOriginalPost, setViewingOriginalPost] = useState(false);
   const [originalPostData, setOriginalPostData] = useState(null);
   const [isLoadingOriginal, setIsLoadingOriginal] = useState(false);
+  const [editingCommentId, setEditingCommentId] = useState(null);
+  const [editingCommentText, setEditingCommentText] = useState('');
+  const [isUpdatingComment, setIsUpdatingComment] = useState(false);
+  const [deletingCommentId, setDeletingCommentId] = useState(null);
+  const [isDeletingComment, setIsDeletingComment] = useState(false);
   const menuRef = useRef(null);
   
   const isOwnPost = user && (post.user_id === user.id || post.userId === user.id);
@@ -251,6 +256,57 @@ const PostCard = ({ post, onUpdate, onHide, showNotInterested = true }) => {
     }
   };
 
+  const handleEditComment = (comment) => {
+    setEditingCommentId(comment.id);
+    setEditingCommentText(comment.content);
+  };
+
+  const handleCancelEditComment = () => {
+    setEditingCommentId(null);
+    setEditingCommentText('');
+  };
+
+  const handleSaveEditComment = async () => {
+    if (!editingCommentText.trim() || isUpdatingComment) return;
+
+    setIsUpdatingComment(true);
+    try {
+      const updatedComment = await engagementService.updateComment(post.id, editingCommentId, editingCommentText);
+      setComments(comments.map(c => c.id === editingCommentId ? updatedComment : c));
+      setEditingCommentId(null);
+      setEditingCommentText('');
+      
+      // Notify parent to refresh if needed
+      if (onUpdate) onUpdate();
+    } catch (error) {
+      console.error('Error updating comment:', error);
+      alert('Failed to update comment');
+    } finally {
+      setIsUpdatingComment(false);
+    }
+  };
+
+  const handleDeleteComment = async (commentId) => {
+    if (isDeletingComment) return;
+
+    setIsDeletingComment(true);
+    setDeletingCommentId(commentId);
+    try {
+      await engagementService.deleteComment(post.id, commentId);
+      setComments(comments.filter(c => c.id !== commentId));
+      setCommentsCount(commentsCount - 1);
+      
+      // Notify parent to refresh if needed
+      if (onUpdate) onUpdate();
+    } catch (error) {
+      console.error('Error deleting comment:', error);
+      alert('Failed to delete comment');
+    } finally {
+      setIsDeletingComment(false);
+      setDeletingCommentId(null);
+    }
+  };
+
   return (
     <div className="bg-white p-4 mb-4 rounded-xl shadow-sm border border-slate-100 w-full">
       {/* Repost Indicator */}
@@ -430,8 +486,23 @@ const PostCard = ({ post, onUpdate, onHide, showNotInterested = true }) => {
           </button>
           
           <button 
-            onClick={() => console.log('Send message to post author - Coming soon!')}
+            onClick={() => {
+              // Prepare a lightweight share payload and navigate to messages
+              try {
+                const payload = {
+                  type: 'post',
+                  postId: post.id,
+                  content: post.content || post.text || '',
+                };
+                setSharePayload(payload);
+                setPreviousScreen('FEED');
+                setScreen('POST_SHARE');
+              } catch (err) {
+                console.error('Failed to initiate share:', err);
+              }
+            }}
             className="flex items-center hover:text-indigo-600 p-1 rounded-md transition-colors active:scale-[0.98]"
+            title="Share post"
           >
             <Send className="w-6 h-6" />
           </button>
@@ -464,32 +535,87 @@ const PostCard = ({ post, onUpdate, onHide, showNotInterested = true }) => {
                 {comments.length === 0 ? (
                   <p className="text-sm text-slate-500 text-center py-2">No comments yet. Be the first!</p>
                 ) : (
-                  comments.map((comment) => (
-                    <div key={comment.id} className="flex space-x-2">
-                      <div className="w-8 h-8 flex-shrink-0 rounded-full overflow-hidden mt-2">
-                        {comment.user_profile_photo ? (
-                          <img 
-                            src={comment.user_profile_photo} 
-                            alt={comment.user_name}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center bg-slate-200 text-slate-700 font-bold text-xs">
-                            {comment.user_name[0]}
+                  comments.map((comment) => {
+                    const isOwnComment = user && comment.user_id === user.id;
+                    const isEditing = editingCommentId === comment.id;
+                    
+                    return (
+                      <div key={comment.id} className="flex space-x-2">
+                        <div className="w-8 h-8 flex-shrink-0 rounded-full overflow-hidden mt-2">
+                          {comment.user_profile_photo ? (
+                            <img 
+                              src={comment.user_profile_photo} 
+                              alt={comment.user_name}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center bg-slate-200 text-slate-700 font-bold text-xs">
+                              {comment.user_name[0]}
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex-1 bg-slate-50 rounded-lg p-2">
+                          <div className="flex items-center justify-between mb-1">
+                            <button 
+                              onClick={() => handleCommenterClick(comment)}
+                              className="text-xs font-semibold text-slate-800 hover:text-indigo-600 hover:underline transition-colors"
+                            >
+                              {comment.user_name}
+                            </button>
+                            {isOwnComment && !isEditing && (
+                              <div className="flex space-x-1">
+                                <button
+                                  onClick={() => handleEditComment(comment)}
+                                  className="p-1 text-slate-400 hover:text-slate-600 transition-colors"
+                                  title="Edit comment"
+                                >
+                                  <Edit className="w-3 h-3" />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteComment(comment.id)}
+                                  disabled={isDeletingComment && deletingCommentId === comment.id}
+                                  className="p-1 text-slate-400 hover:text-red-600 transition-colors disabled:opacity-50"
+                                  title="Delete comment"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </button>
+                              </div>
+                            )}
                           </div>
-                        )}
+                          {isEditing ? (
+                            <div className="space-y-2">
+                              <input
+                                type="text"
+                                value={editingCommentText}
+                                onChange={(e) => setEditingCommentText(e.target.value)}
+                                onKeyPress={(e) => e.key === 'Enter' && handleSaveEditComment()}
+                                className="w-full px-2 py-1 text-sm border border-slate-300 rounded focus:ring-indigo-500 focus:border-indigo-500"
+                                disabled={isUpdatingComment}
+                                autoFocus
+                              />
+                              <div className="flex space-x-2">
+                                <button
+                                  onClick={handleSaveEditComment}
+                                  disabled={!editingCommentText.trim() || isUpdatingComment}
+                                  className="px-2 py-1 bg-indigo-600 text-white text-xs font-semibold rounded hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                >
+                                  {isUpdatingComment ? '...' : 'Save'}
+                                </button>
+                                <button
+                                  onClick={handleCancelEditComment}
+                                  className="px-2 py-1 bg-slate-500 text-white text-xs font-semibold rounded hover:bg-slate-600 transition-colors"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <p className="text-sm text-slate-700">{comment.content}</p>
+                          )}
+                        </div>
                       </div>
-                      <div className="flex-1 bg-slate-50 rounded-lg p-2">
-                        <button 
-                          onClick={() => handleCommenterClick(comment)}
-                          className="text-xs font-semibold text-slate-800 hover:text-indigo-600 hover:underline transition-colors"
-                        >
-                          {comment.user_name}
-                        </button>
-                        <p className="text-sm text-slate-700">{comment.content}</p>
-                      </div>
-                    </div>
-                  ))
+                    );
+                  })
                 )}
               </div>
               

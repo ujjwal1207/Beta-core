@@ -6,6 +6,8 @@ import { MOOD_LABELS, MOOD_COLORS, getMoodGradient } from '../../../config/theme
 const FeedJourneyCard = ({ onboardingAnswers, setScreen, onClose }) => {
   const [mood, setMood] = useState(1);
 
+  // If onboardingAnswers is empty, treat as 0% complete
+  const hasAnyAnswers = onboardingAnswers && Object.keys(onboardingAnswers).length > 0;
   const hasAnswer = (key) => {
     const answer = onboardingAnswers[key];
     if (Array.isArray(answer)) return answer.length > 0;
@@ -13,24 +15,19 @@ const FeedJourneyCard = ({ onboardingAnswers, setScreen, onClose }) => {
     if (typeof answer === 'object' && answer !== null && !Array.isArray(answer)) return Object.keys(answer).length > 0;
     return false;
   };
-
   const completedVibeStep = hasAnswer('VIBE_QUIZ') ? 1 : 0;
   const vibeAnswers = onboardingAnswers['VIBE_QUIZ'] || [];
-  
-  const totalStepsForTrack = 1 + 1 + 1 + 1; // VIBE_QUIZ + Track 1 + NEW_GENERATION + optional GIVE_ADVICE
-    
-  let completedSteps = completedVibeStep ? 1 : 0;
-
+  const totalStepsForTrack = 1 + 1 + 1 + 1;
+  let completedSteps = hasAnyAnswers && completedVibeStep ? 1 : 0;
   const nextTrackStep1Key = quizFlow['VIBE_QUIZ'].nextStepLogic(vibeAnswers, onboardingAnswers);
-  if (nextTrackStep1Key && TRACK_Q1_KEYS.includes(nextTrackStep1Key) && hasAnswer(nextTrackStep1Key)) {
+  if (hasAnyAnswers && nextTrackStep1Key && TRACK_Q1_KEYS.includes(nextTrackStep1Key) && hasAnswer(nextTrackStep1Key)) {
     completedSteps++;
   }
-  if (hasAnswer('NEW_GENERATION')) completedSteps++;
-  if (quizFlow['NEW_GENERATION'].nextStepLogic(onboardingAnswers['NEW_GENERATION'], onboardingAnswers) === 'GIVE_ADVICE_QUIZ' && hasAnswer('GIVE_ADVICE_QUIZ')) {
+  if (hasAnyAnswers && hasAnswer('NEW_GENERATION')) completedSteps++;
+  if (hasAnyAnswers && quizFlow['NEW_GENERATION'].nextStepLogic(onboardingAnswers['NEW_GENERATION'], onboardingAnswers) === 'GIVE_ADVICE_QUIZ' && hasAnswer('GIVE_ADVICE_QUIZ')) {
     completedSteps++;
   }
-  
-  const percentage = Math.round((completedSteps / totalStepsForTrack) * 100);
+  const percentage = hasAnyAnswers ? Math.round((completedSteps / totalStepsForTrack) * 100) : 0;
 
   const findNextStep = () => {
     if (!completedVibeStep) {

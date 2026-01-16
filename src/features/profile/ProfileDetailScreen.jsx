@@ -53,6 +53,11 @@ const ProfileDetailScreen = () => {
           setConnectionId(connectedUser.connection_id);
         }
         
+        // Check if there's already a pending request sent to this user
+        const sentRequests = await connectionsService.getSentRequests();
+        const pendingRequest = sentRequests.find(req => req.receiver.id === selectedPerson.id);
+        setRequestSent(!!pendingRequest);
+        
         // If connected, also fetch conversations for chat functionality
         if (connectedUser) {
           const convs = await chatService.getConversations();

@@ -244,7 +244,8 @@ const PersonResultCard = ({ person }) => {
 
 // Find Connection Screen
 const FindConnectionScreen = () => {
-  const [searchTerm, setSearchTerm] = useState('');
+  const { searchQuery, setSearchQuery } = useAppContext();
+  const [searchTerm, setSearchTerm] = useState(searchQuery || '');
   const [results, setResults] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [searchPerformed, setSearchPerformed] = useState(false);
@@ -266,7 +267,7 @@ const FindConnectionScreen = () => {
     
     if (!trimmedQuery && !hasActiveFilters) {
       setResults([]);
-      setSearchTerm('');
+      // keep searchTerm so UI shows the query
       setSearchPerformed(false);
       return;
     }
@@ -293,6 +294,15 @@ const FindConnectionScreen = () => {
       setIsLoading(false);
     }
   }, [filters]);
+
+  // Auto-run when redirected with global searchQuery
+  useEffect(() => {
+    if (searchQuery && searchQuery.trim()) {
+      handleSearch(searchQuery);
+      // Clear global query after consuming
+      setSearchQuery('');
+    }
+  }, [searchQuery]);
 
   return (
     <div className="flex flex-col w-full bg-slate-50 p-3 sm:p-4 pt-0">
@@ -652,8 +662,16 @@ const AlumniScreen = () => {
 
 // Main Connections Screen
 const ConnectionsScreen = () => {
-  const { setScreen } = useAppContext();
-  const [mode, setMode] = useState('SWIPE'); // SWIPE, SEARCH, ALUMNI, SUPER
+  const { setScreen, connectionsMode, setConnectionsMode } = useAppContext();
+  const [mode, setMode] = useState(connectionsMode || 'SWIPE'); // SWIPE, SEARCH, ALUMNI, SUPER
+
+  useEffect(() => {
+    if (connectionsMode) {
+      setMode(connectionsMode);
+      // clear global mode after consuming
+      setConnectionsMode(null);
+    }
+  }, [connectionsMode, setConnectionsMode]);
 
   return (
     <div className="flex flex-col h-full bg-slate-50">
