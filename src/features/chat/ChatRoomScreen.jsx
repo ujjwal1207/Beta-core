@@ -715,7 +715,7 @@ const ChatRoomScreen = () => {
           <textarea
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
-            placeholder="Type a message..."
+            placeholder={selectedFile ? "Add a caption (optional)..." : "Type a message..."}
             className="flex-1 bg-transparent border-none focus:ring-0 text-sm text-slate-800 resize-none max-h-32 py-2"
             rows="1"
             onKeyDown={(e) => {
@@ -727,7 +727,7 @@ const ChatRoomScreen = () => {
           />
           <button 
             type="submit"
-            disabled={!inputText.trim() || isSending} 
+            disabled={(!inputText.trim() && !selectedFile) || isSending} 
             className="p-2 bg-indigo-600 text-white rounded-full disabled:opacity-50 disabled:cursor-not-allowed hover:bg-indigo-700 transition-all shadow-md"
           >
             {isSending ? <Loader className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}

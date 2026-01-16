@@ -8,7 +8,7 @@ import FeedJourneyCard from './components/FeedJourneyCard';
 import ProfileProgress from './components/ProfileProgress';
 import feedService from '../../services/feedService';
 import { getAvatarUrlWithSize } from '../../lib/avatarUtils';
-import { quizFlow, TRACK_Q1_KEYS } from '../../data/quizFlow';
+import { quizFlow, TRACK_Q1_KEYS, TRACK_Q2_KEYS } from '../../data/quizFlow';
 
 const FeedScreen = () => {
   const { 
@@ -84,19 +84,39 @@ const FeedScreen = () => {
       if (typeof answer === 'object' && answer !== null && !Array.isArray(answer)) return Object.keys(answer).length > 0;
       return false;
     };
-    const completedVibeStep = hasAnswer('VIBE_QUIZ') ? 1 : 0;
+    
     const vibeAnswers = onboardingAnswers['VIBE_QUIZ'] || [];
-    const totalStepsForTrack = 1 + 1 + 1 + 1;
-    let completedSteps = completedVibeStep ? 1 : 0;
+    let completedSteps = 0;
+    const totalSteps = 5; // VIBE_QUIZ + TRACK_Q1 + TRACK_Q2 + NEW_GENERATION + GIVE_ADVICE_QUIZ (excluding wisdom steps)
+    
+    // Step 1: VIBE_QUIZ
+    if (hasAnswer('VIBE_QUIZ')) completedSteps++;
+    
+    // Step 2: TRACK_Q1 step
     const nextTrackStep1Key = quizFlow['VIBE_QUIZ'].nextStepLogic(vibeAnswers, onboardingAnswers);
     if (nextTrackStep1Key && TRACK_Q1_KEYS.includes(nextTrackStep1Key) && hasAnswer(nextTrackStep1Key)) {
       completedSteps++;
     }
+    
+    // Step 3: TRACK_Q2 step
+    if (nextTrackStep1Key && hasAnswer(nextTrackStep1Key)) {
+      const nextTrackStep2Key = quizFlow[nextTrackStep1Key]?.nextStepLogic(onboardingAnswers[nextTrackStep1Key], onboardingAnswers);
+      if (nextTrackStep2Key && TRACK_Q2_KEYS.includes(nextTrackStep2Key) && hasAnswer(nextTrackStep2Key)) {
+        completedSteps++;
+      }
+    }
+    
+    // Step 4: NEW_GENERATION
     if (hasAnswer('NEW_GENERATION')) completedSteps++;
+    
+    // Step 5: GIVE_ADVICE_QUIZ
     if (quizFlow['NEW_GENERATION'].nextStepLogic(onboardingAnswers['NEW_GENERATION'], onboardingAnswers) === 'GIVE_ADVICE_QUIZ' && hasAnswer('GIVE_ADVICE_QUIZ')) {
       completedSteps++;
     }
-    const percentage = Math.round((completedSteps / totalStepsForTrack) * 100);
+    
+    // Note: SHARER_TRACK steps are separate from the main quiz
+    
+    const percentage = Math.round((completedSteps / totalSteps) * 100);
     return percentage >= 100;
   })();
 

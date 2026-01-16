@@ -170,7 +170,32 @@ export const quizFlow = {
       { id: 'GIVE_CONNECTION', text: "Connecting and sharing real stories, big or small.", icon: <IconRealConnection /> },
       { id: 'GIVE_LISTEN', text: "Mostly listening, but open to sharing if it helps.", icon: <IconListen /> }
     ],
-    nextStepLogic: (selectedIds, allAnswers) => null
+    nextStepLogic: (selectedIds, allAnswers) => null // End of main quiz - shared wisdom is separate
+  },
+
+  'SHARER_TRACK_1': {
+    prompt: "Let's capture some of your wisdom. What's one piece of advice you'd give your younger self?",
+    question: "Advice to Younger Self",
+    inputLabel: "Your advice",
+    placeholder: "e.g., 'Trust your instincts more...'",
+    type: 'PROFILE_BUILDER',
+    nextStepLogic: (answer, allAnswers) => 'SHARER_TRACK_2'
+  },
+
+  'SHARER_TRACK_2': {
+    prompt: "What are some key life lessons you've learned along the way?",
+    question: "Key Life Lessons",
+    type: 'EXPERIENCE_BUILDER',
+    nextStepLogic: (experiences, allAnswers) => 'SHARER_TRACK_3'
+  },
+
+  'SHARER_TRACK_3': {
+    prompt: "If you could change one thing about society, what would it be?",
+    question: "Change I Want to See",
+    inputLabel: "The change you want to see",
+    placeholder: "e.g., 'More emphasis on mental health support...'",
+    type: 'PROFILE_BUILDER',
+    nextStepLogic: (answer, allAnswers) => null
   },
 };
 

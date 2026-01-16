@@ -40,17 +40,26 @@ const ProfileCompletionNudge = ({ onboardingAnswers, setScreen }) => {
     const completedVibeStep = hasAnswer('VIBE_QUIZ') ? 1 : 0;
     const vibeAnswers = onboardingAnswers['VIBE_QUIZ'] || [];
     
-    const totalStepsForTrack = 1 + 1 + 1 + 1; // VIBE_QUIZ + Track 1 + NEW_GENERATION + optional GIVE_ADVICE
+    const totalStepsForTrack = 1 + 1 + 1 + 1 + 1; // VIBE_QUIZ + Track 1 + Track 2 + NEW_GENERATION + GIVE_ADVICE_QUIZ (excluding wisdom steps)
     let completedSteps = completedVibeStep ? 1 : 0;
 
     const nextTrackStep1Key = quizFlow['VIBE_QUIZ'].nextStepLogic(vibeAnswers, onboardingAnswers);
     if (nextTrackStep1Key && TRACK_Q1_KEYS.includes(nextTrackStep1Key) && hasAnswer(nextTrackStep1Key)) {
       completedSteps++;
     }
-    if (hasAnswer('NEW_GENERATION')) completedSteps++;
-    if (quizFlow['NEW_GENERATION']?.nextStepLogic(onboardingAnswers['NEW_GENERATION'], onboardingAnswers) === 'GIVE_ADVICE_QUIZ' && hasAnswer('GIVE_ADVICE_QUIZ')) {
-      completedSteps++;
+    
+    // Add TRACK_Q2 step
+    if (nextTrackStep1Key && hasAnswer(nextTrackStep1Key)) {
+      const nextTrackStep2Key = quizFlow[nextTrackStep1Key]?.nextStepLogic(onboardingAnswers[nextTrackStep1Key], onboardingAnswers);
+      if (nextTrackStep2Key && TRACK_Q2_KEYS.includes(nextTrackStep2Key) && hasAnswer(nextTrackStep2Key)) {
+        completedSteps++;
+      }
     }
+    
+    if (hasAnswer('NEW_GENERATION')) completedSteps++;
+    if (hasAnswer('GIVE_ADVICE_QUIZ')) completedSteps++;
+    
+    // Note: SHARER_TRACK steps are not counted toward profile completion
     
     // Return percentage contribution (max 50%)
     return Math.round((completedSteps / totalStepsForTrack) * 50);
@@ -81,12 +90,12 @@ const ProfileCompletionNudge = ({ onboardingAnswers, setScreen }) => {
       return 'NEW_GENERATION';
     }
 
-    const nextStepAfterGen = quizFlow['NEW_GENERATION']?.nextStepLogic(onboardingAnswers['NEW_GENERATION'], onboardingAnswers);
-    if (nextStepAfterGen === 'GIVE_ADVICE_QUIZ' && !hasAnswer('GIVE_ADVICE_QUIZ')) {
+    if (!hasAnswer('GIVE_ADVICE_QUIZ')) {
       return 'GIVE_ADVICE_QUIZ';
     }
 
-    return null; // Journey complete
+    // Main quiz is complete - shared wisdom is separate
+    return null;
   };
 
   const nextStepKey = findNextStep();

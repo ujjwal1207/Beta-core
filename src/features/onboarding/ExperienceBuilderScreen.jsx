@@ -3,6 +3,7 @@ import { ArrowLeft, Plus, X } from 'lucide-react';
 import { useAppContext } from '../../context/AppContext';
 import { quizFlow } from '../../data/quizFlow';
 import Button from '../../components/ui/Button';
+import userService from '../../services/userService';
 
 const ExperienceBuilderScreen = ({ quizKey }) => {
   const { onboardingAnswers, setOnboardingAnswers, setScreen, setProfileData } = useAppContext();
@@ -30,12 +31,29 @@ const ExperienceBuilderScreen = ({ quizKey }) => {
     setExperiences(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleNext = (isSkip = false) => {
+  const handleNext = async (isSkip = false) => {
     const finalExperiences = isSkip ? [] : experiences;
     const newAnswers = { ...onboardingAnswers, [quizKey]: finalExperiences };
     
     setOnboardingAnswers(newAnswers);
     setProfileData(prev => ({ ...prev, lastCompletedStepKey: quizKey }));
+    
+    // Prepare update data
+    const updateData = { onboarding_answers: newAnswers };
+    
+    // For SHARER_TRACK_2, also update sharer_insights for backwards compatibility
+    if (quizKey === 'SHARER_TRACK_2') {
+      updateData.sharer_insights = {
+        lifeLessons: finalExperiences
+      };
+    }
+    
+    // Save to backend
+    try {
+      await userService.updateProfile(updateData);
+    } catch (error) {
+      console.error('Failed to save onboarding answers:', error);
+    }
     
     const nextStepKey = step.nextStepLogic(finalExperiences, newAnswers);
     if (nextStepKey) {

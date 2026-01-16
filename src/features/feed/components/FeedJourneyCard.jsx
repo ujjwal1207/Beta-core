@@ -15,42 +15,73 @@ const FeedJourneyCard = ({ onboardingAnswers, setScreen, onClose }) => {
     if (typeof answer === 'object' && answer !== null && !Array.isArray(answer)) return Object.keys(answer).length > 0;
     return false;
   };
-  const completedVibeStep = hasAnswer('VIBE_QUIZ') ? 1 : 0;
+  // Updated progress calculation to match current quiz flow
   const vibeAnswers = onboardingAnswers['VIBE_QUIZ'] || [];
-  const totalStepsForTrack = 1 + 1 + 1 + 1;
-  let completedSteps = hasAnyAnswers && completedVibeStep ? 1 : 0;
+  let completedSteps = 0;
+  let totalSteps = 5; // VIBE_QUIZ + TRACK_Q1 + TRACK_Q2 + NEW_GENERATION + GIVE_ADVICE_QUIZ (excluding wisdom steps)
+  
+  // Step 1: VIBE_QUIZ
+  if (hasAnswer('VIBE_QUIZ')) completedSteps++;
+  
+  // Step 2: TRACK_Q1 step (TRACK_CAREER_1, TRACK_BALANCE_1, etc.)
   const nextTrackStep1Key = quizFlow['VIBE_QUIZ'].nextStepLogic(vibeAnswers, onboardingAnswers);
-  if (hasAnyAnswers && nextTrackStep1Key && TRACK_Q1_KEYS.includes(nextTrackStep1Key) && hasAnswer(nextTrackStep1Key)) {
+  if (nextTrackStep1Key && TRACK_Q1_KEYS.includes(nextTrackStep1Key) && hasAnswer(nextTrackStep1Key)) {
     completedSteps++;
   }
-  if (hasAnyAnswers && hasAnswer('NEW_GENERATION')) completedSteps++;
-  if (hasAnyAnswers && quizFlow['NEW_GENERATION'].nextStepLogic(onboardingAnswers['NEW_GENERATION'], onboardingAnswers) === 'GIVE_ADVICE_QUIZ' && hasAnswer('GIVE_ADVICE_QUIZ')) {
+  
+  // Step 3: TRACK_Q2 step (TRACK_CAREER_2, TRACK_BALANCE_2, etc.)
+  if (nextTrackStep1Key && hasAnswer(nextTrackStep1Key)) {
+    const nextTrackStep2Key = quizFlow[nextTrackStep1Key]?.nextStepLogic(onboardingAnswers[nextTrackStep1Key], onboardingAnswers);
+    if (nextTrackStep2Key && TRACK_Q2_KEYS.includes(nextTrackStep2Key) && hasAnswer(nextTrackStep2Key)) {
+      completedSteps++;
+    }
+  }
+  
+  // Step 4: NEW_GENERATION
+  if (hasAnswer('NEW_GENERATION')) completedSteps++;
+  
+  // Step 5: GIVE_ADVICE_QUIZ
+  if (quizFlow['NEW_GENERATION'].nextStepLogic(onboardingAnswers['NEW_GENERATION'], onboardingAnswers) === 'GIVE_ADVICE_QUIZ' && hasAnswer('GIVE_ADVICE_QUIZ')) {
     completedSteps++;
   }
-  const percentage = hasAnyAnswers ? Math.round((completedSteps / totalStepsForTrack) * 100) : 0;
+  
+  // Note: SHARER_TRACK steps are separate from the main quiz flow
+  
+  const percentage = hasAnyAnswers ? Math.round((completedSteps / totalSteps) * 100) : 0;
 
   const findNextStep = () => {
-    if (!completedVibeStep) {
+    // Step 1: VIBE_QUIZ
+    if (!hasAnswer('VIBE_QUIZ')) {
       return () => setScreen('VIBE_QUIZ');
     }
+    
+    // Step 2: TRACK_Q1 step
     const nextTrackStep1Key = quizFlow['VIBE_QUIZ'].nextStepLogic(vibeAnswers, onboardingAnswers);
     if (nextTrackStep1Key && TRACK_Q1_KEYS.includes(nextTrackStep1Key) && !hasAnswer(nextTrackStep1Key)) {
       return () => setScreen(nextTrackStep1Key);
     }
+    
+    // Step 3: TRACK_Q2 step
     if (nextTrackStep1Key && hasAnswer(nextTrackStep1Key)) {
       const nextTrackStep2Key = quizFlow[nextTrackStep1Key]?.nextStepLogic(onboardingAnswers[nextTrackStep1Key], onboardingAnswers);
       if (nextTrackStep2Key && TRACK_Q2_KEYS.includes(nextTrackStep2Key) && !hasAnswer(nextTrackStep2Key)) {
         return () => setScreen(nextTrackStep2Key);
       }
     }
+    
+    // Step 4: NEW_GENERATION
     if (!hasAnswer('NEW_GENERATION')) {
       return () => setScreen('NEW_GENERATION');
     }
+    
+    // Step 5: GIVE_ADVICE_QUIZ
     const nextStepAfterGen = quizFlow['NEW_GENERATION'].nextStepLogic(onboardingAnswers['NEW_GENERATION'], onboardingAnswers);
     if (nextStepAfterGen === 'GIVE_ADVICE_QUIZ' && !hasAnswer('GIVE_ADVICE_QUIZ')) {
       return () => setScreen('GIVE_ADVICE_QUIZ');
     }
-    return () => setScreen('VIBE_QUIZ');
+    
+    // Quiz is complete - SHARER_TRACK steps are separate
+    return null;
   };
 
   const nextAction = findNextStep();

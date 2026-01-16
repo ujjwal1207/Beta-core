@@ -4,6 +4,7 @@ import { useAppContext } from '../../context/AppContext';
 import { quizFlow } from '../../data/quizFlow';
 import Button from '../../components/ui/Button';
 import ChoiceCard from '../../components/ui/ChoiceCard';
+import userService from '../../services/userService';
 
 const QuizScreen = ({ quizKey }) => {
   const { onboardingAnswers, setOnboardingAnswers, setScreen, setProfileData } = useAppContext();
@@ -27,7 +28,7 @@ const QuizScreen = ({ quizKey }) => {
     });
   };
 
-  const handleNext = (isSkip = false) => {
+  const handleNext = async (isSkip = false) => {
     // If skipping, send empty array; otherwise send selectedIds (ensure it's an array for logic)
     const finalSelectedIds = isSkip ? [] : (Array.isArray(selectedIds) ? selectedIds : [selectedIds]);
     
@@ -35,6 +36,13 @@ const QuizScreen = ({ quizKey }) => {
     const newAnswers = { ...onboardingAnswers, [quizKey]: finalSelectedIds };
     setOnboardingAnswers(newAnswers);
     setProfileData(prev => ({ ...prev, lastCompletedStepKey: quizKey }));
+    
+    // Save to backend
+    try {
+      await userService.updateProfile({ onboarding_answers: newAnswers });
+    } catch (error) {
+      console.error('Failed to save onboarding answers:', error);
+    }
     
     // Execute logic function from quizFlow
     // NOTE: We pass finalSelectedIds. If the logic expects a single string for single-choice, 
