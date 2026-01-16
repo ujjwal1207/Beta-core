@@ -18,7 +18,13 @@ const FeedJourneyCard = ({ onboardingAnswers, setScreen, onClose }) => {
   // Updated progress calculation to match current quiz flow
   const vibeAnswers = onboardingAnswers['VIBE_QUIZ'] || [];
   let completedSteps = 0;
-  let totalSteps = 5; // VIBE_QUIZ + TRACK_Q1 + TRACK_Q2 + NEW_GENERATION + GIVE_ADVICE_QUIZ (excluding wisdom steps)
+  let totalSteps = 4; // Base steps: VIBE_QUIZ + TRACK_Q1 + TRACK_Q2 + NEW_GENERATION
+  
+  // Check if user goes to GIVE_ADVICE_QUIZ
+  const goesToAdviceQuiz = quizFlow['NEW_GENERATION'].nextStepLogic(onboardingAnswers['NEW_GENERATION'], onboardingAnswers) === 'GIVE_ADVICE_QUIZ';
+  if (goesToAdviceQuiz) {
+    totalSteps = 5; // Add GIVE_ADVICE_QUIZ step
+  }
   
   // Step 1: VIBE_QUIZ
   if (hasAnswer('VIBE_QUIZ')) completedSteps++;
@@ -40,8 +46,8 @@ const FeedJourneyCard = ({ onboardingAnswers, setScreen, onClose }) => {
   // Step 4: NEW_GENERATION
   if (hasAnswer('NEW_GENERATION')) completedSteps++;
   
-  // Step 5: GIVE_ADVICE_QUIZ
-  if (quizFlow['NEW_GENERATION'].nextStepLogic(onboardingAnswers['NEW_GENERATION'], onboardingAnswers) === 'GIVE_ADVICE_QUIZ' && hasAnswer('GIVE_ADVICE_QUIZ')) {
+  // Step 5: GIVE_ADVICE_QUIZ (only if user goes this path)
+  if (goesToAdviceQuiz && hasAnswer('GIVE_ADVICE_QUIZ')) {
     completedSteps++;
   }
   

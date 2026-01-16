@@ -40,7 +40,14 @@ const ProfileCompletionNudge = ({ onboardingAnswers, setScreen }) => {
     const completedVibeStep = hasAnswer('VIBE_QUIZ') ? 1 : 0;
     const vibeAnswers = onboardingAnswers['VIBE_QUIZ'] || [];
     
-    const totalStepsForTrack = 1 + 1 + 1 + 1 + 1; // VIBE_QUIZ + Track 1 + Track 2 + NEW_GENERATION + GIVE_ADVICE_QUIZ (excluding wisdom steps)
+    let totalSteps = 4; // Base steps: VIBE_QUIZ + TRACK_Q1 + TRACK_Q2 + NEW_GENERATION
+    
+    // Check if user goes to GIVE_ADVICE_QUIZ
+    const goesToAdviceQuiz = quizFlow['NEW_GENERATION'].nextStepLogic(onboardingAnswers['NEW_GENERATION'], onboardingAnswers) === 'GIVE_ADVICE_QUIZ';
+    if (goesToAdviceQuiz) {
+      totalSteps = 5; // Add GIVE_ADVICE_QUIZ step
+    }
+    
     let completedSteps = completedVibeStep ? 1 : 0;
 
     const nextTrackStep1Key = quizFlow['VIBE_QUIZ'].nextStepLogic(vibeAnswers, onboardingAnswers);
@@ -57,12 +64,12 @@ const ProfileCompletionNudge = ({ onboardingAnswers, setScreen }) => {
     }
     
     if (hasAnswer('NEW_GENERATION')) completedSteps++;
-    if (hasAnswer('GIVE_ADVICE_QUIZ')) completedSteps++;
+    if (goesToAdviceQuiz && hasAnswer('GIVE_ADVICE_QUIZ')) completedSteps++;
     
     // Note: SHARER_TRACK steps are not counted toward profile completion
     
     // Return percentage contribution (max 50%)
-    return Math.round((completedSteps / totalStepsForTrack) * 50);
+    return Math.round((completedSteps / totalSteps) * 50);
   };
 
   // Calculate total percentage: 50% from profile fields + 50% from journey
