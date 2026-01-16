@@ -3,7 +3,6 @@ import { useAppContext } from '../../context/AppContext';
 import { ArrowLeft, Send, Check, Loader, X } from 'lucide-react';
 import { getAvatarUrlWithSize } from '../../lib/avatarUtils';
 import chatService from '../../services/chatService';
-import feedService from '../../services/feedService';
 
 const PostShareScreen = () => {
   const { setScreen, previousScreen, sharePayload, setSharePayload, user } = useAppContext();
@@ -12,14 +11,9 @@ const PostShareScreen = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
   const [sendProgress, setSendProgress] = useState({ sent: 0, total: 0 });
-  const [postData, setPostData] = useState(null);
-  const [isLoadingPost, setIsLoadingPost] = useState(false);
 
   useEffect(() => {
     loadRecentUsers();
-    if (sharePayload?.postId) {
-      loadPostData();
-    }
   }, []);
 
   const loadRecentUsers = async () => {
@@ -33,18 +27,6 @@ const PostShareScreen = () => {
       console.error('Failed to load recent users:', error);
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const loadPostData = async () => {
-    try {
-      setIsLoadingPost(true);
-      const post = await feedService.getPostById(sharePayload.postId);
-      setPostData(post);
-    } catch (error) {
-      console.error('Failed to load post data:', error);
-    } finally {
-      setIsLoadingPost(false);
     }
   };
 
@@ -140,83 +122,6 @@ const PostShareScreen = () => {
               )}
             </button>
           </div>
-        </div>
-      </div>
-
-      {/* Post Preview */}
-      <div className="bg-white/90 backdrop-blur-sm mx-6 mt-6 rounded-2xl shadow-lg border border-slate-200/60 overflow-hidden">
-        <div className="px-6 py-4 border-b border-slate-200/60 bg-gradient-to-r from-slate-50 to-slate-100/50">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
-              <div className="w-4 h-4 rounded-full bg-white/20"></div>
-            </div>
-            <h3 className="font-semibold text-slate-800">Post Preview</h3>
-          </div>
-        </div>
-        <div className="p-6">
-          {isLoadingPost ? (
-            <div className="flex justify-center items-center py-12">
-              <div className="flex flex-col items-center gap-3">
-                <Loader className="w-8 h-8 animate-spin text-indigo-600" />
-                <p className="text-sm text-slate-500">Loading post...</p>
-              </div>
-            </div>
-          ) : postData ? (
-            <div className="space-y-4">
-              {/* User Info */}
-              <div className="flex items-center gap-4 p-4 bg-gradient-to-r from-slate-50 to-slate-100/50 rounded-xl border border-slate-200/60">
-                <img
-                  src={getAvatarUrlWithSize({ profile_photo: postData.user_profile_photo }, 48)}
-                  alt={postData.user_name || 'User'}
-                  className="w-12 h-12 rounded-full object-cover ring-2 ring-white shadow-md"
-                />
-                <div className="flex-1">
-                  <h4 className="font-semibold text-slate-800 text-lg">
-                    {postData.user_name || 'User'}
-                  </h4>
-                  <div className="flex items-center gap-2 mt-1">
-                    <div className="w-2 h-2 rounded-full bg-green-400"></div>
-                    <span className="text-sm text-slate-500">Posted recently</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Post Content */}
-              <div className="text-slate-700 leading-relaxed text-base bg-white p-4 rounded-xl border border-slate-200/60 shadow-sm">
-                {postData.content || postData.text || 'No content'}
-              </div>
-
-              {/* Post Media */}
-              {(postData.image_url || postData.video_url) && (
-                <div className="rounded-2xl overflow-hidden border border-slate-200/60 shadow-lg">
-                  {postData.image_url ? (
-                    <img
-                      src={postData.image_url}
-                      alt="Post image"
-                      className="w-full h-auto max-h-80 object-cover"
-                    />
-                  ) : (
-                    <video
-                      src={postData.video_url}
-                      controls
-                      className="w-full h-auto max-h-80 object-cover"
-                      preload="metadata"
-                    >
-                      Your browser does not support the video tag.
-                    </video>
-                  )}
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="text-center py-12">
-              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-red-100 flex items-center justify-center">
-                <X className="w-8 h-8 text-red-500" />
-              </div>
-              <p className="text-slate-600 font-medium">Failed to load post preview</p>
-              <p className="text-sm text-slate-500 mt-1">Please try again</p>
-            </div>
-          )}
         </div>
       </div>
 
