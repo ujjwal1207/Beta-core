@@ -56,12 +56,11 @@ export const SettingsScreen = () => {
         <SettingItem 
           icon={Bell} 
           text="Notifications" 
-          onClick={() => console.log('Notifications clicked')}
         />
         <SettingItem 
           icon={Lock} 
           text="Privacy & Security" 
-          onClick={() => console.log('Privacy clicked')}
+          onClick={() => setScreen('PRIVACY_SECURITY')}
         />
         <SettingItem 
           icon={UserX} 
@@ -73,12 +72,11 @@ export const SettingsScreen = () => {
         <SettingItem 
           icon={HelpCircle} 
           text="Help Center" 
-          onClick={() => console.log('Help clicked')}
         />
         <SettingItem 
           icon={Mail} 
           text="Contact Us" 
-          onClick={() => console.log('Contact clicked')}
+          onClick={() => setScreen('CONTACT_US')}
         />
         
         <div className="pt-4">

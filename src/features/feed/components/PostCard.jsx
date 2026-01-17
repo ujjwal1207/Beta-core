@@ -7,7 +7,7 @@ import feedService from '../../../services/feedService';
 import { getUserInitials } from '../../../lib/avatarUtils';
 
 const PostCard = ({ post, onUpdate, onHide, showNotInterested = true }) => {
-  const { setScreen, setSelectedPerson, setPreviousScreen, user, setSharePayload } = useAppContext();
+  const { setScreen, setSelectedPerson, setPreviousScreen, user, setSharePayload, showToast } = useAppContext();
   const [isLiked, setIsLiked] = useState(post.isLiked || post.is_liked || false);
   const [isSaved, setIsSaved] = useState(post.isSaved || post.is_saved || false);
   const [likesCount, setLikesCount] = useState(post.likes || 0);
@@ -98,7 +98,6 @@ const PostCard = ({ post, onUpdate, onHide, showNotInterested = true }) => {
 
   const handleRemoveUser = () => {
     setShowMenu(false);
-    console.log('Remove user:', post.user_id);
     // TODO: Implement block/mute user functionality
     if (onUpdate) onUpdate();
   };
@@ -124,7 +123,7 @@ const PostCard = ({ post, onUpdate, onHide, showNotInterested = true }) => {
       if (onUpdate) onUpdate({ ...post, content: editedContent });
     } catch (error) {
       console.error('Error updating post:', error);
-      alert('Failed to update post');
+      showToast('Failed to update post', 'error');
     } finally {
       setIsUpdating(false);
     }
@@ -142,7 +141,7 @@ const PostCard = ({ post, onUpdate, onHide, showNotInterested = true }) => {
       if (onUpdate) onUpdate(null, post.id); // Pass null and postId to indicate deletion
     } catch (error) {
       console.error('Error deleting post:', error);
-      alert('Failed to delete post');
+      showToast('Failed to delete post', 'error');
     } finally {
       setIsDeleting(false);
       setShowDeleteConfirm(false);
@@ -188,12 +187,12 @@ const PostCard = ({ post, onUpdate, onHide, showNotInterested = true }) => {
     setIsReposting(true);
     try {
       await feedService.repostPost(post.id);
-      alert('Post reposted successfully!');
+      showToast('Post reposted successfully!', 'success');
       if (onUpdate) onUpdate();
     } catch (error) {
       console.error('Error reposting:', error);
       const errorMsg = error.response?.data?.detail || 'Failed to repost';
-      alert(errorMsg);
+      showToast(errorMsg, 'error');
     } finally {
       setIsReposting(false);
     }
@@ -210,7 +209,7 @@ const PostCard = ({ post, onUpdate, onHide, showNotInterested = true }) => {
       setViewingOriginalPost(true);
     } catch (error) {
       console.error('Error fetching original post:', error);
-      alert('Failed to load original post');
+      showToast('Failed to load original post', 'error');
     } finally {
       setIsLoadingOriginal(false);
     }
@@ -280,7 +279,7 @@ const PostCard = ({ post, onUpdate, onHide, showNotInterested = true }) => {
       if (onUpdate) onUpdate();
     } catch (error) {
       console.error('Error updating comment:', error);
-      alert('Failed to update comment');
+      showToast('Failed to update comment', 'error');
     } finally {
       setIsUpdatingComment(false);
     }
@@ -300,7 +299,7 @@ const PostCard = ({ post, onUpdate, onHide, showNotInterested = true }) => {
       if (onUpdate) onUpdate();
     } catch (error) {
       console.error('Error deleting comment:', error);
-      alert('Failed to delete comment');
+      showToast('Failed to delete comment', 'error');
     } finally {
       setIsDeletingComment(false);
       setDeletingCommentId(null);

@@ -365,7 +365,7 @@ const ChatRoomScreen = () => {
           </button>
         </div>
 
-        <div className="flex items-center gap-1 text-slate-600">
+        <div className="flex items-center gap-3 text-slate-600">
           <button 
             disabled={!isPersonOnline}
             onClick={async () => {
@@ -388,7 +388,7 @@ const ChatRoomScreen = () => {
             }`}
             title={isPersonOnline ? "Voice Call" : "User is offline"}
           >
-            <Phone className={`w-5 h-5 ${isPersonOnline ? 'text-green-600' : 'text-slate-400'}`} />
+            <Phone className={`w-7 h-7 ${isPersonOnline ? 'text-green-600' : 'text-slate-400'}`} />
           </button>
           <button 
             disabled={!isPersonOnline}
@@ -412,7 +412,7 @@ const ChatRoomScreen = () => {
             }`}
             title={isPersonOnline ? "Video Call" : "User is offline"}
           >
-            <Video className={`w-5 h-5 ${isPersonOnline ? 'text-blue-600' : 'text-slate-400'}`} />
+            <Video className={`w-7 h-7 ${isPersonOnline ? 'text-blue-600' : 'text-slate-400'}`} />
           </button>
         </div>
       </div>

@@ -1,11 +1,14 @@
 import React, { useCallback, useEffect, useMemo } from 'react';
 import './App.css';
+import { X } from 'lucide-react';
 import { AppProvider, useAppContext } from './context/AppContext';
 import { quizFlow } from './data/quizFlow';
 import { WelcomePage } from './pages/WelcomePage';
 import { AuthForm } from './features/auth/AuthForm';
 import { SettingsScreen } from './pages/SettingsScreen';
+import PrivacySecurityScreen from './pages/PrivacySecurityScreen';
 import BlockedUsersScreen from './pages/BlockedUsersScreen';
+import ContactUsScreen from './pages/ContactUsScreen';
 import CallHistoryScreen from './pages/CallHistoryScreen';
 import ChatHistoryScreen from './pages/ChatHistoryScreen';
 import FeedScreen from './features/feed/FeedScreen';
@@ -60,7 +63,9 @@ const AppContent = () => {
     isCallMinimized,
     setIsCallMinimized,
     callState,
-    callControls
+    callControls,
+    toast,
+    setToast
   } = useAppContext();
 
   // Callback to refresh feed after post creation
@@ -157,7 +162,9 @@ const AppContent = () => {
       SIGNUP: <AuthForm isLogin={false} />,
       LOGIN: <AuthForm isLogin={true} />,
       SETTINGS: <SettingsScreen />,
+      PRIVACY_SECURITY: <PrivacySecurityScreen />,
       BLOCKED_USERS: <BlockedUsersScreen />,
+      CONTACT_US: <ContactUsScreen />,
       CALL_HISTORY: <CallHistoryScreen />,
       CHAT_HISTORY: <ChatHistoryScreen />,
       FEED: <FeedScreen />,
@@ -290,6 +297,27 @@ const AppContent = () => {
 
   return (
     <div className="min-h-screen bg-slate-200 flex justify-center items-center p-0 sm:p-4 font-sans">
+      {/* Global Toast Notification */}
+      {toast && (
+        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 max-w-sm w-full mx-4">
+          <div className={`flex items-center p-4 rounded-lg shadow-lg ${
+            toast.type === 'success'
+              ? 'bg-green-500 text-white'
+              : toast.type === 'error'
+              ? 'bg-red-500 text-white'
+              : 'bg-blue-500 text-white'
+          }`}>
+            <div className="flex-1">{toast.message}</div>
+            <button
+              onClick={() => setToast(null)}
+              className="ml-4 hover:opacity-75"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="relative w-full h-screen sm:w-[390px] sm:h-[844px] bg-slate-50 shadow-2xl rounded-none sm:rounded-3xl overflow-hidden flex flex-col">
         <div key={screen} className="w-full h-full flex flex-col screen-fade-in">
           {renderScreen()}

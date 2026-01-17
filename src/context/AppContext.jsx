@@ -48,6 +48,9 @@ export const AppProvider = ({ children }) => {
   // Unread messages count
   const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
 
+  // Toast notification state
+  const [toast, setToast] = useState(null);
+
   // Global search query (used when redirecting from feed search to connections search)
   const [searchQuery, setSearchQuery] = useState('');
   // Connections screen mode (null or one of 'SWIPE'|'SEARCH'|'ALUMNI'|'SUPER')
@@ -441,6 +444,12 @@ export const AppProvider = ({ children }) => {
     return () => clearInterval(interval);
   }, [isAuthenticated]);
 
+  // Toast notification function
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 5000); // Auto-hide after 5 seconds
+  };
+
   const value = {
     screen,
     setScreen,
@@ -504,6 +513,10 @@ export const AppProvider = ({ children }) => {
     setConnectionsMode,
     sharePayload,
     setSharePayload,
+    // Toast notifications
+    toast,
+    setToast,
+    showToast,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

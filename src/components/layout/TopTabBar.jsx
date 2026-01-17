@@ -34,7 +34,7 @@ export const TopTabBar = ({ setScreen, currentScreen }) => {
   return (
     <header className="absolute top-0 w-full bg-white/95 backdrop-blur-lg shadow-sm z-30 border-b border-slate-200">
       <div className="flex items-center justify-between px-3 sm:px-4 py-2 sm:py-3 h-12 sm:h-14">
-        <h1 className="text-lg sm:text-xl font-extrabold text-violet-600 tracking-tighter">ListenLink</h1>
+        <img src="Coloured.png" alt="ListenLink" className="h-12 sm:h-12 w-auto" />
         <div className="flex items-center gap-2 sm:gap-3">
           <button 
             onClick={() => setScreen('CONNECTION_REQUESTS')}
