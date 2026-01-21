@@ -309,7 +309,7 @@ const StoryViewerModal = ({ person, onClose }) => {
                   setReplySent(true);
                   setReplyText("");
                   setTimeout(() => setReplySent(false), 2000);
-                } catch (err) {
+                } catch {
                   alert("Failed to send reply. Try again.");
                 } finally {
                   setIsReplying(false);

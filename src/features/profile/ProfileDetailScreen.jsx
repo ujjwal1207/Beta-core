@@ -12,7 +12,7 @@ import chatService from '../../services/chatService';
 import { getAvatarUrlWithSize } from '../../lib/avatarUtils';
 
 const ProfileDetailScreen = () => {
-  const { setScreen, selectedPerson, previousScreen, setSelectedPerson, setSelectedConversation, setPreviousScreen } = useAppContext();
+  const { setScreen, selectedPerson, previousScreen, setSelectedPerson, setSelectedConversation, setPreviousScreen, showToast } = useAppContext();
   const [person, setPerson] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -165,6 +165,10 @@ const ProfileDetailScreen = () => {
     } finally {
       setIsSendingRequest(false);
     }
+  };
+
+  const handleScheduleCallSuccess = (message) => {
+    showToast(message, message.includes('successfully') ? 'success' : 'error');
   };
 
   const handleRemoveConnection = async () => {
@@ -625,6 +629,7 @@ const ProfileDetailScreen = () => {
         isOpen={isModalOpen} 
         onClose={() => setIsModalOpen(false)} 
         person={person} 
+        onSuccess={handleScheduleCallSuccess}
         setScreen={setScreen}
       />
     </>

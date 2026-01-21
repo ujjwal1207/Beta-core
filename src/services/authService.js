@@ -15,16 +15,12 @@ const authService = {
    * @returns {Promise<Object>} User data
    */
   signup: async (userData) => {
-    try {
-      const response = await api.post('/auth/signup', userData);
-      // Store token in localStorage for iPhone/Safari compatibility
-      if (response.data.access_token) {
-        localStorage.setItem('access_token', response.data.access_token);
-      }
-      return response.data;
-    } catch (error) {
-      throw error;
+    const response = await api.post('/auth/signup', userData);
+    // Store token in localStorage for iPhone/Safari compatibility
+    if (response.data.access_token) {
+      localStorage.setItem('access_token', response.data.access_token);
     }
+    return response.data;
   },
 
   /**
@@ -35,16 +31,12 @@ const authService = {
    * @returns {Promise<Object>} Login response with user data
    */
   login: async (credentials) => {
-    try {
-      const response = await api.post('/auth/login', credentials);
-      // Store token in localStorage for iPhone/Safari compatibility
-      if (response.data.access_token) {
-        localStorage.setItem('access_token', response.data.access_token);
-      }
-      return response.data;
-    } catch (error) {
-      throw error;
+    const response = await api.post('/auth/login', credentials);
+    // Store token in localStorage for iPhone/Safari compatibility
+    if (response.data.access_token) {
+      localStorage.setItem('access_token', response.data.access_token);
     }
+    return response.data;
   },
 
   /**
@@ -52,14 +44,10 @@ const authService = {
    * @returns {Promise<Object>} Logout response
    */
   logout: async () => {
-    try {
-      // Clear localStorage token
-      localStorage.removeItem('access_token');
-      const response = await api.post('/auth/logout');
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
+    // Clear localStorage token
+    localStorage.removeItem('access_token');
+    const response = await api.post('/auth/logout');
+    return response.data;
   },
 
   /**
@@ -68,12 +56,8 @@ const authService = {
    * @returns {Promise<Object>} Current user data
    */
   getCurrentUser: async () => {
-    try {
-      const response = await api.get('/users/me');
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
+    const response = await api.get('/users/me');
+    return response.data;
   },
 
   /**
@@ -81,12 +65,8 @@ const authService = {
    * @returns {Promise<Object>} Object containing Google OAuth URL
    */
   getGoogleLoginUrl: async () => {
-    try {
-      const response = await api.get('/auth/google/login');
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
+    const response = await api.get('/auth/google/login');
+    return response.data;
   },
 };
 

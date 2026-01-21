@@ -34,25 +34,11 @@ const ChatRoomScreen = () => {
   const [viewingImage, setViewingImage] = useState(null);
   const [viewingPost, setViewingPost] = useState(null);
   const [postCache, setPostCache] = useState(new Map());
-  const [showMenu, setShowMenu] = useState(false);
   const [isPersonOnline, setIsPersonOnline] = useState(false);
   const messagesEndRef = useRef(null);
   const messagesContainerRef = useRef(null);
   const pollingIntervalRef = useRef(null);
   const fileInputRef = useRef(null);
-  const menuRef = useRef(null);
-
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (menuRef.current && !menuRef.current.contains(event.target)) {
-        setShowMenu(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, []);
 
   // Poll for user online status
   useEffect(() => {
@@ -143,7 +129,7 @@ const ChatRoomScreen = () => {
         
         // Transform backend messages to display format
         const transformedMessages = messagesData.map(msg => {
-          const msgDate = new Date(msg.created_at + 'Z'); // Add 'Z' to indicate UTC
+          const msgDate = new Date(msg.created_at * 1000); // Unix timestamp to Date
           return {
             id: msg.id,
             text: msg.content,
@@ -180,7 +166,7 @@ const ChatRoomScreen = () => {
       
       // Transform backend messages to display format
       const transformedMessages = messagesData.map(msg => {
-        const msgDate = new Date(msg.created_at + 'Z'); // Add 'Z' to indicate UTC
+        const msgDate = new Date(msg.created_at * 1000); // Unix timestamp to Date
         return {
           id: msg.id,
           text: msg.content,
@@ -259,17 +245,6 @@ const ChatRoomScreen = () => {
     }
   }, [messages, isAtBottom, isLoading]);
 
-  const handlePinConversation = () => {
-    // Implement pinning logic here
-    setShowMenu(false);
-  };
-
-  const handleDeleteConversation = () => {
-    // Implement deleting logic here
-    setScreen(previousScreen || 'CHAT_HISTORY');
-    setShowMenu(false);
-  };
-
   // Track scroll position
   const handleScroll = () => {
     setIsAtBottom(checkIfAtBottom());
@@ -300,7 +275,7 @@ const ChatRoomScreen = () => {
       }
 
       // Add to local state
-      const msgDate = new Date(sentMessage.created_at + 'Z'); // Add 'Z' to indicate UTC
+      const msgDate = new Date(sentMessage.created_at * 1000); // Unix timestamp to Date
       const newMessage = {
         id: sentMessage.id,
         text: sentMessage.content,
@@ -433,7 +408,7 @@ const ChatRoomScreen = () => {
           </div>
         ) : (
           messages.map((msg) => {
-            const isCallLog = msg.text && msg.text.startsWith('[CALL_LOG]');
+            const isCallLog = msg.text && msg.text.startsWith('[CALL_LOG');
             let callDuration = '';
             let isVoiceCallLog = false;
             let isMissedCall = false;
@@ -441,7 +416,8 @@ const ChatRoomScreen = () => {
             let storyReplyText = '';
 
             if (isCallLog) {
-              const content = msg.text.replace('[CALL_LOG] ', '');
+              // Remove leading [CALL_LOG] or [CALL_LOG:123] and any spaces
+              const content = msg.text.replace(/^\[CALL_LOG(?::\d+)?\]\s*/,'');
               if (content.startsWith('VOICE ')) {
                 isVoiceCallLog = true;
                 callDuration = content.replace('VOICE ', '');

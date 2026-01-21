@@ -29,6 +29,9 @@ export const AppProvider = ({ children }) => {
   const [incomingCall, setIncomingCall] = useState(null); // Stores incoming call invitation
   const [outgoingInvitation, setOutgoingInvitation] = useState(null); // Stores outgoing call invitation for status tracking
   const [activeCallChannel, setActiveCallChannel] = useState(null); // Stores the Agora channel name
+  const [scheduledCallToken, setScheduledCallToken] = useState(null); // Stores Agora token for scheduled calls
+  const [scheduledCallUid, setScheduledCallUid] = useState(null); // Stores Agora UID for scheduled calls
+  const [scheduledCallAppId, setScheduledCallAppId] = useState(null); // Stores Agora App ID for scheduled calls
   const [callDeclined, setCallDeclined] = useState(false); // Flag to show "Call Declined" message
   
   // Call minimization state
@@ -47,6 +50,9 @@ export const AppProvider = ({ children }) => {
   
   // Unread messages count
   const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
+
+  // Incoming scheduled call notifications
+  const [incomingScheduledCall, setIncomingScheduledCall] = useState(null);
 
   // Toast notification state
   const [toast, setToast] = useState(null);
@@ -152,16 +158,30 @@ export const AppProvider = ({ children }) => {
       try {
         const invitations = await callsService.getPendingInvitations();
         if (invitations && invitations.length > 0) {
-          // Only update if the invitation ID is different
-          setIncomingCall(prev => {
-            if (!prev || prev.id !== invitations[0].id) {
-              return invitations[0];
-            }
-            return prev;
-          });
+          const latestInvitation = invitations[0];
+          
+          // Check if this is a scheduled call invitation
+          if (latestInvitation.booking_id) {
+            // Use IncomingCallNotification for scheduled calls
+            setIncomingScheduledCall(prev => {
+              if (!prev || prev.id !== latestInvitation.id) {
+                return latestInvitation;
+              }
+              return prev;
+            });
+          } else {
+            // Use IncomingCallScreen for regular calls
+            setIncomingCall(prev => {
+              if (!prev || prev.id !== latestInvitation.id) {
+                return latestInvitation;
+              }
+              return prev;
+            });
+          }
         } else {
-          // Clear incoming call if no pending invitations
+          // Clear both types of incoming calls if no pending invitations
           setIncomingCall(prev => prev ? null : prev);
+          setIncomingScheduledCall(prev => prev ? null : prev);
         }
       } catch (error) {
         console.error('Failed to poll invitations:', error);
@@ -482,6 +502,12 @@ export const AppProvider = ({ children }) => {
     setOutgoingInvitation,
     activeCallChannel,
     setActiveCallChannel,
+    scheduledCallToken,
+    setScheduledCallToken,
+    scheduledCallUid,
+    setScheduledCallUid,
+    scheduledCallAppId,
+    setScheduledCallAppId,
     callDeclined,
     setCallDeclined,
     // Auth state and methods
@@ -517,6 +543,9 @@ export const AppProvider = ({ children }) => {
     toast,
     setToast,
     showToast,
+    // Incoming scheduled call notifications
+    incomingScheduledCall,
+    setIncomingScheduledCall,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

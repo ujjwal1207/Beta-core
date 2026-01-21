@@ -5,7 +5,7 @@ import { getAvatarUrlWithSize } from '../../lib/avatarUtils';
 import chatService from '../../services/chatService';
 
 const PostShareScreen = () => {
-  const { setScreen, previousScreen, sharePayload, setSharePayload, user } = useAppContext();
+  const { setScreen, previousScreen, sharePayload, setSharePayload } = useAppContext();
   const [recentUsers, setRecentUsers] = useState([]);
   const [selectedUsers, setSelectedUsers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);

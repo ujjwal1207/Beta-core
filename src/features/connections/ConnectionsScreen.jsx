@@ -12,7 +12,6 @@ import { getAvatarUrlWithSize } from '../../lib/avatarUtils';
 
 // Swipeable People Screen
 const SwipeablePeopleScreen = () => {
-  const { setScreen, setSelectedPerson, setPreviousScreen } = useAppContext();
   const [people, setPeople] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);

@@ -59,9 +59,12 @@ const RemoteVideoPlayer = ({ remoteUser, recipientName }) => {
  * @param {Object} props
  * @param {Object} props.recipientUser - The user object to call
  * @param {string} props.channelName - The Agora channel name to join
+ * @param {string} props.token - Optional pre-existing Agora token (for scheduled calls)
+ * @param {number} props.uid - Optional pre-existing Agora UID (for scheduled calls)
+ * @param {string} props.appId - Optional pre-existing Agora App ID (for scheduled calls)
  * @param {Function} props.onCallEnd - Callback when call ends
  */
-const VideoCallScreen = ({ recipientUser, channelName, onCallEnd }) => {
+const VideoCallScreen = ({ recipientUser, channelName, token, uid, appId, onCallEnd }) => {
   // Get voice call setting from context if not available in props
   const { isVoiceCall, setInVideoCall, setIsCallMinimized, setCallState, setCallControls } = useAppContext();
   
@@ -71,7 +74,6 @@ const VideoCallScreen = ({ recipientUser, channelName, onCallEnd }) => {
   const [isCameraOn, setIsCameraOn] = useState(!isVoiceCall); // Start with camera off for voice calls
   const [isMicOn, setIsMicOn] = useState(true);
   const [remoteUsers, setRemoteUsers] = useState([]);
-  const [isConnected, setIsConnected] = useState(false);
   const [callDuration, setCallDuration] = useState(0);
   const callDurationRef = useRef(0);
 
@@ -148,12 +150,25 @@ const VideoCallScreen = ({ recipientUser, channelName, onCallEnd }) => {
       
       try {
         // Get Agora credentials
-        // Use provided channelName if available, otherwise fallback to recipient ID (legacy behavior)
+        // Use provided token/uid if available (for scheduled calls), otherwise fetch new ones
         const targetChannel = channelName || recipientUser.id;
         console.log('📞 Joining channel:', targetChannel);
         
-        const response = await callsService.getAgoraToken(targetChannel);
-        const { app_id, channel_name, token, uid } = response;
+        let agoraCredentials;
+        if (token && uid) {
+          console.log('📞 Using provided scheduled call credentials');
+          agoraCredentials = {
+            app_id: appId || import.meta.env.VITE_AGORA_APP_ID || 'your_app_id',
+            channel_name: targetChannel,
+            token: token,
+            uid: uid
+          };
+        } else {
+          console.log('📞 Fetching new Agora credentials for channel:', targetChannel);
+          agoraCredentials = await callsService.getAgoraToken(targetChannel);
+        }
+        
+        const { app_id, channel_name, token: agoraToken, uid: agoraUid } = agoraCredentials;
 
         if (!isMounted) return;
 
@@ -242,7 +257,7 @@ const VideoCallScreen = ({ recipientUser, channelName, onCallEnd }) => {
 
         // Join channel
       isJoiningRef.current = true; // Mark join as in progress
-      await client.join(app_id, channel_name, token, Number(uid));
+      await client.join(app_id, channel_name, agoraToken, Number(agoraUid));
       
       if (!isMounted) {
         isJoiningRef.current = false;

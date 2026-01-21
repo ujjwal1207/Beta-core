@@ -3,7 +3,6 @@ import { Loader, Plus, MoreVertical, Trash2, Pin } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import TopTabBar from '../components/layout/TopTabBar';
 import chatService from '../services/chatService';
-import callsService from '../services/callsService';
 import { getAvatarUrlWithSize } from '../lib/avatarUtils';
 
 const ChatHistoryScreen = () => {
@@ -12,11 +11,6 @@ const ChatHistoryScreen = () => {
     setSelectedPerson, 
     setSelectedConversation, 
     setPreviousScreen, 
-    setInVideoCall, 
-    setCallRecipient,
-    setActiveCallChannel,
-    setOutgoingInvitation,
-    setIsVoiceCall,
     setUnreadMessagesCount
   } = useAppContext();
   const [conversations, setConversations] = useState([]);

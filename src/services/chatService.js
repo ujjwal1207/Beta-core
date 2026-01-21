@@ -26,11 +26,13 @@ export const chatService = {
    * @param {string} content - The message content
    * @returns {Promise<Object>} The created message
    */
-  async sendMessage(receiverId, content) {
-    const response = await api.post('/chat/messages', {
+  async sendMessage(receiverId, content, createdAt = null) {
+    const payload = {
       receiver_id: receiverId,
       content
-    });
+    };
+    if (createdAt) payload.created_at = createdAt;
+    const response = await api.post('/chat/messages', payload);
     return response.data;
   },
 

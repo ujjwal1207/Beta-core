@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import './App.css';
 import { X } from 'lucide-react';
 import { AppProvider, useAppContext } from './context/AppContext';
@@ -33,15 +33,15 @@ import chatService from './services/chatService';
 
 /**
  * ListenLink App - Modular Architecture
- * 
+ *
  * This is the main app component after refactoring from monolithic structure.
  * See REFACTORING_GUIDE.md and FILE_STRUCTURE.md for complete documentation.
  */
 
 const AppContent = () => {
-  const { 
-    screen, 
-    isAddMomentModalOpen, 
+  const {
+    screen,
+    isAddMomentModalOpen,
     setIsAddMomentModalOpen,
     isAddReflectionModalOpen,
     setIsAddReflectionModalOpen,
@@ -68,6 +68,9 @@ const AppContent = () => {
     setToast
   } = useAppContext();
 
+  // Local state to track current call invitation ID
+  const [currentCallInvitationId, setCurrentCallInvitationId] = useState(null);
+
   // Callback to refresh feed after post creation
   const handlePostCreated = () => {
     // Trigger a custom event that FeedScreen can listen to
@@ -75,9 +78,30 @@ const AppContent = () => {
   };
 
   const handleCallEnd = useCallback(async (duration = 0) => {
+    // Update call invitation status
+    try {
+      const status = duration > 0 ? 'completed' : 'missed';
+      const callEndTime = Math.floor(Date.now() / 1000); // Current Unix timestamp
+      
+      // Update outgoing invitation
+      if (outgoingInvitation && outgoingInvitation.id) {
+        await callsService.updateInvitation(outgoingInvitation.id, status, callEndTime);
+      }
+      // Update current call invitation (for accepted incoming calls)
+      else if (currentCallInvitationId) {
+        await callsService.updateInvitation(currentCallInvitationId, status, callEndTime);
+      }
+      // Update incoming call if not answered
+      else if (incomingCall && incomingCall.id) {
+        await callsService.updateInvitation(incomingCall.id, 'missed', callEndTime);
+      }
+    } catch (error) {
+      console.error('Failed to update call status:', error);
+    }
+
     // Log call duration if it was a valid call (duration > 0)
     // Only the caller sends the log message to avoid duplicates
-    if (callRecipient && duration > 0 && outgoingInvitation) {
+    if (callRecipient && duration > 0) {
       try {
         const mins = Math.floor(duration / 60);
         const secs = duration % 60;
@@ -95,31 +119,35 @@ const AppContent = () => {
     setIsVoiceCall(false); // Reset voice call mode
     setCallRecipient(null);
     setOutgoingInvitation(null); // Clear outgoing invitation
+    setIncomingCall(null); // Clear incoming call
+    setCurrentCallInvitationId(null); // Clear current call invitation ID
     setIsCallMinimized(false); // Reset minimized state
-  }, [setInVideoCall, setCallRecipient, callRecipient, outgoingInvitation, setOutgoingInvitation, setIsVoiceCall, isVoiceCall, setIsCallMinimized]);
-
+  }, [setInVideoCall, setCallRecipient, callRecipient, outgoingInvitation, currentCallInvitationId, incomingCall, setOutgoingInvitation, setIncomingCall, setCurrentCallInvitationId, setIsVoiceCall, isVoiceCall, setIsCallMinimized]);
   const handleAcceptCall = useCallback(async () => {
     if (!incomingCall) return;
 
     try {
       // Accept the invitation
       await callsService.updateInvitation(incomingCall.id, 'accepted');
-      
+
+      // Store the invitation ID for later status updates
+      setCurrentCallInvitationId(incomingCall.id);
+
       // Set call recipient and start call
       setCallRecipient(incomingCall.caller);
       setActiveCallChannel(incomingCall.channel_name);
-      
+
       // Determine if it's a voice call
       const isVoice = incomingCall.call_type === 'voice';
       setIsVoiceCall(isVoice);
-      
+
       setIncomingCall(null);
       setInVideoCall(true);
     } catch (error) {
       console.error('Failed to accept call:', error);
       setIncomingCall(null);
     }
-  }, [incomingCall, setIncomingCall, setInVideoCall, setCallRecipient, setActiveCallChannel, setIsVoiceCall]);
+  }, [incomingCall, setIncomingCall, setInVideoCall, setCallRecipient, setActiveCallChannel, setIsVoiceCall, setCurrentCallInvitationId]);
 
   const handleRejectCall = useCallback(async () => {
     if (!incomingCall) return;
@@ -127,13 +155,13 @@ const AppContent = () => {
     try {
       // Reject the invitation
       await callsService.updateInvitation(incomingCall.id, 'rejected');
-      
+
       // Log the missed call
       const typeStr = incomingCall.call_type === 'voice' ? 'MISSED_VOICE' : 'MISSED_VIDEO';
       if (incomingCall.caller) {
          await chatService.sendMessage(incomingCall.caller.id, `[CALL_LOG] ${typeStr}`);
       }
-      
+
       setIncomingCall(null);
     } catch (error) {
       console.error('Failed to reject call:', error);
@@ -176,7 +204,7 @@ const AppContent = () => {
       USER_PROFILE: <UserProfileScreen />,
       PROFILE_DETAIL: <ProfileDetailScreen />,
     };
-    
+
     return screens[screen] || <WelcomePage />;
   }, [screen]);
 
@@ -197,25 +225,25 @@ const AppContent = () => {
     return (
       <>
         {/* Always render VideoCallScreen - keep it fully mounted and active, just position it off-screen when minimized */}
-        <div 
-          className={isCallMinimized ? "fixed" : "relative w-full h-full"} 
-          style={isCallMinimized ? { 
-            top: '-9999px', 
-            left: '-9999px', 
-            width: '1px', 
-            height: '1px', 
+        <div
+          className={isCallMinimized ? "fixed" : "relative w-full h-full"}
+          style={isCallMinimized ? {
+            top: '-9999px',
+            left: '-9999px',
+            width: '1px',
+            height: '1px',
             overflow: 'hidden',
             pointerEvents: 'none',
             zIndex: -1
           } : {}}
         >
-          <VideoCallScreen 
+          <VideoCallScreen
             key={`call-${callRecipient.id}`}
-            recipientUser={callRecipient} 
+            recipientUser={callRecipient}
             channelName={activeCallChannel}
             onCallEnd={handleCallEnd}
           />
-          
+
           {/* Call Declined Notification Overlay */}
           {callDeclined && !isCallMinimized && (
             <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-md animate-in fade-in duration-300">
@@ -230,14 +258,14 @@ const AppContent = () => {
                   {callRecipient.full_name || callRecipient.name} is not available right now.
                 </p>
                 <div className="w-full bg-slate-800 rounded-full h-1.5 mb-2 overflow-hidden">
-                  <div className="bg-red-500 h-1.5 rounded-full animate-[width_3s_linear_forwards]" style={{ width: '0%' }}></div>
+                  <div className="bg-slate-800 h-1.5 rounded-full animate-[width_3s_linear_forwards]" style={{ width: '0%' }}></div>
                 </div>
                 <p className="text-xs text-slate-500">Returning to chat...</p>
               </div>
             </div>
           )}
         </div>
-        
+
         {/* Show normal app UI when minimized - overlay on top */}
         {isCallMinimized && (
           <div className="min-h-screen bg-slate-200 flex justify-center items-center p-0 sm:p-4 font-sans relative z-10">
@@ -246,7 +274,7 @@ const AppContent = () => {
                 {renderScreen()}
               </div>
             </div>
-            
+
             {/* Minimized Call Widget */}
             <MinimizedCallWidget
               callDuration={callState.duration}
@@ -273,21 +301,21 @@ const AppContent = () => {
                 }
               }}
             />
-            
+
             {/* Modal components */}
-            <AddMomentModal 
-              isOpen={isAddMomentModalOpen} 
+            <AddMomentModal
+              isOpen={isAddMomentModalOpen}
               onClose={() => setIsAddMomentModalOpen(false)}
               onPostCreated={handlePostCreated}
             />
-            <AddReflectionModal 
-              isOpen={isAddReflectionModalOpen} 
+            <AddReflectionModal
+              isOpen={isAddReflectionModalOpen}
               onClose={() => setIsAddReflectionModalOpen(false)}
               onPostCreated={handlePostCreated}
             />
-            <StoryViewerModal 
-              person={viewingStory} 
-              onClose={() => setViewingStory(null)} 
+            <StoryViewerModal
+              person={viewingStory}
+              onClose={() => setViewingStory(null)}
             />
           </div>
         )}
@@ -323,21 +351,21 @@ const AppContent = () => {
           {renderScreen()}
         </div>
       </div>
-      
+
       {/* Modal components */}
-      <AddMomentModal 
-        isOpen={isAddMomentModalOpen} 
+      <AddMomentModal
+        isOpen={isAddMomentModalOpen}
         onClose={() => setIsAddMomentModalOpen(false)}
         onPostCreated={handlePostCreated}
       />
-      <AddReflectionModal 
-        isOpen={isAddReflectionModalOpen} 
+      <AddReflectionModal
+        isOpen={isAddReflectionModalOpen}
         onClose={() => setIsAddReflectionModalOpen(false)}
         onPostCreated={handlePostCreated}
       />
-      <StoryViewerModal 
-        person={viewingStory} 
-        onClose={() => setViewingStory(null)} 
+      <StoryViewerModal
+        person={viewingStory}
+        onClose={() => setViewingStory(null)}
       />
     </div>
   );
@@ -380,7 +408,7 @@ const StyleInjector = () => {
     document.head.appendChild(style);
     return () => { document.head.removeChild(style); };
   }, []);
-  
+
   return null;
 };
 

@@ -4,11 +4,9 @@ import { useAppContext } from '../../context/AppContext';
 import ProfileCompletionNudge from './components/ProfileCompletionNudge';
 import FeedJourneyCard from '../feed/components/FeedJourneyCard';
 import Button from '../../components/ui/Button';
-import userService from '../../services/userService';
 import { MOOD_LABELS, MOOD_COLORS, getMoodGradient } from '../../config/theme';
 import PostCard from '../feed/components/PostCard';
 import feedService from '../../services/feedService';
-import { quizFlow, TRACK_Q1_KEYS, TRACK_Q2_KEYS } from '../../data/quizFlow';
 import { getAvatarUrlWithSize } from '../../lib/avatarUtils';
 
 const UserProfileScreen = () => {
@@ -48,57 +46,6 @@ const UserProfileScreen = () => {
     
     return basicFieldsIncomplete || onboardingIncomplete;
   };
-
-  // Calculate if onboarding journey is complete
-  const isJourneyComplete = (() => {
-    if (!onboardingAnswers || Object.keys(onboardingAnswers).length === 0) return false;
-    
-    const hasAnswer = (key) => {
-      const answer = onboardingAnswers[key];
-      if (Array.isArray(answer)) return answer.length > 0;
-      if (typeof answer === 'string') return answer.trim().length > 0;
-      if (typeof answer === 'object' && answer !== null && !Array.isArray(answer)) return Object.keys(answer).length > 0;
-      return false;
-    };
-    
-    const vibeAnswers = onboardingAnswers['VIBE_QUIZ'] || [];
-    let completedSteps = 0;
-    let totalSteps = 4; // Base steps: VIBE_QUIZ + TRACK_Q1 + TRACK_Q2 + NEW_GENERATION
-    
-    // Check if user goes to GIVE_ADVICE_QUIZ
-    const goesToAdviceQuiz = quizFlow['NEW_GENERATION'].nextStepLogic(onboardingAnswers['NEW_GENERATION'], onboardingAnswers) === 'GIVE_ADVICE_QUIZ';
-    if (goesToAdviceQuiz) {
-      totalSteps = 5; // Add GIVE_ADVICE_QUIZ step
-    }
-    
-    // Step 1: VIBE_QUIZ
-    if (hasAnswer('VIBE_QUIZ')) completedSteps++;
-    
-    // Step 2: TRACK_Q1 step (TRACK_CAREER_1, TRACK_BALANCE_1, etc.)
-    const nextTrackStep1Key = quizFlow['VIBE_QUIZ'].nextStepLogic(vibeAnswers, onboardingAnswers);
-    if (nextTrackStep1Key && TRACK_Q1_KEYS.includes(nextTrackStep1Key) && hasAnswer(nextTrackStep1Key)) {
-      completedSteps++;
-    }
-    
-    // Step 3: TRACK_Q2 step (TRACK_CAREER_2, TRACK_BALANCE_2, etc.)
-    if (nextTrackStep1Key && hasAnswer(nextTrackStep1Key)) {
-      const nextTrackStep2Key = quizFlow[nextTrackStep1Key]?.nextStepLogic(onboardingAnswers[nextTrackStep1Key], onboardingAnswers);
-      if (nextTrackStep2Key && TRACK_Q2_KEYS.includes(nextTrackStep2Key) && hasAnswer(nextTrackStep2Key)) {
-        completedSteps++;
-      }
-    }
-    
-    // Step 4: NEW_GENERATION
-    if (hasAnswer('NEW_GENERATION')) completedSteps++;
-    
-    // Step 5: GIVE_ADVICE_QUIZ (only if user goes this path)
-    if (goesToAdviceQuiz && hasAnswer('GIVE_ADVICE_QUIZ')) {
-      completedSteps++;
-    }
-    
-    const percentage = Math.round((completedSteps / totalSteps) * 100);
-    return percentage >= 100;
-  })();
 
   const [isAboutMeExpanded, setIsAboutMeExpanded] = useState(hasIncompleteProfile());
   const [education, setEducation] = useState([]);
@@ -199,9 +146,6 @@ const UserProfileScreen = () => {
     societyChange: onboardingAnswers['SHARER_TRACK_3'],
   };
   const hasSharerInsights = sharerInsights.youngerSelf || (sharerInsights.lifeLessons && sharerInsights.lifeLessons.length > 0) || sharerInsights.societyChange;
-  
-  const vibeAnswers = onboardingAnswers['VIBE_QUIZ'] || [];
-  const isSharer = vibeAnswers.includes('KNOWLEDGE_SHARER');
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -253,7 +197,7 @@ const UserProfileScreen = () => {
       }
 
       // Update profile via backend API
-      const updatedUser = await updateUserProfile(updateData);
+      await updateUserProfile(updateData);
       
       setIsDirty(false);
       setIsEditingSharerInsights(false);

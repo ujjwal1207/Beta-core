@@ -69,7 +69,7 @@ export const AuthForm = ({ isLogin }) => {
     try {
       const response = await authService.getGoogleLoginUrl();
       window.location.href = response.url;
-    } catch (err) {
+    } catch {
       setError('Google Sign In failed. Please try again.');
     }
   };

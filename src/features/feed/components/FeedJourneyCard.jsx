@@ -1,11 +1,9 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { X, ChevronRight, Zap, Smile } from 'lucide-react';
 import { quizFlow, TRACK_Q1_KEYS, TRACK_Q2_KEYS } from '../../../data/quizFlow';
-import { MOOD_LABELS, MOOD_COLORS, getMoodGradient } from '../../../config/theme';
+import { MOOD_LABELS, MOOD_COLORS } from '../../../config/theme';
 
 const FeedJourneyCard = ({ onboardingAnswers, setScreen, onClose, dismissible = true }) => {
-  const [mood, setMood] = useState(1);
-
   // If onboardingAnswers is empty, treat as 0% complete
   const hasAnyAnswers = onboardingAnswers && Object.keys(onboardingAnswers).length > 0;
   const hasAnswer = (key) => {

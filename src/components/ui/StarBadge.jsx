@@ -1,7 +1,7 @@
 import React from 'react';
 import { Star } from 'lucide-react';
 
-const StarBadge = ({ score, isSuper }) => {
+const StarBadge = ({ isSuper }) => {
   if (!isSuper) return null;
   
   return (
