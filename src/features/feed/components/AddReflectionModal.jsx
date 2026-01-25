@@ -71,25 +71,10 @@ const AddReflectionModal = ({ isOpen, onClose, onPostCreated }) => {
         }
       };
 
-      // If there's a file, convert it to base64
+      // Add file if present (send actual file, not base64)
       if (selectedFile) {
-        const reader = new FileReader();
-        const base64Promise = new Promise((resolve, reject) => {
-          reader.onload = () => resolve(reader.result);
-          reader.onerror = reject;
-          reader.readAsDataURL(selectedFile);
-        });
-        
-        const base64Data = await base64Promise;
-        
-        // Determine if it's an image or video based on file type
-        if (selectedFile.type.startsWith('image/')) {
-          postData.image_url = base64Data;
-        } else if (selectedFile.type.startsWith('video/')) {
-          postData.video_url = base64Data;
-        }
-        
-        console.log('Uploading file:', selectedFile.name, 'type:', selectedFile.type, 'size:', base64Data.length);
+        postData.file = selectedFile;
+        console.log('Uploading file:', selectedFile.name, 'type:', selectedFile.type, 'size:', selectedFile.size);
       }
 
       await feedService.createPost(postData);

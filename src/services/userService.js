@@ -103,6 +103,28 @@ const userService = {
       throw error;
     }
   },
+
+  /**
+   * Upload profile photo to S3
+   * @param {File} file - Image file to upload
+   * @returns {Promise<Object>} Updated user profile with new photo URL
+   */
+  uploadProfilePhoto: async (file) => {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await api.post('/users/me/upload-profile-photo', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Failed to upload profile photo:', error);
+      throw error;
+    }
+  },
 };
 
 export default userService;

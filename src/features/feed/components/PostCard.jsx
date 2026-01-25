@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Heart, MessageSquare, Send, Bookmark, Repeat, X, MoreVertical, User, EyeOff, UserX, Edit, Trash2 } from 'lucide-react';
+import { Heart, MessageSquare, Send, Bookmark, Repeat, X, MoreVertical, User, EyeOff, UserX, Edit, Trash2, Play, Pause, Volume2, VolumeX } from 'lucide-react';
 import { useAppContext } from '../../../context/AppContext';
 import MoodDisplay from '../../../components/ui/MoodDisplay';
 import engagementService from '../../../services/engagementService';
@@ -36,6 +36,14 @@ const PostCard = ({ post, onUpdate, onHide, showNotInterested = true }) => {
   const [deletingCommentId, setDeletingCommentId] = useState(null);
   const [isDeletingComment, setIsDeletingComment] = useState(false);
   const menuRef = useRef(null);
+  
+  // Video controls state
+  const [isVideoPlaying, setIsVideoPlaying] = useState(false);
+  const [videoProgress, setVideoProgress] = useState(0);
+  const [videoDuration, setVideoDuration] = useState(0);
+  const [isVideoMuted, setIsVideoMuted] = useState(true);
+  const [showVideoControls, setShowVideoControls] = useState(false);
+  const videoRef = useRef(null);
   
   const isOwnPost = user && (post.user_id === user.id || post.userId === user.id);
   const isRepost = post.is_repost || post.isRepost;
@@ -196,6 +204,55 @@ const PostCard = ({ post, onUpdate, onHide, showNotInterested = true }) => {
     } finally {
       setIsReposting(false);
     }
+  };
+
+  // Video control handlers
+  const handleVideoPlayPause = () => {
+    if (videoRef.current) {
+      if (isVideoPlaying) {
+        videoRef.current.pause();
+      } else {
+        videoRef.current.play();
+      }
+      setIsVideoPlaying(!isVideoPlaying);
+    }
+  };
+
+  const handleVideoTimeUpdate = () => {
+    if (videoRef.current) {
+      const progress = (videoRef.current.currentTime / videoRef.current.duration) * 100;
+      setVideoProgress(progress);
+    }
+  };
+
+  const handleVideoLoadedMetadata = () => {
+    if (videoRef.current) {
+      setVideoDuration(videoRef.current.duration);
+    }
+  };
+
+  const handleVideoProgressClick = (e) => {
+    if (videoRef.current) {
+      const rect = e.currentTarget.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const progressBarWidth = rect.width;
+      const newTime = (clickX / progressBarWidth) * videoRef.current.duration;
+      videoRef.current.currentTime = newTime;
+      setVideoProgress((newTime / videoRef.current.duration) * 100);
+    }
+  };
+
+  const toggleVideoMute = () => {
+    if (videoRef.current) {
+      videoRef.current.muted = !isVideoMuted;
+      setIsVideoMuted(!isVideoMuted);
+    }
+  };
+
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
   const handleViewOriginalPost = async () => {
@@ -447,11 +504,13 @@ const PostCard = ({ post, onUpdate, onHide, showNotInterested = true }) => {
       )}
       
       {(post.imageUrl || post.image_url || post.videoUrl || post.video_url) && (
-        <div className="bg-slate-100 h-48 rounded-lg mb-3 flex items-center justify-center overflow-hidden">
+        <div className="bg-slate-100 h-48 rounded-lg mb-3 flex items-center justify-center overflow-hidden relative group">
           {(post.imageUrl || post.image_url) && (
             <img 
               src={post.imageUrl || post.image_url} 
               alt="Post" 
+              loading="lazy"
+              decoding="async"
               className="w-full h-full object-cover cursor-pointer hover:opacity-90 transition-opacity" 
               onClick={() => setIsImageFullscreen(true)}
               onError={(e) => {
@@ -461,7 +520,80 @@ const PostCard = ({ post, onUpdate, onHide, showNotInterested = true }) => {
               }}
             />
           )}
-          {(post.videoUrl || post.video_url) && <video src={post.videoUrl || post.video_url} controls className="w-full h-full object-cover" />}
+          {(post.videoUrl || post.video_url) && (
+            <div 
+              className="relative w-full h-full cursor-pointer"
+              onMouseEnter={() => setShowVideoControls(true)}
+              onMouseLeave={() => setShowVideoControls(false)}
+              onClick={handleVideoPlayPause}
+            >
+              <video
+                ref={videoRef}
+                src={post.videoUrl || post.video_url}
+                preload="none"
+                poster={post.imageUrl || post.image_url}
+                className="w-full h-full object-cover"
+                muted={isVideoMuted}
+                onTimeUpdate={handleVideoTimeUpdate}
+                onLoadedMetadata={handleVideoLoadedMetadata}
+                onPlay={() => setIsVideoPlaying(true)}
+                onPause={() => setIsVideoPlaying(false)}
+                onEnded={() => setIsVideoPlaying(false)}
+              />
+              
+              {/* Play/Pause Overlay */}
+              {!isVideoPlaying && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-20">
+                  <div className="bg-black bg-opacity-50 rounded-full p-3">
+                    <Play className="w-8 h-8 text-white fill-white" />
+                  </div>
+                </div>
+              )}
+              
+              {/* Video Controls */}
+              <div className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black via-black/50 to-transparent p-3 transition-opacity duration-200 ${showVideoControls ? 'opacity-100' : 'opacity-0'}`}>
+                {/* Progress Bar */}
+                <div 
+                  className="w-full h-1 bg-white bg-opacity-30 rounded-full mb-2 cursor-pointer"
+                  onClick={handleVideoProgressClick}
+                >
+                  <div 
+                    className="h-full bg-white rounded-full transition-all duration-100"
+                    style={{ width: `${videoProgress}%` }}
+                  />
+                </div>
+                
+                {/* Control Buttons */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleVideoPlayPause();
+                      }}
+                      className="text-white hover:text-white/80 transition-colors"
+                    >
+                      {isVideoPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
+                    </button>
+                    
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleVideoMute();
+                      }}
+                      className="text-white hover:text-white/80 transition-colors"
+                    >
+                      {isVideoMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+                    </button>
+                  </div>
+                  
+                  <div className="text-white text-xs font-medium">
+                    {formatTime(videoRef.current?.currentTime || 0)} / {formatTime(videoDuration)}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
       

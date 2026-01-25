@@ -11,13 +11,29 @@ const feedService = {
    * @param {Object} postData - Post data
    * @param {string} postData.content - Post content
    * @param {string} postData.type - Post type ('moment' or 'reflection')
-   * @param {string} [postData.image_url] - Optional image URL
-   * @param {string} [postData.video_url] - Optional video URL
+   * @param {number} postData.mood_at_time - Mood at time of posting
+   * @param {File} [postData.file] - Optional file to upload
    * @returns {Promise<Object>} Created post
    */
   createPost: async (postData) => {
     try {
-      const response = await api.post('/feed/', postData);
+      // Create FormData for file uploads
+      const formData = new FormData();
+      formData.append('content', postData.content);
+      formData.append('type', postData.type);
+      formData.append('mood_at_time', postData.mood_at_time);
+
+      // Add file if present
+      if (postData.file) {
+        formData.append('file', postData.file);
+      }
+
+      // Use axios directly with FormData (no Content-Type header needed)
+      const response = await api.post('/feed/', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
       return response.data;
     } catch (error) {
       throw error;

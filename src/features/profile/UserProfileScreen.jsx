@@ -7,6 +7,7 @@ import Button from '../../components/ui/Button';
 import { MOOD_LABELS, MOOD_COLORS, getMoodGradient } from '../../config/theme';
 import PostCard from '../feed/components/PostCard';
 import feedService from '../../services/feedService';
+import userService from '../../services/userService';
 import { getAvatarUrlWithSize } from '../../lib/avatarUtils';
 
 const UserProfileScreen = () => {
@@ -185,18 +186,21 @@ const UserProfileScreen = () => {
         onboarding_answers: updatedOnboardingAnswers,
       };
 
-      // If there's a new profile photo, convert to base64
+      // If there's a new profile photo, upload to S3 first
       if (profilePhoto) {
-        const reader = new FileReader();
-        const base64Promise = new Promise((resolve, reject) => {
-          reader.onload = () => resolve(reader.result);
-          reader.onerror = reject;
-          reader.readAsDataURL(profilePhoto);
-        });
-        updateData.profile_photo = await base64Promise;
+        try {
+          const updatedUser = await userService.uploadProfilePhoto(profilePhoto);
+          // The uploadProfilePhoto method already updates the user's profile_photo field
+          // So we don't need to include it in updateData
+          setPhotoPreview(updatedUser.profile_photo); // Update preview with S3 URL
+        } catch (error) {
+          console.error('Error uploading profile photo:', error);
+          setSaveError('Failed to upload profile photo. Please try again.');
+          return;
+        }
       }
 
-      // Update profile via backend API
+      // Update profile via backend API (excluding profile_photo since it's already updated)
       await updateUserProfile(updateData);
       
       setIsDirty(false);
@@ -224,8 +228,8 @@ const UserProfileScreen = () => {
   const handlePhotoChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        setSaveError('Photo must be less than 5MB');
+      if (file.size > 10 * 1024 * 1024) {
+        setSaveError('Photo must be less than 10MB');
         return;
       }
       setProfilePhoto(file);
