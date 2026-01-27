@@ -92,8 +92,17 @@ const QuickPostStories = ({ setIsAddReflectionModalOpen, setViewingStory }) => {
       fetchViewedStories();
     };
 
+    const handleStoryDeleted = () => {
+      fetchStories();
+      fetchViewedStories();
+    };
+
     window.addEventListener('postCreated', handleStoryCreated);
-    return () => window.removeEventListener('postCreated', handleStoryCreated);
+    window.addEventListener('postDeleted', handleStoryDeleted);
+    return () => {
+      window.removeEventListener('postCreated', handleStoryCreated);
+      window.removeEventListener('postDeleted', handleStoryDeleted);
+    };
   }, [user]);
 
   // Check if all stories in a group have been viewed

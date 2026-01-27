@@ -65,8 +65,16 @@ const FeedScreen = () => {
       fetchPosts();
     };
 
+    const handlePostDeleted = () => {
+      fetchPosts();
+    };
+
     window.addEventListener('postCreated', handlePostCreated);
-    return () => window.removeEventListener('postCreated', handlePostCreated);
+    window.addEventListener('postDeleted', handlePostDeleted);
+    return () => {
+      window.removeEventListener('postCreated', handlePostCreated);
+      window.removeEventListener('postDeleted', handlePostDeleted);
+    };
   }, [isAuthenticated]);
 
   // Hide a post when user clicks "not interested"
@@ -135,7 +143,10 @@ const FeedScreen = () => {
       <TopTabBar setScreen={setScreen} currentScreen="FEED" />
       <div className="grow overflow-y-auto pt-30.25">
         <div className="p-4">
-          {/* Show journey card until quiz is complete, then show ProfileProgress */}
+          {/* Always show mood meter */}
+          <ProfileProgress />
+          
+          {/* Show journey card until quiz is complete */}
           {!isJourneyComplete && showNudge && (
             <FeedJourneyCard 
               onboardingAnswers={onboardingAnswers} 
@@ -146,7 +157,6 @@ const FeedScreen = () => {
               }} 
             />
           )}
-          {isJourneyComplete && <ProfileProgress />}
 
           <div className="relative mb-4">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400"/>

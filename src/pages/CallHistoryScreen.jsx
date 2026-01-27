@@ -18,7 +18,9 @@ const CallHistoryScreen = () => {
     setScheduledCallUid,
     setScheduledCallAppId,
     showToast,
-    setSelectedPerson
+    setSelectedPerson,
+    pendingCallRequestsCount,
+    setPendingCallRequestsCount,
   } = useAppContext();
 
   // State
@@ -34,7 +36,7 @@ const CallHistoryScreen = () => {
   const [selectedCall, setSelectedCall] = useState(null);
   const [showRescheduleModal, setShowRescheduleModal] = useState(false);
   const [callToReschedule, setCallToReschedule] = useState(null);
-  const [mode, setMode] = useState('HISTORY'); // SCHEDULED, HISTORY
+  const [mode, setMode] = useState('SCHEDULED'); // SCHEDULED, HISTORY
   
   const modalRef = useRef(null);
 
@@ -78,8 +80,12 @@ const CallHistoryScreen = () => {
         callsService.getPendingRescheduleRequests().catch(() => []) // Fallback to empty array on fail
       ]);
 
-      setScheduledCalls(scheduledData || []);
-      setCallBookingRequests(bookingData || []);
+      // Filter out expired scheduled calls and booking requests
+      const filteredScheduledData = scheduledData || [];
+      const filteredBookingData = bookingData || [];
+      
+      setScheduledCalls(filteredScheduledData);
+      setCallBookingRequests(filteredBookingData);
       setRescheduleRequests(rescheduleData || []);
 
     } catch (error) {
@@ -92,6 +98,17 @@ const CallHistoryScreen = () => {
   // Initial Fetch
   useEffect(() => {
     fetchAllData();
+  }, [fetchAllData]);
+
+  // Listen for call ended events to refresh data
+  useEffect(() => {
+    const handleCallEnded = () => {
+      console.log('Call ended, refreshing call history');
+      fetchAllData();
+    };
+
+    window.addEventListener('callEnded', handleCallEnded);
+    return () => window.removeEventListener('callEnded', handleCallEnded);
   }, [fetchAllData]);
 
   // --- Helpers ---
@@ -267,8 +284,8 @@ const CallHistoryScreen = () => {
     if (isNaN(scheduledTime.getTime())) return false;
     const now = new Date();
     const timeDiff = scheduledTime - now;
-    // Ready if within ±10 minutes (expanded slightly for UX)
-    return timeDiff <= 10 * 60 * 1000 && timeDiff >= -10 * 60 * 1000;
+    // Ready if within ±5 minutes of scheduled time
+    return timeDiff <= 5 * 60 * 1000 && timeDiff >= -5 * 60 * 1000;
   };
 
   const isCallExpired = (scheduledAt) => {
@@ -277,8 +294,8 @@ const CallHistoryScreen = () => {
     if (isNaN(scheduledTime.getTime())) return false;
     const now = new Date();
     const timeDiff = scheduledTime - now;
-    // Expired if more than 10 minutes past scheduled time
-    return timeDiff < -10 * 60 * 1000; 
+    // Expired if more than 5 minutes past scheduled time
+    return timeDiff < -5 * 60 * 1000; 
   };
 
   // --- Navigation Helpers ---
@@ -328,6 +345,7 @@ const CallHistoryScreen = () => {
   const handleAcceptBookingRequest = async (bookingId) => {
     try {
       await callsService.acceptCallBooking(bookingId);
+      setPendingCallRequestsCount(prev => prev - 1); // Update count immediately
       await fetchAllData(); // Refresh all lists
       showToast('Call booking request accepted! The call has been scheduled.', 'success');
     } catch (error) {
@@ -340,6 +358,7 @@ const CallHistoryScreen = () => {
     try {
       await callsService.declineCallBooking(bookingId);
       setCallBookingRequests(prev => prev.filter(req => req.id !== bookingId));
+      setPendingCallRequestsCount(prev => prev - 1); // Update count immediately
       showToast('Call booking request declined.', 'success');
     } catch (error) {
       console.error('Failed to decline call booking request:', error);
@@ -350,6 +369,7 @@ const CallHistoryScreen = () => {
   const handleAcceptRescheduleRequest = async (requestId) => {
     try {
       await callsService.acceptRescheduleRequest(requestId);
+      setPendingCallRequestsCount(prev => prev - 1); // Update count immediately
       await fetchAllData(); // Refresh all lists
       showToast('Reschedule request accepted successfully!', 'success');
     } catch (error) {
@@ -362,6 +382,7 @@ const CallHistoryScreen = () => {
     try {
       await callsService.rejectRescheduleRequest(requestId);
       setRescheduleRequests(prev => prev.filter(req => req.id !== requestId));
+      setPendingCallRequestsCount(prev => prev - 1); // Update count immediately
       showToast('Reschedule request declined.', 'success');
     } catch (error) {
       console.error('Failed to reject reschedule request:', error);
@@ -420,11 +441,14 @@ const CallHistoryScreen = () => {
                 key={m}
                 onClick={() => setMode(m)}
                 className={`flex-1 min-w-0 px-2 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-bold
-                            rounded-full transition-all duration-300 whitespace-nowrap touch-manipulation ${
+                            rounded-full transition-all duration-300 whitespace-nowrap touch-manipulation relative ${
                   mode === m ? 'bg-white text-indigo-600 shadow-md' : 'text-slate-600 active:bg-slate-300'
                 }`}
               >
                 {m === 'SCHEDULED' ? 'Scheduled' : 'History'}
+                {m === 'SCHEDULED' && pendingCallRequestsCount > 0 && (
+                  <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white"></span>
+                )}
               </button>
             ))}
           </div>
@@ -581,11 +605,11 @@ const CallHistoryScreen = () => {
                             if (aCanJoin && !bCanJoin) return -1;
                             if (!aCanJoin && bCanJoin) return 1;
                             
-                            // Priority 2: Upcoming calls (not expired) come before expired calls
+                            // Priority 2: Active (not expired) calls come before expired calls
                             if (!aExpired && bExpired) return -1;
                             if (aExpired && !bExpired) return 1;
                             
-                            // Priority 3: Within same category, sort by scheduled time (chronological)
+                            // Priority 3: Sort by scheduled time (chronological)
                             return aTime - bTime;
                             });
                             

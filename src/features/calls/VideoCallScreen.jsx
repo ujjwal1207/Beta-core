@@ -66,7 +66,7 @@ const RemoteVideoPlayer = ({ remoteUser, recipientName }) => {
  */
 const VideoCallScreen = ({ recipientUser, channelName, token, uid, appId, onCallEnd }) => {
   // Get voice call setting from context if not available in props
-  const { isVoiceCall, setInVideoCall, setIsCallMinimized, setCallState, setCallControls } = useAppContext();
+  const { isVoiceCall, setInVideoCall, setIsCallMinimized, setCallState, setCallControls, showToast } = useAppContext();
   
   // State
   const [loading, setLoading] = useState(true);
@@ -115,6 +115,26 @@ const VideoCallScreen = ({ recipientUser, channelName, token, uid, appId, onCall
       isCameraOn
     }));
   }, [callDuration, isMicOn, isCameraOn, setCallState]);
+
+  // 30-minute call cap with 5-minute warning
+  useEffect(() => {
+    // Only apply cap when both participants are connected
+    if (remoteUsers.length === 0) return;
+
+    // Show warning at 25 minutes (1500 seconds)
+    if (callDuration === 1500) {
+      showToast('Call will automatically disconnect in 5 minutes due to 30-minute limit.', 'warning');
+    }
+
+    // Auto-disconnect at 30 minutes (1800 seconds)
+    if (callDuration >= 1800) {
+      console.log('Call duration reached 30 minutes, auto-disconnecting...');
+      if (onCallEndRef.current) {
+        onCallEndRef.current(callDuration);
+      }
+      showToast('Call disconnected due to 30-minute time limit.', 'info');
+    }
+  }, [callDuration, remoteUsers.length, showToast, onCallEndRef]);
 
   // Format time helper
   const formatTime = (seconds) => {

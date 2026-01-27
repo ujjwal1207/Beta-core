@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Heart, MessageSquare, Send, Bookmark, Repeat, X, MoreVertical, User, EyeOff, UserX, Edit, Trash2, Play, Pause, Volume2, VolumeX } from 'lucide-react';
+import { MessageSquare, Send, Bookmark, Repeat, X, MoreVertical, User, EyeOff, UserX, Edit, Trash2, Play, Pause, Volume2, VolumeX } from 'lucide-react';
 import { useAppContext } from '../../../context/AppContext';
 import MoodDisplay from '../../../components/ui/MoodDisplay';
 import engagementService from '../../../services/engagementService';
@@ -604,8 +604,18 @@ const PostCard = ({ post, onUpdate, onHide, showNotInterested = true }) => {
             disabled={isLiking}
             className={`flex items-center space-x-1 ${isLiked ? 'text-rose-500' : 'hover:text-rose-500'} p-1 rounded-md transition-colors active:scale-[0.98] disabled:opacity-50`}
           >
-            <Heart className={`w-6 h-6 ${isLiked ? 'fill-rose-500' : ''}`} />
-            {likesCount > 0 && <span className="text-sm">{likesCount}</span>}
+            <div className="relative w-8 h-8">
+              <img
+                src="/like icon.png"
+                alt="Like"
+                className={`absolute inset-0 w-8 h-8 transition-all duration-300 ease-in-out ${isLiked ? 'scale-75 opacity-0' : 'scale-100 opacity-100'}`}
+              />
+              <img
+                src="/heart like icon.png"
+                alt="Like"
+                className={`absolute inset-0 w-8 h-8 transition-all duration-300 ease-in-out ${isLiked ? 'scale-100 opacity-100' : 'scale-75 opacity-0'}`}
+              />
+            </div>
           </button>
           
           <button 
@@ -613,7 +623,7 @@ const PostCard = ({ post, onUpdate, onHide, showNotInterested = true }) => {
             className="flex items-center space-x-1 hover:text-indigo-600 p-1 rounded-md transition-colors active:scale-[0.98]"
           >
             <MessageSquare className="w-6 h-6" />
-            {commentsCount > 0 && <span className="text-sm">{commentsCount}</span>}
+            {commentsCount > 0 && <span className="text-sm">{commentsCount > 10 ? '10+' : commentsCount}</span>}
           </button>
           
           <button 

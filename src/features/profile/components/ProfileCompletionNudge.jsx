@@ -9,6 +9,31 @@ const ProfileCompletionNudge = ({ onboardingAnswers, setScreen }) => {
   const [selectedIds, setSelectedIds] = useState([]);
   const [showQuiz, setShowQuiz] = useState(false);
   
+  // Normalize onboarding answers to ensure consistent format
+  const normalizedAnswers = React.useMemo(() => {
+    const normalized = { ...onboardingAnswers };
+    
+    // Ensure all answers are arrays for consistency
+    Object.keys(normalized).forEach(key => {
+      const answer = normalized[key];
+      if (typeof answer === 'string' && answer.trim()) {
+        // Convert single string answers to arrays
+        normalized[key] = [answer];
+      } else if (Array.isArray(answer)) {
+        // Keep arrays as-is
+        normalized[key] = answer;
+      } else if (answer !== null && typeof answer === 'object') {
+        // Convert objects to arrays of keys if they have meaningful data
+        normalized[key] = Object.keys(answer);
+      } else {
+        // Remove invalid answers
+        delete normalized[key];
+      }
+    });
+    
+    return normalized;
+  }, [onboardingAnswers]);
+  
   // Calculate profile fields completion (50% of total)
   const calculateProfileFieldsCompletion = () => {
     if (!user) return 0;
@@ -28,7 +53,7 @@ const ProfileCompletionNudge = ({ onboardingAnswers, setScreen }) => {
   };
 
   const hasAnswer = (key) => {
-    const answer = onboardingAnswers[key];
+    const answer = normalizedAnswers[key];
     if (Array.isArray(answer)) return answer.length > 0;
     if (typeof answer === 'string') return answer.trim().length > 0;
     if (typeof answer === 'object' && answer !== null && !Array.isArray(answer)) return Object.keys(answer).length > 0;
@@ -38,12 +63,12 @@ const ProfileCompletionNudge = ({ onboardingAnswers, setScreen }) => {
   // Calculate onboarding journey completion (50% of total)
   const calculateJourneyCompletion = () => {
     const completedVibeStep = hasAnswer('VIBE_QUIZ') ? 1 : 0;
-    const vibeAnswers = onboardingAnswers['VIBE_QUIZ'] || [];
+    const vibeAnswers = normalizedAnswers['VIBE_QUIZ'] || [];
     
     let totalSteps = 4; // Base steps: VIBE_QUIZ + TRACK_Q1 + TRACK_Q2 + NEW_GENERATION
     
     // Check if user goes to GIVE_ADVICE_QUIZ
-    const goesToAdviceQuiz = quizFlow['NEW_GENERATION'].nextStepLogic(onboardingAnswers['NEW_GENERATION'], onboardingAnswers) === 'GIVE_ADVICE_QUIZ';
+    const goesToAdviceQuiz = quizFlow['NEW_GENERATION'].nextStepLogic(normalizedAnswers['NEW_GENERATION'], normalizedAnswers) === 'GIVE_ADVICE_QUIZ';
     if (goesToAdviceQuiz) {
       totalSteps = 5; // Add GIVE_ADVICE_QUIZ step
     }
@@ -57,7 +82,7 @@ const ProfileCompletionNudge = ({ onboardingAnswers, setScreen }) => {
     
     // Add TRACK_Q2 step
     if (nextTrackStep1Key && hasAnswer(nextTrackStep1Key)) {
-      const nextTrackStep2Key = quizFlow[nextTrackStep1Key]?.nextStepLogic(onboardingAnswers[nextTrackStep1Key], onboardingAnswers);
+      const nextTrackStep2Key = quizFlow[nextTrackStep1Key]?.nextStepLogic(normalizedAnswers[nextTrackStep1Key], normalizedAnswers);
       if (nextTrackStep2Key && TRACK_Q2_KEYS.includes(nextTrackStep2Key) && hasAnswer(nextTrackStep2Key)) {
         completedSteps++;
       }
@@ -80,14 +105,14 @@ const ProfileCompletionNudge = ({ onboardingAnswers, setScreen }) => {
   const findNextStep = () => {
     if (!hasAnswer('VIBE_QUIZ')) return 'VIBE_QUIZ';
 
-    const vibeAnswers = onboardingAnswers['VIBE_QUIZ'] || [];
-    const nextTrackStep1Key = quizFlow['VIBE_QUIZ'].nextStepLogic(vibeAnswers, onboardingAnswers);
+    const vibeAnswers = normalizedAnswers['VIBE_QUIZ'] || [];
+    const nextTrackStep1Key = quizFlow['VIBE_QUIZ'].nextStepLogic(vibeAnswers, normalizedAnswers);
     if (nextTrackStep1Key && TRACK_Q1_KEYS.includes(nextTrackStep1Key) && !hasAnswer(nextTrackStep1Key)) {
       return nextTrackStep1Key;
     }
 
     if (nextTrackStep1Key && hasAnswer(nextTrackStep1Key)) {
-      const nextTrackStep2Key = quizFlow[nextTrackStep1Key]?.nextStepLogic(onboardingAnswers[nextTrackStep1Key], onboardingAnswers);
+      const nextTrackStep2Key = quizFlow[nextTrackStep1Key]?.nextStepLogic(normalizedAnswers[nextTrackStep1Key], normalizedAnswers);
       if (nextTrackStep2Key && TRACK_Q2_KEYS.includes(nextTrackStep2Key) && !hasAnswer(nextTrackStep2Key)) {
         return nextTrackStep2Key;
       }
@@ -107,10 +132,27 @@ const ProfileCompletionNudge = ({ onboardingAnswers, setScreen }) => {
 
   const nextStepKey = findNextStep();
   const currentStep = nextStepKey ? quizFlow[nextStepKey] : null;
+  
+  // Fallback for invalid nextStepKey (could happen with old/corrupted data)
+  const validCurrentStep = currentStep || (nextStepKey ? {
+    prompt: "It looks like we need to restart your journey. What's bringing you here today?",
+    allowMultiple: false,
+    options: quizFlow['VIBE_QUIZ'].options,
+    nextStepLogic: quizFlow['VIBE_QUIZ'].nextStepLogic
+  } : null);
+
+  // Reset selectedIds when opening quiz or when currentStep changes
+  React.useEffect(() => {
+    if (showQuiz && validCurrentStep) {
+      setSelectedIds([]);
+    }
+  }, [showQuiz, nextStepKey]);
 
   const handleSelect = (id) => {
+    if (!validCurrentStep) return;
+    
     setSelectedIds(prev => {
-      if (currentStep?.allowMultiple) {
+      if (validCurrentStep.allowMultiple) {
         return prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id];
       } else {
         return [id];
@@ -119,10 +161,10 @@ const ProfileCompletionNudge = ({ onboardingAnswers, setScreen }) => {
   };
 
   const handleSubmit = () => {
-    if (!currentStep || selectedIds.length === 0) return;
+    if (!validCurrentStep || selectedIds.length === 0) return;
 
-    // Update onboarding answers
-    const newAnswers = { ...onboardingAnswers, [nextStepKey]: selectedIds };
+    // Update onboarding answers using normalized base
+    const newAnswers = { ...normalizedAnswers, [nextStepKey]: selectedIds };
     setOnboardingAnswers(newAnswers);
     setProfileData(prev => ({ ...prev, lastCompletedStepKey: nextStepKey }));
 
@@ -131,7 +173,7 @@ const ProfileCompletionNudge = ({ onboardingAnswers, setScreen }) => {
     setShowQuiz(false);
   };
 
-  if (showQuiz && currentStep) {
+  if (showQuiz && validCurrentStep) {
     return (
       <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4 w-full">
         <div className="flex items-center justify-between mb-3">
@@ -144,10 +186,10 @@ const ProfileCompletionNudge = ({ onboardingAnswers, setScreen }) => {
           </button>
         </div>
 
-        <p className="text-sm font-medium text-indigo-800 mb-3">{currentStep.prompt}</p>
+        <p className="text-sm font-medium text-indigo-800 mb-3">{validCurrentStep?.prompt || 'Loading question...'}</p>
 
         <div className="space-y-2 mb-4">
-          {currentStep.options.map(option => (
+          {validCurrentStep?.options?.map(option => (
             <button
               key={option.id}
               onClick={() => handleSelect(option.id)}
@@ -167,13 +209,21 @@ const ProfileCompletionNudge = ({ onboardingAnswers, setScreen }) => {
                 )}
               </div>
             </button>
-          ))}
+          )) || <p className="text-sm text-slate-500">Loading options...</p>}
         </div>
+
+        {selectedIds.length === 0 && (
+          <p className="text-xs text-slate-500 mb-3 text-center">
+            {validCurrentStep?.allowMultiple 
+              ? "Select one or more options to continue" 
+              : "Select an option to continue"}
+          </p>
+        )}
 
         <Button
           primary
           onClick={handleSubmit}
-          disabled={selectedIds.length === 0}
+          disabled={!validCurrentStep || selectedIds.length === 0}
           className="!py-2 !px-4 !text-sm"
         >
           Continue <ChevronRight className="w-4 h-4 inline ml-1" />

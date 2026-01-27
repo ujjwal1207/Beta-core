@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Pause, Play, Eye } from 'lucide-react';
+import { X, Pause, Play, Eye, MoreVertical, Trash2 } from 'lucide-react';
 import { useAppContext } from '../../../context/AppContext';
 import feedService from '../../../services/feedService';
 
@@ -17,6 +17,9 @@ const StoryViewerModal = ({ person, onClose }) => {
   const [viewers, setViewers] = useState([]);
   const [showViewers, setShowViewers] = useState(false);
   const [isLoadingViewers, setIsLoadingViewers] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   
   // Use ref for onClose to avoid re-running effect when it changes
   const onCloseRef = useRef(onClose);
@@ -93,6 +96,18 @@ const StoryViewerModal = ({ person, onClose }) => {
     };
   }, [currentIndex, stories.length, isPaused, person]);
   
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showMenu && !event.target.closest('.story-menu')) {
+        setShowMenu(false);
+      }
+    };
+    
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, [showMenu]);
+  
   // Early return after all hooks are defined
   if (!person) return null;
   
@@ -148,6 +163,48 @@ const StoryViewerModal = ({ person, onClose }) => {
     setSelectedPerson(userObject);
     onClose();
     setScreen('PROFILE_DETAIL');
+  };
+
+  const handleDeleteStory = async () => {
+    if (!currentStory?.id || !isOwnStory) return;
+    
+    // Show UI confirmation dialog instead of browser confirm
+    setShowDeleteConfirm(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    setIsDeleting(true);
+    try {
+      await feedService.deletePost(currentStory.id);
+      
+      // Dispatch event to refresh feed
+      window.dispatchEvent(new CustomEvent('postDeleted'));
+      
+      // Close the menu and confirmation dialog
+      setShowMenu(false);
+      setShowDeleteConfirm(false);
+      
+      // If this is the only story, close the modal
+      if (stories.length === 1) {
+        onClose();
+        return;
+      }
+      
+      // If there are more stories, remove this one from the array
+      // This would require updating the parent component's state
+      // For now, we'll just close the modal and let the parent refresh
+      onClose();
+      
+    } catch (error) {
+      console.error('Error deleting story:', error);
+      alert('Failed to delete story. Please try again.');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleCancelDelete = () => {
+    setShowDeleteConfirm(false);
   };
 
   return (
@@ -217,19 +274,7 @@ const StoryViewerModal = ({ person, onClose }) => {
               {currentIndex + 1}/{stories.length}
             </span>
           )}
-          <div className="flex items-center ml-auto gap-2">
-            {isOwnStory && (
-              <button 
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowViewers(!showViewers);
-                }} 
-                className="p-2 rounded-full hover:bg-white/20 transition-all"
-                aria-label="View story viewers"
-              >
-                <Eye className="w-5 h-5 text-white" />
-              </button>
-            )}
+          <div className="flex items-center gap-1 ml-auto">
             <button 
               onClick={(e) => {
                 e.stopPropagation();
@@ -249,6 +294,49 @@ const StoryViewerModal = ({ person, onClose }) => {
             </button>
           </div>
         </div>
+
+        {/* Bottom right corner buttons for story owner */}
+        {isOwnStory && (
+          <div className="absolute bottom-6 right-6 flex items-center gap-2 z-30">
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowViewers(!showViewers);
+              }} 
+              className="p-2 rounded-full bg-black/50 hover:bg-black/70 transition-all backdrop-blur-sm"
+              aria-label="View story viewers"
+            >
+              <Eye className="w-5 h-5 text-white" />
+            </button>
+            <div className="relative story-menu">
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowMenu(!showMenu);
+                }} 
+                className="p-2 rounded-full bg-black/50 hover:bg-black/70 transition-all backdrop-blur-sm"
+                aria-label="Story options"
+              >
+                <MoreVertical className="w-5 h-5 text-white" />
+              </button>
+              {showMenu && (
+                <div className="absolute right-0 bottom-full mb-2 bg-white rounded-lg shadow-lg py-2 min-w-32 z-50">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteStory();
+                    }}
+                    disabled={isDeleting}
+                    className="w-full px-4 py-2 text-left text-red-600 hover:bg-red-50 flex items-center gap-2 disabled:opacity-50"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    {isDeleting ? 'Deleting...' : 'Delete Story'}
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Content */}
         <div className="grow flex flex-col justify-center items-center text-center p-6">
@@ -392,6 +480,52 @@ const StoryViewerModal = ({ person, onClose }) => {
             </div>
           </div>
         )}
+
+        {/* Delete Confirmation Dialog */}
+        {showDeleteConfirm && (
+          <div 
+            className="absolute inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="bg-white rounded-2xl p-6 max-w-sm mx-4 shadow-2xl">
+              <div className="text-center">
+                <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Trash2 className="w-8 h-8 text-red-600" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  Delete Story
+                </h3>
+                <p className="text-gray-600 text-sm mb-6">
+                  Are you sure you want to delete this story? This action cannot be undone.
+                </p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={handleCancelDelete}
+                    className="flex-1 px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors"
+                    disabled={isDeleting}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleConfirmDelete}
+                    disabled={isDeleting}
+                    className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    {isDeleting ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        Deleting...
+                      </>
+                    ) : (
+                      'Delete'
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
       </div>
     </div>
   );

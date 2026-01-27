@@ -22,13 +22,13 @@ const NavItem = ({ icon: Icon, text, current, setScreen, showBadge = false }) =>
 );
 
 export const TopTabBar = ({ setScreen, currentScreen }) => {
-  const { pendingRequestsCount, unreadMessagesCount } = useAppContext();
+  const { pendingRequestsCount, unreadMessagesCount, pendingCallRequestsCount, notificationPreferences } = useAppContext();
   
   const navItems = [
     { name: 'Feed', icon: Home, screen: 'FEED' },
     { name: 'People', icon: Users, screen: 'CONNECTIONS_DASHBOARD' },
-    { name: 'Calls', icon: Phone, screen: 'CALL_HISTORY' },
-    { name: 'Messages', icon: ChatIcon, screen: 'CHAT_HISTORY', showBadge: unreadMessagesCount > 0 },
+    { name: 'Calls', icon: Phone, screen: 'CALL_HISTORY', showBadge: notificationPreferences.scheduledCallNotifications && pendingCallRequestsCount > 0 },
+    { name: 'Messages', icon: ChatIcon, screen: 'CHAT_HISTORY', showBadge: notificationPreferences.messageNotifications && unreadMessagesCount > 0 },
   ];
 
   return (

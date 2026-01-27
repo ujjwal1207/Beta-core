@@ -6,9 +6,11 @@ import { quizFlow } from './data/quizFlow';
 import { WelcomePage } from './pages/WelcomePage';
 import { AuthForm } from './features/auth/AuthForm';
 import { SettingsScreen } from './pages/SettingsScreen';
+import { NotificationSettingsScreen } from './pages/NotificationSettingsScreen';
 import PrivacySecurityScreen from './pages/PrivacySecurityScreen';
 import BlockedUsersScreen from './pages/BlockedUsersScreen';
 import ContactUsScreen from './pages/ContactUsScreen';
+import HelpCenterScreen from './pages/HelpCenterScreen';
 import CallHistoryScreen from './pages/CallHistoryScreen';
 import ChatHistoryScreen from './pages/ChatHistoryScreen';
 import FeedScreen from './features/feed/FeedScreen';
@@ -70,6 +72,19 @@ const AppContent = () => {
 
   // Local state to track current call invitation ID
   const [currentCallInvitationId, setCurrentCallInvitationId] = useState(null);
+  // Track if outgoing call has been answered
+  const [outgoingCallAnswered, setOutgoingCallAnswered] = useState(false);
+
+  // Listen for outgoing call answered events
+  useEffect(() => {
+    const handleOutgoingCallAnswered = () => {
+      console.log('Outgoing call was answered');
+      setOutgoingCallAnswered(true);
+    };
+
+    window.addEventListener('outgoingCallAnswered', handleOutgoingCallAnswered);
+    return () => window.removeEventListener('outgoingCallAnswered', handleOutgoingCallAnswered);
+  }, []);
 
   // Callback to refresh feed after post creation
   const handlePostCreated = () => {
@@ -80,7 +95,9 @@ const AppContent = () => {
   const handleCallEnd = useCallback(async (duration = 0) => {
     // Update call invitation status
     try {
-      const status = duration > 0 ? 'completed' : 'missed';
+      // Check if this is an outgoing call that was manually ended before being answered
+      const isUnansweredOutgoingCall = outgoingInvitation && !outgoingCallAnswered;
+      const status = (duration > 0 && !isUnansweredOutgoingCall) ? 'completed' : 'missed';
       const callEndTime = Math.floor(Date.now() / 1000); // Current Unix timestamp
       
       // Update outgoing invitation
@@ -99,17 +116,26 @@ const AppContent = () => {
       console.error('Failed to update call status:', error);
     }
 
-    // Log call duration if it was a valid call (duration > 0)
+    // Log call duration if it was a valid call (duration > 0) or missed call
     // Only the caller sends the log message to avoid duplicates
-    if (callRecipient && duration > 0) {
+    if (callRecipient) {
       try {
-        const mins = Math.floor(duration / 60);
-        const secs = duration % 60;
-        const timeString = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-        const typeStr = isVoiceCall ? 'VOICE' : 'VIDEO';
+        // Check if this is an outgoing call that was manually ended before being answered
+        const isUnansweredOutgoingCall = outgoingInvitation && !outgoingCallAnswered;
         
-        // Send a system message with call log
-        await chatService.sendMessage(callRecipient.id, `[CALL_LOG] ${typeStr} ${timeString}`);
+        if (duration > 0 && !isUnansweredOutgoingCall) {
+          const mins = Math.floor(duration / 60);
+          const secs = duration % 60;
+          const timeString = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+          const typeStr = isVoiceCall ? 'VOICE' : 'VIDEO';
+          
+          // Send a system message with call log
+          await chatService.sendMessage(callRecipient.id, `[CALL_LOG] ${typeStr} ${timeString}`);
+        } else {
+          // Send missed call log for timed out calls or manually ended unanswered calls
+          const typeStr = isVoiceCall ? 'MISSED_VOICE' : 'MISSED_VIDEO';
+          await chatService.sendMessage(callRecipient.id, `[CALL_LOG] ${typeStr}`);
+        }
       } catch (error) {
         console.error('Failed to log call:', error);
       }
@@ -121,7 +147,11 @@ const AppContent = () => {
     setOutgoingInvitation(null); // Clear outgoing invitation
     setIncomingCall(null); // Clear incoming call
     setCurrentCallInvitationId(null); // Clear current call invitation ID
+    setOutgoingCallAnswered(false); // Reset answered state
     setIsCallMinimized(false); // Reset minimized state
+    
+    // Notify components to refresh call history
+    window.dispatchEvent(new CustomEvent('callEnded'));
   }, [setInVideoCall, setCallRecipient, callRecipient, outgoingInvitation, currentCallInvitationId, incomingCall, setOutgoingInvitation, setIncomingCall, setCurrentCallInvitationId, setIsVoiceCall, isVoiceCall, setIsCallMinimized]);
   const handleAcceptCall = useCallback(async () => {
     if (!incomingCall) return;
@@ -169,6 +199,26 @@ const AppContent = () => {
     }
   }, [incomingCall, setIncomingCall]);
 
+  // Auto-disconnect outgoing calls after 30 seconds if not answered
+  useEffect(() => {
+    let timeoutId = null;
+
+    // Only set timeout for outgoing calls that haven't been answered yet
+    if (outgoingInvitation && inVideoCall && !outgoingCallAnswered) {
+      timeoutId = setTimeout(() => {
+        console.log('Outgoing call timed out after 30 seconds, marking as missed');
+        handleCallEnd(0); // 0 duration = missed call
+      }, 30000); // 30 seconds
+    }
+
+    // Clear timeout if call is answered or call ends
+    return () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    };
+  }, [outgoingInvitation, inVideoCall, outgoingCallAnswered, handleCallEnd]);
+
   // IMPORTANT: Define all hooks BEFORE any conditional returns
   const renderScreen = useCallback(() => {
     // Check if current screen is a quiz step
@@ -190,9 +240,11 @@ const AppContent = () => {
       SIGNUP: <AuthForm isLogin={false} />,
       LOGIN: <AuthForm isLogin={true} />,
       SETTINGS: <SettingsScreen />,
+      NOTIFICATION_SETTINGS: <NotificationSettingsScreen />,
       PRIVACY_SECURITY: <PrivacySecurityScreen />,
       BLOCKED_USERS: <BlockedUsersScreen />,
       CONTACT_US: <ContactUsScreen />,
+      HELP_CENTER: <HelpCenterScreen />,
       CALL_HISTORY: <CallHistoryScreen />,
       CHAT_HISTORY: <ChatHistoryScreen />,
       FEED: <FeedScreen />,

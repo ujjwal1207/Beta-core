@@ -50,6 +50,16 @@ export const AppProvider = ({ children }) => {
   
   // Unread messages count
   const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
+  
+  // Pending call booking requests count
+  const [pendingCallRequestsCount, setPendingCallRequestsCount] = useState(0);
+
+  // Notification preferences
+  const [notificationPreferences, setNotificationPreferences] = useState({
+    messageNotifications: true,
+    callNotifications: true,
+    scheduledCallNotifications: true,
+  });
 
   // Incoming scheduled call notifications
   const [incomingScheduledCall, setIncomingScheduledCall] = useState(null);
@@ -162,21 +172,25 @@ export const AppProvider = ({ children }) => {
           
           // Check if this is a scheduled call invitation
           if (latestInvitation.booking_id) {
-            // Use IncomingCallNotification for scheduled calls
-            setIncomingScheduledCall(prev => {
-              if (!prev || prev.id !== latestInvitation.id) {
-                return latestInvitation;
-              }
-              return prev;
-            });
+            // Use IncomingCallNotification for scheduled calls - only if notifications are enabled
+            if (notificationPreferences.callNotifications) {
+              setIncomingScheduledCall(prev => {
+                if (!prev || prev.id !== latestInvitation.id) {
+                  return latestInvitation;
+                }
+                return prev;
+              });
+            }
           } else {
-            // Use IncomingCallScreen for regular calls
-            setIncomingCall(prev => {
-              if (!prev || prev.id !== latestInvitation.id) {
-                return latestInvitation;
-              }
-              return prev;
-            });
+            // Use IncomingCallScreen for regular calls - only if notifications are enabled
+            if (notificationPreferences.callNotifications) {
+              setIncomingCall(prev => {
+                if (!prev || prev.id !== latestInvitation.id) {
+                  return latestInvitation;
+                }
+                return prev;
+              });
+            }
           }
         } else {
           // Clear both types of incoming calls if no pending invitations
@@ -208,7 +222,15 @@ export const AppProvider = ({ children }) => {
       clearInterval(interval);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [isAuthenticated, user]);
+  }, [isAuthenticated, user, notificationPreferences.callNotifications]);
+
+  // Clear incoming calls when call notifications are disabled
+  useEffect(() => {
+    if (!notificationPreferences.callNotifications) {
+      setIncomingCall(null);
+      setIncomingScheduledCall(null);
+    }
+  }, [notificationPreferences.callNotifications]);
 
   // Poll for outgoing call invitation status (to detect if call was declined)
   useEffect(() => {
@@ -227,6 +249,17 @@ export const AppProvider = ({ children }) => {
         
         // Check if the invitation was rejected
         if (invitation.status === 'rejected') {
+          // Update the invitation status to 'missed' for call history
+          await callsService.updateInvitation(outgoingInvitation.id, 'missed', Math.floor(Date.now() / 1000));
+          
+          // Send missed call log to chat
+          try {
+            const typeStr = outgoingInvitation.call_type === 'voice' ? 'MISSED_VOICE' : 'MISSED_VIDEO';
+            await chatService.sendMessage(outgoingInvitation.receiver_id, `[CALL_LOG] ${typeStr}`);
+          } catch (error) {
+            console.error('Failed to log rejected call:', error);
+          }
+          
           setCallDeclined(true);
           setOutgoingInvitation(null);
           
@@ -240,6 +273,8 @@ export const AppProvider = ({ children }) => {
         } else if (invitation.status === 'accepted') {
           // Stop polling once call is accepted
           clearInterval(interval);
+          // Notify that outgoing call was answered
+          window.dispatchEvent(new CustomEvent('outgoingCallAnswered'));
         }
       } catch (error) {
         console.error('Failed to poll outgoing invitation status:', error);
@@ -464,6 +499,29 @@ export const AppProvider = ({ children }) => {
     return () => clearInterval(interval);
   }, [isAuthenticated]);
 
+  // Fetch pending call booking requests count
+  useEffect(() => {
+    const fetchPendingCallRequests = async () => {
+      if (isAuthenticated) {
+        try {
+          const [callRequests, rescheduleRequests] = await Promise.all([
+            callsService.getCallBookingRequests().catch(() => []),
+            callsService.getPendingRescheduleRequests().catch(() => [])
+          ]);
+          setPendingCallRequestsCount(callRequests.length + rescheduleRequests.length);
+        } catch (error) {
+          console.error('Failed to fetch pending call requests:', error);
+        }
+      }
+    };
+
+    fetchPendingCallRequests();
+    // Poll every 30 seconds
+    const interval = setInterval(fetchPendingCallRequests, 30000);
+    
+    return () => clearInterval(interval);
+  }, [isAuthenticated]);
+
   // Toast notification function
   const showToast = (message, type = 'success') => {
     setToast({ message, type });
@@ -525,6 +583,8 @@ export const AppProvider = ({ children }) => {
     setPendingRequestsCount,
     unreadMessagesCount,
     setUnreadMessagesCount,
+    pendingCallRequestsCount,
+    setPendingCallRequestsCount,
     // Call minimization state
     isCallMinimized,
     setIsCallMinimized,
@@ -539,6 +599,9 @@ export const AppProvider = ({ children }) => {
     setConnectionsMode,
     sharePayload,
     setSharePayload,
+    // Notification preferences
+    notificationPreferences,
+    setNotificationPreferences,
     // Toast notifications
     toast,
     setToast,

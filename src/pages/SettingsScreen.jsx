@@ -56,6 +56,7 @@ export const SettingsScreen = () => {
         <SettingItem 
           icon={Bell} 
           text="Notifications" 
+          onClick={() => setScreen('NOTIFICATION_SETTINGS')}
         />
         <SettingItem 
           icon={Lock} 
@@ -72,6 +73,7 @@ export const SettingsScreen = () => {
         <SettingItem 
           icon={HelpCircle} 
           text="Help Center" 
+          onClick={() => setScreen('HELP_CENTER')}
         />
         <SettingItem 
           icon={Mail} 
