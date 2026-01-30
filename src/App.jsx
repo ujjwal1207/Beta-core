@@ -93,23 +93,25 @@ const AppContent = () => {
   };
 
   const handleCallEnd = useCallback(async (duration = 0) => {
-    // Update call invitation status
+    // Update call invitation status - only the caller should update to completed/missed
+    // to avoid conflicts from both sides updating the same record
     try {
-      // Check if this is an outgoing call that was manually ended before being answered
-      const isUnansweredOutgoingCall = outgoingInvitation && !outgoingCallAnswered;
-      const status = (duration > 0 && !isUnansweredOutgoingCall) ? 'completed' : 'missed';
-      const callEndTime = Math.floor(Date.now() / 1000); // Current Unix timestamp
-      
-      // Update outgoing invitation
-      if (outgoingInvitation && outgoingInvitation.id) {
+      // Only the caller determines and sets the final status
+      if (outgoingInvitation) {
+        const isUnansweredOutgoingCall = outgoingInvitation && !outgoingCallAnswered;
+        const status = (duration > 0 && !isUnansweredOutgoingCall) ? 'completed' : 'missed';
+        const callEndTime = Math.floor(Date.now() / 1000); // Current Unix timestamp
+        
         await callsService.updateInvitation(outgoingInvitation.id, status, callEndTime);
       }
-      // Update current call invitation (for accepted incoming calls)
+      // For incoming calls (receiver), just mark as ended if they have the invitation ID
       else if (currentCallInvitationId) {
-        await callsService.updateInvitation(currentCallInvitationId, status, callEndTime);
+        const callEndTime = Math.floor(Date.now() / 1000);
+        await callsService.updateInvitation(currentCallInvitationId, 'ended', callEndTime);
       }
       // Update incoming call if not answered
       else if (incomingCall && incomingCall.id) {
+        const callEndTime = Math.floor(Date.now() / 1000);
         await callsService.updateInvitation(incomingCall.id, 'missed', callEndTime);
       }
     } catch (error) {
@@ -118,12 +120,9 @@ const AppContent = () => {
 
     // Log call duration if it was a valid call (duration > 0) or missed call
     // Only the caller sends the log message to avoid duplicates
-    if (callRecipient) {
+    if (callRecipient && outgoingInvitation) {  // Only send from caller side
       try {
-        // Check if this is an outgoing call that was manually ended before being answered
-        const isUnansweredOutgoingCall = outgoingInvitation && !outgoingCallAnswered;
-        
-        if (duration > 0 && !isUnansweredOutgoingCall) {
+        if (duration > 0) {
           const mins = Math.floor(duration / 60);
           const secs = duration % 60;
           const timeString = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
@@ -132,7 +131,7 @@ const AppContent = () => {
           // Send a system message with call log
           await chatService.sendMessage(callRecipient.id, `[CALL_LOG] ${typeStr} ${timeString}`);
         } else {
-          // Send missed call log for timed out calls or manually ended unanswered calls
+          // Send missed call log for unanswered calls
           const typeStr = isVoiceCall ? 'MISSED_VOICE' : 'MISSED_VIDEO';
           await chatService.sendMessage(callRecipient.id, `[CALL_LOG] ${typeStr}`);
         }

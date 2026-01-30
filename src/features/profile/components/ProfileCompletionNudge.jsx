@@ -75,6 +75,16 @@ const ProfileCompletionNudge = ({ onboardingAnswers, setScreen }) => {
     
     let completedSteps = completedVibeStep ? 1 : 0;
 
+    // Check for SHARER_TRACK completion (legacy accounts)
+    const hasSharerTrack1 = hasAnswer('SHARER_TRACK_1');
+    const hasSharerTrack2 = hasAnswer('SHARER_TRACK_2');
+    const hasSharerTrack3 = hasAnswer('SHARER_TRACK_3');
+    
+    if (hasSharerTrack1 || hasSharerTrack2 || hasSharerTrack3) {
+      // Legacy sharer track accounts are considered complete
+      return 50; // Max journey completion for legacy accounts
+    }
+
     const nextTrackStep1Key = quizFlow['VIBE_QUIZ'].nextStepLogic(vibeAnswers, onboardingAnswers);
     if (nextTrackStep1Key && TRACK_Q1_KEYS.includes(nextTrackStep1Key) && hasAnswer(nextTrackStep1Key)) {
       completedSteps++;
@@ -103,6 +113,16 @@ const ProfileCompletionNudge = ({ onboardingAnswers, setScreen }) => {
   const percentage = profileFieldsPercentage + journeyPercentage;
 
   const findNextStep = () => {
+    // Check for legacy SHARER_TRACK completion first
+    const hasSharerTrack1 = hasAnswer('SHARER_TRACK_1');
+    const hasSharerTrack2 = hasAnswer('SHARER_TRACK_2');
+    const hasSharerTrack3 = hasAnswer('SHARER_TRACK_3');
+    
+    if (hasSharerTrack1 || hasSharerTrack2 || hasSharerTrack3) {
+      // Legacy sharer track accounts are considered complete
+      return null;
+    }
+
     if (!hasAnswer('VIBE_QUIZ')) return 'VIBE_QUIZ';
 
     const vibeAnswers = normalizedAnswers['VIBE_QUIZ'] || [];

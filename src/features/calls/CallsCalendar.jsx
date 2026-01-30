@@ -31,7 +31,7 @@ export default function CallsCalendar({ scheduledCalls, user, onEventClick, onDa
   const eventContent = (arg) => {
     const { event, view } = arg;
     const title = event.title;
-    const isListView = view.type === 'listWeek';
+    const isListView = view.type.startsWith('list');
     const isDayGrid = view.type.startsWith('dayGrid');
     const isTimeGrid = view.type.startsWith('timeGrid');
 
@@ -100,30 +100,31 @@ export default function CallsCalendar({ scheduledCalls, user, onEventClick, onDa
             align-items: center;
           }
           .fc-button {
-            background: #f1f5f9 !important;
+            background: #f8fafc !important;
             border: 1px solid #e2e8f0 !important;
             color: #475569 !important;
-            border-radius: 8px !important;
+            border-radius: 6px !important;
             font-weight: 500 !important;
-            font-size: 12px !important;
-            padding: 6px 12px !important;
+            font-size: 13px !important;
+            padding: 8px 12px !important;
             transition: all 0.2s ease !important;
+            min-width: 60px !important;
+            text-align: center !important;
           }
           .fc-button:hover {
-            background: #e2e8f0 !important;
+            background: #f1f5f9 !important;
             border-color: #cbd5e1 !important;
+            color: #334155 !important;
           }
           .fc-button-active {
             background: #3b82f6 !important;
             border-color: #3b82f6 !important;
             color: white !important;
+            box-shadow: 0 1px 3px rgba(59, 130, 246, 0.3) !important;
           }
-          .fc-today-button {
-            background: #10b981 !important;
-            color: white !important;
-          }
-          .fc-today-button:hover {
-            background: #059669 !important;
+          .fc-button-active:hover {
+            background: #2563eb !important;
+            border-color: #2563eb !important;
           }
           .fc-event {
             border-radius: 8px !important;
@@ -190,13 +191,42 @@ export default function CallsCalendar({ scheduledCalls, user, onEventClick, onDa
             .fc-header-toolbar {
               flex-direction: column;
               align-items: stretch;
+              gap: 12px;
             }
             .fc-toolbar-chunk {
               justify-content: center;
+              width: 100%;
             }
             .fc-button {
+              font-size: 12px !important;
+              padding: 6px 10px !important;
+              min-width: 50px !important;
+              flex: 1;
+              margin: 0 2px !important;
+            }
+            .fc-toolbar-chunk:nth-child(3) {
+              display: flex;
+              flex-wrap: wrap;
+              justify-content: center;
+            }
+            .fc-toolbar-chunk:nth-child(3) .fc-button {
+              flex: 0 0 auto;
+              margin: 2px !important;
+            }
+          }
+          @media (max-width: 375px) {
+            .fc-button {
               font-size: 11px !important;
-              padding: 4px 8px !important;
+              padding: 5px 8px !important;
+              min-width: 45px !important;
+            }
+            .fc-toolbar-chunk:nth-child(3) {
+              flex-direction: column;
+              align-items: stretch;
+            }
+            .fc-toolbar-chunk:nth-child(3) .fc-button {
+              margin: 1px 0 !important;
+              width: 100% !important;
             }
             .fc-event {
               font-size: 11px !important;
@@ -224,7 +254,7 @@ export default function CallsCalendar({ scheduledCalls, user, onEventClick, onDa
           headerToolbar={{
             left: "prev,next",
             center: "title",
-            right: window.innerWidth < 375 ? "dayGridMonth,timeGridWeek,timeGridDay,listWeek" : window.innerWidth < 640 ? "dayGridMonth,timeGridWeek,listWeek,timeGridDay" : "dayGridMonth,timeGridWeek,timeGridDay,listWeek",
+            right: window.innerWidth < 375 ? "listWeek,timeGridDay,timeGridWeek,dayGridMonth" : window.innerWidth < 640 ? "listWeek,timeGridDay,timeGridWeek,dayGridMonth" : "dayGridMonth,timeGridWeek,timeGridDay,listWeek",
           }}
           events={events}
           selectable={true}
@@ -243,6 +273,12 @@ export default function CallsCalendar({ scheduledCalls, user, onEventClick, onDa
           aspectRatio={window.innerWidth < 640 ? 0.8 : 1.2}
           dayMaxEvents={window.innerWidth < 640 ? 2 : 4}
           moreLinkClick="popover"
+          buttonText={{
+            month: 'Month',
+            week: 'Week',
+            day: 'Day',
+            list: 'List'
+          }}
         />
       </div>
     </>
