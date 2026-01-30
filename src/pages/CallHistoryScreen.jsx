@@ -4,6 +4,7 @@ import { useAppContext } from '../context/AppContext';
 import TopTabBar from '../components/layout/TopTabBar';
 import callsService from '../services/callsService';
 import RescheduleCallModal from '../features/connections/components/RescheduleCallModal';
+import CallsCalendar from '../features/calls/CallsCalendar';
 
 const CallHistoryScreen = () => {
   const { 
@@ -34,9 +35,11 @@ const CallHistoryScreen = () => {
   
   // UI States
   const [selectedCall, setSelectedCall] = useState(null);
+  const [selectedScheduledCall, setSelectedScheduledCall] = useState(null);
   const [showRescheduleModal, setShowRescheduleModal] = useState(false);
   const [callToReschedule, setCallToReschedule] = useState(null);
   const [mode, setMode] = useState('SCHEDULED'); // SCHEDULED, HISTORY
+  const [scheduledViewMode, setScheduledViewMode] = useState('LIST'); // LIST, CALENDAR
   
   const modalRef = useRef(null);
 
@@ -580,9 +583,24 @@ const CallHistoryScreen = () => {
 
                     {/* Scheduled Calls */}
                     <div className="mb-8">
-                        <div className="flex items-center gap-2 mb-4">
-                        <Calendar className="w-5 h-5 text-indigo-600" />
-                        <h2 className="text-xl font-bold text-slate-700">Scheduled Calls</h2>
+                        <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                            <Calendar className="w-5 h-5 text-indigo-600 flex-shrink-0" />
+                            <h2 className="text-lg sm:text-xl font-bold text-slate-700 truncate">Scheduled Calls</h2>
+                        </div>
+                        <div className="flex bg-slate-200 p-1 rounded-full shadow-inner flex-shrink-0">
+                            {['LIST', 'CALENDAR'].map(view => (
+                            <button
+                                key={view}
+                                onClick={() => setScheduledViewMode(view)}
+                                className={`px-3 py-1.5 text-xs font-bold rounded-full transition-all duration-300 ${
+                                scheduledViewMode === view ? 'bg-white text-indigo-600 shadow-md' : 'text-slate-600 active:bg-slate-300'
+                                }`}
+                            >
+                                {view}
+                            </button>
+                            ))}
+                        </div>
                         </div>
 
                         {(() => {
@@ -612,6 +630,26 @@ const CallHistoryScreen = () => {
                             // Priority 3: Sort by scheduled time (chronological)
                             return aTime - bTime;
                             });
+                            
+                            if (scheduledViewMode === 'CALENDAR') {
+                                return (
+                                    <CallsCalendar
+                                        scheduledCalls={sortedCalls}
+                                        user={user}
+                                        onEventClick={(call) => {
+                                            setSelectedScheduledCall(call);
+                                        }}
+                                        onDateClick={(dateStr) => {
+                                            console.log('Date clicked:', dateStr);
+                                            // TODO: Open create new call modal at this time
+                                        }}
+                                        onEventDrop={(callId, newStart) => {
+                                            console.log('Event dropped:', callId, newStart);
+                                            // TODO: Handle reschedule
+                                        }}
+                                    />
+                                );
+                            }
                             
                             return sortedCalls.length === 0 ? (
                             <div className="bg-slate-50 p-6 rounded-xl border border-slate-100 text-center">
@@ -762,6 +800,40 @@ const CallHistoryScreen = () => {
                     <Trash2 className="w-5 h-5 text-rose-600" />
                   </div>
                   <span className="font-semibold text-rose-600">Delete Call Log</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      
+        {/* Scheduled Call Modal */}
+        {selectedScheduledCall && (
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+            <div className="w-full max-w-sm bg-white rounded-2xl shadow-2xl overflow-hidden animate-in slide-in-from-bottom-10 duration-300">
+              <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                <div>
+                  <h3 className="font-bold text-slate-800 text-lg">{getScheduledCallOtherPartyName(selectedScheduledCall)}</h3>
+                  <p className="text-xs text-slate-500">{formatScheduledDateTime(selectedScheduledCall.scheduled_at)}</p>
+                </div>
+                <button onClick={() => setSelectedScheduledCall(null)} className="p-2 hover:bg-slate-200 rounded-full transition-colors">
+                  <X className="w-5 h-5 text-slate-500" />
+                </button>
+              </div>
+              
+              <div className="p-2 space-y-1">
+                {isCallReadyToJoin(selectedScheduledCall) && (
+                  <button onClick={() => { handleJoinScheduledCall(selectedScheduledCall); setSelectedScheduledCall(null); }} className="w-full p-4 flex items-center gap-4 hover:bg-green-50 rounded-xl transition-colors group text-left">
+                    <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center group-hover:bg-green-200 transition-colors">
+                      <Play className="w-5 h-5 text-green-600" />
+                    </div>
+                    <span className="font-semibold text-slate-700">Join Call</span>
+                  </button>
+                )}
+                <button onClick={() => { handleRescheduleCall(selectedScheduledCall); setSelectedScheduledCall(null); }} className="w-full p-4 flex items-center gap-4 hover:bg-blue-50 rounded-xl transition-colors group text-left">
+                  <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center group-hover:bg-blue-200 transition-colors">
+                    <RotateCcw className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <span className="font-semibold text-slate-700">Reschedule</span>
                 </button>
               </div>
             </div>

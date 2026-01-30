@@ -107,6 +107,8 @@ const ProfileCompletionNudge = ({ onboardingAnswers, setScreen }) => {
 
     const vibeAnswers = normalizedAnswers['VIBE_QUIZ'] || [];
     const nextTrackStep1Key = quizFlow['VIBE_QUIZ'].nextStepLogic(vibeAnswers, normalizedAnswers);
+    
+    // If nextTrackStep1Key is not valid, skip to NEW_GENERATION
     if (nextTrackStep1Key && TRACK_Q1_KEYS.includes(nextTrackStep1Key) && !hasAnswer(nextTrackStep1Key)) {
       return nextTrackStep1Key;
     }
@@ -122,7 +124,9 @@ const ProfileCompletionNudge = ({ onboardingAnswers, setScreen }) => {
       return 'NEW_GENERATION';
     }
 
-    if (!hasAnswer('GIVE_ADVICE_QUIZ')) {
+    // Check if user should go to GIVE_ADVICE_QUIZ
+    const goesToAdviceQuiz = quizFlow['NEW_GENERATION'].nextStepLogic(normalizedAnswers['NEW_GENERATION'], normalizedAnswers) === 'GIVE_ADVICE_QUIZ';
+    if (goesToAdviceQuiz && !hasAnswer('GIVE_ADVICE_QUIZ')) {
       return 'GIVE_ADVICE_QUIZ';
     }
 
