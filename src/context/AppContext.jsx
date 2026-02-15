@@ -54,13 +54,6 @@ export const AppProvider = ({ children }) => {
   // Pending call booking requests count
   const [pendingCallRequestsCount, setPendingCallRequestsCount] = useState(0);
 
-  // Notification preferences
-  const [notificationPreferences, setNotificationPreferences] = useState({
-    messageNotifications: true,
-    callNotifications: true,
-    scheduledCallNotifications: true,
-  });
-
   // Incoming scheduled call notifications
   const [incomingScheduledCall, setIncomingScheduledCall] = useState(null);
 
@@ -73,6 +66,14 @@ export const AppProvider = ({ children }) => {
   const [connectionsMode, setConnectionsMode] = useState(null);
   // Payload used when sharing content into chat (cleared after consumption)
   const [sharePayload, setSharePayload] = useState(null);
+  
+  // Notification preferences
+  const [notificationPreferences, setNotificationPreferences] = useState({
+    messageNotifications: true,
+    callNotifications: true,
+    scheduledCallNotifications: true,
+    connectionRequestNotifications: true
+  });
   
   const [profileData, setProfileData] = useState({
     name: '',
@@ -599,9 +600,6 @@ export const AppProvider = ({ children }) => {
     setConnectionsMode,
     sharePayload,
     setSharePayload,
-    // Notification preferences
-    notificationPreferences,
-    setNotificationPreferences,
     // Toast notifications
     toast,
     setToast,
@@ -609,6 +607,9 @@ export const AppProvider = ({ children }) => {
     // Incoming scheduled call notifications
     incomingScheduledCall,
     setIncomingScheduledCall,
+    // Notification preferences
+    notificationPreferences,
+    setNotificationPreferences,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

@@ -197,7 +197,7 @@ const StoryViewerModal = ({ person, onClose }) => {
       
     } catch (error) {
       console.error('Error deleting story:', error);
-      alert('Failed to delete story. Please try again.');
+      alert('Failed to delete reflection. Please try again.');
     } finally {
       setIsDeleting(false);
     }
@@ -330,7 +330,7 @@ const StoryViewerModal = ({ person, onClose }) => {
                     className="w-full px-4 py-2 text-left text-red-600 hover:bg-red-50 flex items-center gap-2 disabled:opacity-50"
                   >
                     <Trash2 className="w-4 h-4" />
-                    {isDeleting ? 'Deleting...' : 'Delete Story'}
+                    {isDeleting ? 'Deleting...' : 'Delete Reflection'}
                   </button>
                 </div>
               )}
@@ -392,7 +392,7 @@ const StoryViewerModal = ({ person, onClose }) => {
                   // Send reply to story author via chat
                   const receiverId = currentStory.user_id;
                   await import("../../../services/chatService").then(({ chatService }) =>
-                    chatService.sendMessage(receiverId, `[Story Reply] ${replyText}`)
+                    chatService.sendMessage(receiverId, `[Reflection Reply] ${replyText}`)
                   );
                   setReplySent(true);
                   setReplyText("");
@@ -493,10 +493,10 @@ const StoryViewerModal = ({ person, onClose }) => {
                   <Trash2 className="w-8 h-8 text-red-600" />
                 </div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  Delete Story
+                  Delete Reflection
                 </h3>
                 <p className="text-gray-600 text-sm mb-6">
-                  Are you sure you want to delete this story? This action cannot be undone.
+                  Are you sure you want to delete this reflection? This action cannot be undone.
                 </p>
                 <div className="flex gap-3">
                   <button

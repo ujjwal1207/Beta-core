@@ -56,9 +56,14 @@ api.interceptors.response.use(
       
       switch (status) {
         case 401:
-          // Log 401 errors for debugging, but don't auto-logout
-          // Individual components should handle 401 appropriately
+          // Log 401 errors for debugging
           console.warn('Authentication error (401):', errorMessage);
+          // Check if this is a critical auth failure that should redirect to login
+          if (error.config?.url?.includes('/users/me') && !error.config?.url?.includes('retry')) {
+            // If the main user profile fetch fails, it might indicate session expiry
+            // Let the auth context handle this appropriately
+            console.warn('User session may have expired - check authentication');
+          }
           break;
         case 403:
           console.error('Forbidden - insufficient permissions');

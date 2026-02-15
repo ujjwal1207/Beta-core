@@ -138,16 +138,18 @@ const callsService = {
    * @param {string} callType - 'video' or 'voice' (default: 'video')
    * @param {string} note - Optional note for the booking
    * @param {number} price - Price for the call (default: 0)
+   * @param {number} duration - Duration in minutes (default: 30)
    * @returns {Promise<Object>} Booking data
    */
-  async createCallBooking(hostId, scheduledAt, callType = 'video', note = null, price = 0) {
+  async createCallBooking(hostId, scheduledAt, callType = 'video', note = null, price = 0, duration = 30) {
     try {
       const response = await api.post('/calls/bookings', {
         host_id: hostId,
         scheduled_at: Math.floor(scheduledAt.getTime() / 1000), // Convert to Unix timestamp
         call_type: callType,
         note: note,
-        price: price
+        price: price,
+        duration_minutes: duration
       });
       return response.data;
     } catch (error) {
@@ -314,6 +316,66 @@ const callsService = {
       return response.data;
     } catch (error) {
       console.error('Failed to get upcoming scheduled calls:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Submit a review for a completed call
+   * @param {Object} reviewData - Review data including reviewee_id, rating, content, call_invitation_id
+   * @returns {Promise<Object>} Created review data
+   */
+  async submitCallReview(reviewData) {
+    try {
+      const response = await api.post('/calls/reviews', reviewData);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to submit call review:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get reviews for a specific user
+   * @param {number} userId - The user ID to get reviews for
+   * @param {number} limit - Maximum number of reviews to fetch
+   * @returns {Promise<Array>} List of reviews
+   */
+  async getUserReviews(userId, limit = 20) {
+    try {
+      const response = await api.get(`/calls/reviews/${userId}?limit=${limit}`);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to get user reviews:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get scheduled/accepted call bookings for the current user
+   * @returns {Promise<Array>} List of scheduled bookings
+   */
+  async getScheduledCalls() {
+    try {
+      const response = await api.get('/calls/bookings/scheduled');
+      return response.data;
+    } catch (error) {
+      console.error('Failed to get scheduled calls:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get review statistics for a user
+   * @param {number} userId - The user ID to get stats for
+   * @returns {Promise<Object>} Review stats (average_rating, total_reviews)
+   */
+  async getUserReviewStats(userId) {
+    try {
+      const response = await api.get(`/calls/reviews/${userId}/stats`);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to get user review stats:', error);
       throw error;
     }
   },

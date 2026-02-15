@@ -9,6 +9,7 @@ import MoodDisplay from '../../components/ui/MoodDisplay';
 import { POPULAR_TOPICS } from '../../data/mockData';
 import connectionsService from '../../services/connectionsService';
 import { getAvatarUrlWithSize } from '../../lib/avatarUtils';
+import { formatRatingCount } from '../../lib/utils';
 
 // Swipeable People Screen
 const SwipeablePeopleScreen = () => {
@@ -504,7 +505,7 @@ const SuperListenLinkerScreen = () => {
             <div className="flex items-center space-x-3 mt-2">
               <div className="flex items-center text-xs font-medium text-slate-600">
                 <Star className="w-4 h-4 text-amber-500 fill-amber-500 mr-1" />
-                <span><span className="font-bold text-slate-800">{person.trust_score?.toFixed(1) || '0.0'}</span> Trust Score</span>
+                <span><span className="font-bold text-slate-800">{person.trust_score?.toFixed(1) || '0.0'}</span> ({formatRatingCount(person.total_reviews || 0)})</span>
               </div>
             </div>
           </div>

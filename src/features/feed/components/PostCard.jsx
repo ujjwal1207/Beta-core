@@ -212,7 +212,14 @@ const PostCard = ({ post, onUpdate, onHide, showNotInterested = true }) => {
       if (isVideoPlaying) {
         videoRef.current.pause();
       } else {
-        videoRef.current.play();
+        // Add error handling for play() to prevent AbortError
+        const playPromise = videoRef.current.play();
+        if (playPromise !== undefined) {
+          playPromise.catch(error => {
+            // Handle the error silently - video element might have been removed
+            console.debug('Video play interrupted:', error.name);
+          });
+        }
       }
       setIsVideoPlaying(!isVideoPlaying);
     }
@@ -511,7 +518,7 @@ const PostCard = ({ post, onUpdate, onHide, showNotInterested = true }) => {
               alt="Post" 
               loading="lazy"
               decoding="async"
-              className="w-full h-full object-cover cursor-pointer hover:opacity-90 transition-opacity" 
+              className="max-w-full max-h-full object-contain cursor-pointer hover:opacity-90 transition-opacity" 
               onClick={() => setIsImageFullscreen(true)}
               onError={(e) => {
                 console.error('Failed to load image:', (post.imageUrl || post.image_url)?.substring(0, 100));

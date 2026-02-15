@@ -2,17 +2,22 @@ import React, { useCallback, useEffect, useState } from 'react';
 import './App.css';
 import { X } from 'lucide-react';
 import { AppProvider, useAppContext } from './context/AppContext';
+import ErrorBoundary from './components/ui/ErrorBoundary';
 import { quizFlow } from './data/quizFlow';
 import { WelcomePage } from './pages/WelcomePage';
 import { AuthForm } from './features/auth/AuthForm';
 import { SettingsScreen } from './pages/SettingsScreen';
-import { NotificationSettingsScreen } from './pages/NotificationSettingsScreen';
+import ConsultationRateSettingsScreen from './pages/ConsultationRateSettingsScreen';
 import PrivacySecurityScreen from './pages/PrivacySecurityScreen';
+import { NotificationSettingsScreen } from './pages/NotificationSettingsScreen';
 import BlockedUsersScreen from './pages/BlockedUsersScreen';
 import ContactUsScreen from './pages/ContactUsScreen';
 import HelpCenterScreen from './pages/HelpCenterScreen';
 import CallHistoryScreen from './pages/CallHistoryScreen';
 import ChatHistoryScreen from './pages/ChatHistoryScreen';
+import SuperListenerDashboard from './pages/SuperListenerDashboard';
+import BankDetailsScreen from './pages/BankDetailsScreen';
+import ReviewsScreen from './pages/ReviewsScreen';
 import FeedScreen from './features/feed/FeedScreen';
 import ConnectionsScreen from './features/connections/ConnectionsScreen';
 import MyConnectionsScreen from './features/connections/MyConnectionsScreen';
@@ -30,6 +35,7 @@ import StoryViewerModal from './features/feed/components/StoryViewerModal';
 import { VideoCallScreen } from './features/calls';
 import MinimizedCallWidget from './features/calls/MinimizedCallWidget';
 import IncomingCallScreen from './features/calls/IncomingCallScreen';
+import CallReviewModal from './features/calls/CallReviewModal';
 import callsService from './services/callsService';
 import chatService from './services/chatService';
 
@@ -67,13 +73,17 @@ const AppContent = () => {
     callState,
     callControls,
     toast,
-    setToast
+    setToast,
+    showToast
   } = useAppContext();
 
   // Local state to track current call invitation ID
   const [currentCallInvitationId, setCurrentCallInvitationId] = useState(null);
   // Track if outgoing call has been answered
   const [outgoingCallAnswered, setOutgoingCallAnswered] = useState(false);
+  // Review modal state
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [reviewCallData, setReviewCallData] = useState(null);
 
   // Listen for outgoing call answered events
   useEffect(() => {
@@ -85,6 +95,19 @@ const AppContent = () => {
     window.addEventListener('outgoingCallAnswered', handleOutgoingCallAnswered);
     return () => window.removeEventListener('outgoingCallAnswered', handleOutgoingCallAnswered);
   }, []);
+
+  // Handle review submission
+  const handleSubmitReview = async (reviewData) => {
+    try {
+      await callsService.submitCallReview(reviewData);
+      console.log('Review submitted successfully');
+      showToast('Thank you for your feedback!', 'success');
+    } catch (error) {
+      console.error('Failed to submit review:', error);
+      showToast('Failed to submit review. Please try again.', 'error');
+      throw error; // Re-throw to let modal handle the error state
+    }
+  };
 
   // Callback to refresh feed after post creation
   const handlePostCreated = () => {
@@ -138,6 +161,33 @@ const AppContent = () => {
       } catch (error) {
         console.error('Failed to log call:', error);
       }
+    }
+    
+    // Show review modal for completed calls with Super Linkers
+    console.log(`DEBUG: Call ended - duration: ${duration}, callRecipient:`, callRecipient, 'is_super_linker:', callRecipient?.is_super_linker);
+    
+    if (duration > 0 && callRecipient && callRecipient.is_super_linker) {
+      // Capture the data we need BEFORE clearing state to avoid race condition
+      const reviewData = {
+        recipientUser: callRecipient,
+        callInvitationId: outgoingInvitation?.id || currentCallInvitationId,
+        duration
+      };
+      
+      console.log(`DEBUG: Review modal should show for Super Linker: ${callRecipient.full_name}`);
+      
+      // Small delay to ensure backend status update is processed
+      setTimeout(() => {
+        console.log(`DEBUG: Showing review modal for call invitation ID: ${reviewData.callInvitationId}, duration: ${reviewData.duration}`);
+        setReviewCallData(reviewData);
+        setShowReviewModal(true);
+      }, 2000); // Increased to 2 seconds to ensure status update is complete
+    } else {
+      console.log(`DEBUG: Review modal NOT showing because:`, {
+        duration_valid: duration > 0,
+        callRecipient_exists: !!callRecipient,
+        is_super_linker: callRecipient?.is_super_linker
+      });
     }
     
     setInVideoCall(false);
@@ -239,6 +289,7 @@ const AppContent = () => {
       SIGNUP: <AuthForm isLogin={false} />,
       LOGIN: <AuthForm isLogin={true} />,
       SETTINGS: <SettingsScreen />,
+      CONSULTATION_RATE_SETTINGS: <ConsultationRateSettingsScreen />,
       NOTIFICATION_SETTINGS: <NotificationSettingsScreen />,
       PRIVACY_SECURITY: <PrivacySecurityScreen />,
       BLOCKED_USERS: <BlockedUsersScreen />,
@@ -246,6 +297,9 @@ const AppContent = () => {
       HELP_CENTER: <HelpCenterScreen />,
       CALL_HISTORY: <CallHistoryScreen />,
       CHAT_HISTORY: <ChatHistoryScreen />,
+      SUPER_LISTENER_DASHBOARD: <SuperListenerDashboard />,
+      BANK_DETAILS: <BankDetailsScreen />,
+      REVIEWS: <ReviewsScreen />,
       FEED: <FeedScreen />,
       CONNECTIONS_DASHBOARD: <ConnectionsScreen />,
       MY_CONNECTIONS: <MyConnectionsScreen />,
@@ -418,6 +472,20 @@ const AppContent = () => {
         person={viewingStory}
         onClose={() => setViewingStory(null)}
       />
+
+      {/* Call Review Modal */}
+      {showReviewModal && reviewCallData && (
+        <CallReviewModal
+          isOpen={showReviewModal}
+          onClose={() => {
+            setShowReviewModal(false);
+            setReviewCallData(null);
+          }}
+          recipientUser={reviewCallData.recipientUser}
+          callInvitationId={reviewCallData.callInvitationId}
+          onSubmitReview={handleSubmitReview}
+        />
+      )}
     </div>
   );
 };
@@ -464,13 +532,46 @@ const StyleInjector = () => {
 };
 
 // Main App with Provider and Styles
-const App = () => (
-  <>
-    <StyleInjector />
-    <AppProvider>
-      <AppContent />
-    </AppProvider>
-  </>
-);
+const App = () => {
+  // Global error handling for unhandled promise rejections and errors
+  useEffect(() => {
+    const handleUnhandledRejection = (event) => {
+      // Ignore browser extension errors
+      if (event.reason && event.reason.message && 
+          event.reason.message.includes('disconnected port object')) {
+        event.preventDefault();
+        return;
+      }
+      console.error('Unhandled promise rejection:', event.reason);
+    };
+
+    const handleError = (event) => {
+      // Ignore browser extension errors
+      if (event.error && event.error.message && 
+          event.error.message.includes('disconnected port object')) {
+        event.preventDefault();
+        return;
+      }
+      console.error('Global error:', event.error);
+    };
+
+    window.addEventListener('unhandledrejection', handleUnhandledRejection);
+    window.addEventListener('error', handleError);
+
+    return () => {
+      window.removeEventListener('unhandledrejection', handleUnhandledRejection);
+      window.removeEventListener('error', handleError);
+    };
+  }, []);
+
+  return (
+    <ErrorBoundary>
+      <StyleInjector />
+      <AppProvider>
+        <AppContent />
+      </AppProvider>
+    </ErrorBoundary>
+  );
+};
 
 export default App;

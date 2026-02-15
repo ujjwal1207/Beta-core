@@ -125,6 +125,35 @@ const userService = {
       throw error;
     }
   },
+
+  /**
+   * Get user notifications
+   * @returns {Promise<Array>} List of notifications
+   */
+  getNotifications: async () => {
+    try {
+      const response = await api.get('/users/me/notifications');
+      return response.data;
+    } catch (error) {
+      console.error('Failed to get notifications:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Mark notification as read
+   * @param {number} notificationId - ID of the notification
+   * @returns {Promise<Object>} Response
+   */
+  markNotificationAsRead: async (notificationId) => {
+    try {
+      const response = await api.put(`/users/me/notifications/${notificationId}/read`);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to mark notification as read:', error);
+      throw error;
+    }
+  },
 };
 
 export default userService;

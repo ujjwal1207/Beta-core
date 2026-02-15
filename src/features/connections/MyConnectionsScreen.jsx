@@ -30,6 +30,12 @@ const MyConnectionsScreen = () => {
     fetchData();
   }, []);
 
+  const handleViewProfile = (person) => {
+    setPreviousScreen('MY_CONNECTIONS');
+    setSelectedPerson(person);
+    setScreen('PROFILE_DETAIL');
+  };
+
   const handleStartChat = async (person) => {
     try {
       // Find existing conversation or create new one
@@ -95,7 +101,7 @@ const MyConnectionsScreen = () => {
           filteredConnections.map((person) => (
             <div 
               key={person.id} 
-              onClick={() => handleStartChat(person)}
+              onClick={() => handleViewProfile(person)}
               className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm flex items-center gap-4 hover:shadow-md transition-shadow cursor-pointer active:scale-[0.99] transition-transform"
             >
               <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold text-lg shadow-sm">
@@ -111,7 +117,8 @@ const MyConnectionsScreen = () => {
               </div>
               <button 
                 onClick={(e) => { e.stopPropagation(); handleStartChat(person); }}
-                className="p-2 bg-indigo-50 text-indigo-600 rounded-full hover:bg-indigo-100"
+                className="p-2 bg-indigo-50 text-indigo-600 rounded-full hover:bg-indigo-100 transition-colors"
+                aria-label={`Message ${person.full_name}`}
               >
                 <MessageCircle className="w-5 h-5" />
               </button>

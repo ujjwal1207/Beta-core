@@ -10,6 +10,7 @@ import connectionsService from '../../services/connectionsService';
 import feedService from '../../services/feedService';
 import chatService from '../../services/chatService';
 import { getAvatarUrlWithSize } from '../../lib/avatarUtils';
+import { formatRatingCount } from '../../lib/utils';
 
 const ProfileDetailScreen = () => {
   const { setScreen, selectedPerson, previousScreen, setSelectedPerson, setSelectedConversation, setPreviousScreen, showToast } = useAppContext();
@@ -340,7 +341,7 @@ const ProfileDetailScreen = () => {
           <div className="relative z-0 bg-white p-6 rounded-t-3xl shadow-xl -mt-16">
             <div className="flex items-center mb-1">
               <h1 className="text-3xl font-extrabold text-slate-800">{person.full_name}{person.age ? `, ${person.age}` : ''}</h1>
-              <MoodDisplay moodIndex={person.mood} />
+              {!person?.is_super_linker && <MoodDisplay moodIndex={person.mood} />}
             </div>
             {(person.role || person.company) && (
               <p className="text-base font-semibold text-indigo-600 mb-4">
@@ -377,7 +378,7 @@ const ProfileDetailScreen = () => {
                   <Star className="w-6 h-6 text-amber-500 fill-amber-500 mr-2.5" />
                   <div>
                     <p className="text-base font-bold text-slate-800">{person.trust_score?.toFixed(1) || '0.0'} / 5.0</p>
-                    <p className="text-xs font-medium text-slate-500">Trust Score</p>
+                    <p className="text-xs font-medium text-slate-500">{formatRatingCount(person.total_reviews || 0)} Ratings</p>
                   </div>
                 </div>
                 <div className="w-px h-10 bg-slate-200"></div>
@@ -579,49 +580,78 @@ const ProfileDetailScreen = () => {
         </div>
 
         <div className="absolute bottom-0 left-0 w-full p-4 bg-white/90 backdrop-blur-lg border-t border-slate-200 z-10">
+          {person?.is_super_linker && (
+            <div className="mb-3 bg-green-50 border border-green-200 rounded-lg p-3 text-center">
+              {person?.pay_rate_per_min ? (
+                <>
+                  <span className="text-green-700 font-semibold text-lg">
+                    ₹{person.pay_rate_per_min}/min
+                  </span>
+                  <p className="text-green-600 text-sm">Consultation Rate</p>
+                </>
+              ) : (
+                <>
+                  <span className="text-slate-500 font-medium text-base">
+                    Rate not set
+                  </span>
+                  <p className="text-slate-400 text-sm">Contact for pricing</p>
+                </>
+              )}
+            </div>
+          )}
           <div className="flex space-x-3">
-            {isConnected ? (
-              <Button 
-                onClick={handleStartChat} 
-                disabled={isSendingRequest}
-                primary 
-                className="flex-1 !bg-indigo-600 !text-white"
-              >
-                {isSendingRequest ? (
-                  <>
-                    <Loader className="w-5 h-5 inline mr-2 animate-spin"/> Opening...
-                  </>
-                ) : (
-                  <>
-                    <MessageSquare className="w-5 h-5 inline mr-2"/> Start Chat
-                  </>
-                )}
-              </Button>
-            ) : requestSent ? (
-              <Button disabled className="flex-1 !bg-green-50 !text-green-600">
-                <UserPlus className="w-5 h-5 inline mr-2"/> Request Sent
+            {person?.is_super_linker ? (
+              // Super Listeners: Only show Schedule Consultation button
+              <Button onClick={() => setIsModalOpen(true)} className="flex-1 !bg-rose-500">
+                <Calendar className="w-5 h-5 inline mr-2"/> Schedule Consultation
               </Button>
             ) : (
-              <Button 
-                onClick={handleSendRequest} 
-                disabled={isSendingRequest}
-                primary 
-                className="flex-1 !bg-indigo-100 !text-indigo-700"
-              >
-                {isSendingRequest ? (
-                  <>
-                    <Loader className="w-5 h-5 inline mr-2 animate-spin"/> Sending...
-                  </>
+              // Regular Users: Show connection and chat buttons
+              <>
+                {isConnected ? (
+                  <Button 
+                    onClick={handleStartChat} 
+                    disabled={isSendingRequest}
+                    primary 
+                    className="flex-1 !bg-indigo-600 !text-white"
+                  >
+                    {isSendingRequest ? (
+                      <>
+                        <Loader className="w-5 h-5 inline mr-2 animate-spin"/> Opening...
+                      </>
+                    ) : (
+                      <>
+                        <MessageSquare className="w-5 h-5 inline mr-2"/> Start Chat
+                      </>
+                    )}
+                  </Button>
+                ) : requestSent ? (
+                  <Button disabled className="flex-1 !bg-green-50 !text-green-600">
+                    <UserPlus className="w-5 h-5 inline mr-2"/> Request Sent
+                  </Button>
                 ) : (
-                  <>
-                    <UserPlus className="w-5 h-5 inline mr-2"/> Send Request
-                  </>
+                  <Button 
+                    onClick={handleSendRequest} 
+                    disabled={isSendingRequest}
+                    primary 
+                    className="flex-1 !bg-indigo-100 !text-indigo-700"
+                  >
+                    {isSendingRequest ? (
+                      <>
+                        <Loader className="w-5 h-5 inline mr-2 animate-spin"/> Sending...
+                      </>
+                    ) : (
+                      <>
+                        <UserPlus className="w-5 h-5 inline mr-2"/> Send Request
+                      </>
+                    )}
+                  </Button>
                 )}
-              </Button>
+                <Button onClick={() => setIsModalOpen(true)} className="flex-1 !bg-rose-500">
+                  <Calendar className="w-5 h-5 inline mr-2"/> Schedule Call
+                </Button>
+              </>
             )}
-            <Button onClick={() => setIsModalOpen(true)} className="flex-1 !bg-rose-500">
-              <Calendar className="w-5 h-5 inline mr-2"/> Schedule Call
-            </Button>
           </div>
         </div>
       </div>

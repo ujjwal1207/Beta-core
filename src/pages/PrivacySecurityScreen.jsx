@@ -85,7 +85,7 @@ const PrivacySecurityScreen = () => {
     try {
       const response = await api.post('/users/me/change-password', {
         new_password: newPassword,
-        otp_code: passwordOtp,
+        otp_code: passwordOtp.trim(),
       });
 
       showToast(response.data.message || 'Password changed successfully!', 'success');
@@ -121,7 +121,7 @@ const PrivacySecurityScreen = () => {
     try {
       const response = await api.post('/users/me/change-email', {
         new_email: newEmail,
-        otp_code: emailOtp,
+        otp_code: emailOtp.trim(),
       });
 
       showToast(response.data.message || 'Email change request sent! Please check your new email for verification.', 'success');
@@ -157,7 +157,7 @@ const PrivacySecurityScreen = () => {
     try {
       const payload = {
         reason: deactivateReason || undefined,
-        otp_code: deactivateOtp,
+        otp_code: deactivateOtp.trim(),
       };
 
       const response = await api.post('/users/me/deactivate', payload);

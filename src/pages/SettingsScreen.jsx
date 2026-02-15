@@ -2,13 +2,14 @@ import React from 'react';
 import { 
   ArrowLeft, 
   User, 
-  Bell, 
   Lock, 
   HelpCircle, 
   Mail, 
   LogOut, 
   ChevronRight,
-  UserX
+  UserX,
+  DollarSign,
+  Bell
 } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 
@@ -24,7 +25,7 @@ const SettingItem = ({ icon: Icon, text, hasArrow = true, color = 'text-slate-60
 );
 
 export const SettingsScreen = () => {
-  const { setScreen, logout } = useAppContext();
+  const { setScreen, logout, user } = useAppContext();
   
   const handleLogout = async () => {
     try {
@@ -53,11 +54,21 @@ export const SettingsScreen = () => {
           text="Edit Profile" 
           onClick={() => setScreen('USER_PROFILE')}
         />
+        
         <SettingItem 
           icon={Bell} 
           text="Notifications" 
           onClick={() => setScreen('NOTIFICATION_SETTINGS')}
         />
+        
+        {user?.is_super_linker && (
+          <SettingItem 
+            icon={DollarSign} 
+            text="Consultation Rate" 
+            onClick={() => setScreen('CONSULTATION_RATE_SETTINGS')}
+          />
+        )}
+        
         <SettingItem 
           icon={Lock} 
           text="Privacy & Security" 

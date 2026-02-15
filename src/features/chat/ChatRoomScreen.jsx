@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, Phone, Video, Send, Paperclip, Loader, Download, FileText, X, Eye, PhoneMissed, VideoOff, MoreVertical, Trash2, Pin, MessageCircle } from 'lucide-react';
+import { ArrowLeft, Calendar, Send, Paperclip, Loader, Download, FileText, X, Eye, PhoneMissed, VideoOff, MoreVertical, Trash2, Pin, MessageCircle, Video, Phone } from 'lucide-react';
 import { useAppContext } from '../../context/AppContext';
+import ScheduleCallModal from '../connections/components/ScheduleCallModal';
 import chatService from '../../services/chatService';
 import authService from '../../services/authService';
 import callsService from '../../services/callsService';
@@ -35,6 +36,7 @@ const ChatRoomScreen = () => {
   const [viewingPost, setViewingPost] = useState(null);
   const [postCache, setPostCache] = useState(new Map());
   const [isPersonOnline, setIsPersonOnline] = useState(false);
+  const [isScheduleCallModalOpen, setIsScheduleCallModalOpen] = useState(false);
   const messagesEndRef = useRef(null);
   const messagesContainerRef = useRef(null);
   const pollingIntervalRef = useRef(null);
@@ -342,52 +344,11 @@ const ChatRoomScreen = () => {
 
         <div className="flex items-center gap-3 text-slate-600">
           <button 
-            disabled={!isPersonOnline}
-            onClick={async () => {
-              try {
-                setIsVoiceCall(true);
-                const invitation = await callsService.sendCallInvitation(selectedPerson.id, 'voice');
-                setOutgoingInvitation(invitation);
-                setCallRecipient(selectedPerson);
-                setActiveCallChannel(invitation.channel_name);
-                setInVideoCall(true);
-              } catch (error) {
-                console.error('Failed to send call invitation:', error);
-                alert('Failed to send call invitation. Please try again.');
-              }
-            }}
-            className={`p-2 rounded-full transition-colors ${
-              isPersonOnline 
-                ? 'hover:bg-green-100' 
-                : 'opacity-50 cursor-not-allowed'
-            }`}
-            title={isPersonOnline ? "Voice Call" : "User is offline"}
+            onClick={() => setIsScheduleCallModalOpen(true)}
+            className="p-2 rounded-full transition-colors hover:bg-slate-100"
+            title="Schedule Call"
           >
-            <Phone className={`w-7 h-7 ${isPersonOnline ? 'text-green-600' : 'text-slate-400'}`} />
-          </button>
-          <button 
-            disabled={!isPersonOnline}
-            onClick={async () => {
-              try {
-                setIsVoiceCall(false);
-                const invitation = await callsService.sendCallInvitation(selectedPerson.id, 'video');
-                setOutgoingInvitation(invitation);
-                setCallRecipient(selectedPerson);
-                setActiveCallChannel(invitation.channel_name);
-                setInVideoCall(true);
-              } catch (error) {
-                console.error('Failed to send call invitation:', error);
-                alert('Failed to send call invitation. Please try again.');
-              }
-            }}
-            className={`p-2 rounded-full transition-colors ${
-              isPersonOnline 
-                ? 'hover:bg-blue-100' 
-                : 'opacity-50 cursor-not-allowed'
-            }`}
-            title={isPersonOnline ? "Video Call" : "User is offline"}
-          >
-            <Video className={`w-7 h-7 ${isPersonOnline ? 'text-blue-600' : 'text-slate-400'}`} />
+            <Calendar className="w-6 h-6 text-indigo-600" />
           </button>
         </div>
       </div>
@@ -431,9 +392,9 @@ const ChatRoomScreen = () => {
               } else {
                 callDuration = content;
               }
-            } else if (msg.text && msg.text.startsWith('[Story Reply] ')) {
+            } else if (msg.text && msg.text.startsWith('[Reflection Reply] ')) {
               isStoryReply = true;
-              storyReplyText = msg.text.replace('[Story Reply] ', '');
+              storyReplyText = msg.text.replace('[Reflection Reply] ', '');
             }
 
             return (
@@ -483,7 +444,7 @@ const ChatRoomScreen = () => {
                       <MessageCircle className="w-4 h-4 text-purple-600" />
                     </div>
                     <div className="flex-1">
-                      <p className="font-medium text-purple-800 text-xs mb-1">Story Reply</p>
+                      <p className="font-medium text-purple-800 text-xs mb-1">Reflection Reply</p>
                       <p className="text-slate-700">{storyReplyText}</p>
                     </div>
                   </div>
@@ -760,6 +721,13 @@ const ChatRoomScreen = () => {
           </div>
         </div>
       )}
+
+      {/* Schedule Call Modal */}
+      <ScheduleCallModal 
+        isOpen={isScheduleCallModalOpen} 
+        onClose={() => setIsScheduleCallModalOpen(false)} 
+        person={selectedPerson}
+      />
     </div>
   );
 };

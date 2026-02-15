@@ -5,7 +5,8 @@ import {
   BellOff,
   MessageSquare,
   Phone,
-  Calendar
+  Calendar,
+  UserPlus
 } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 
@@ -85,6 +86,14 @@ export const NotificationSettingsScreen = () => {
           description="Show red dot for pending call booking requests"
           isEnabled={notificationPreferences.scheduledCallNotifications}
           onToggle={() => updateNotification('scheduledCallNotifications', !notificationPreferences.scheduledCallNotifications)}
+        />
+
+        <NotificationToggle
+          icon={UserPlus}
+          title="Connection Request Notifications"
+          description="Show red dot for new connection requests"
+          isEnabled={notificationPreferences.connectionRequestNotifications}
+          onToggle={() => updateNotification('connectionRequestNotifications', !notificationPreferences.connectionRequestNotifications)}
         />
 
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mt-6">

@@ -5,6 +5,7 @@ import TopTabBar from '../components/layout/TopTabBar';
 import callsService from '../services/callsService';
 import RescheduleCallModal from '../features/connections/components/RescheduleCallModal';
 import CallsCalendar from '../features/calls/CallsCalendar';
+import PaymentModal from '../components/PaymentModal';
 
 const CallHistoryScreen = () => {
   const { 
@@ -40,6 +41,10 @@ const CallHistoryScreen = () => {
   const [callToReschedule, setCallToReschedule] = useState(null);
   const [mode, setMode] = useState('SCHEDULED'); // SCHEDULED, HISTORY
   const [scheduledViewMode, setScheduledViewMode] = useState('LIST'); // LIST, CALENDAR
+  
+  // Payment States
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [callToPayFor, setCallToPayFor] = useState(null);
   
   const modalRef = useRef(null);
 
@@ -393,10 +398,54 @@ const CallHistoryScreen = () => {
     }
   };
 
-  const handleJoinScheduledCall = async (call) => {
+  const handleDeleteScheduledCall = async (callId) => {
     try {
-      // Determine receiver
-      const receiverId = call.booker_id === user?.id ? call.host_id : call.booker_id;
+      await callsService.deleteCallBooking(callId);
+      setScheduledCalls(prev => prev.filter(call => call.id !== callId));
+      showToast('Expired call deleted successfully.', 'success');
+    } catch (error) {
+      console.error('Failed to delete scheduled call:', error);
+      showToast('Failed to delete call. Please try again.', 'error');
+    }
+  };
+
+  const handleJoinScheduledCall = async (call) => {
+    // Debug: log the call data to see the structure
+    console.log('Call data structure:', call);
+    
+    // Check if this is a paid call that hasn't been paid for yet
+    const isPaidCall = call.price && call.price > 0;
+    const hasBeenPaid = call.payment_status === 'paid';
+    
+    console.log('Payment check:', { 
+      price: call.price, 
+      payment_status: call.payment_status, 
+      isPaidCall, 
+      hasBeenPaid,
+      needsPayment: isPaidCall && !hasBeenPaid
+    });
+
+    if (isPaidCall && !hasBeenPaid) {
+      // Show payment modal instead of joining directly
+      setCallToPayFor(call);
+      setShowPaymentModal(true);
+      return;
+    }
+
+    // Proceed with joining the call (either free call or already paid)
+    try {
+      // Determine receiver and get the full user object
+      const isUserBooker = call.booker_id === user?.id;
+      const receiverId = isUserBooker ? call.host_id : call.booker_id;
+      const recipientUser = isUserBooker ? call.host : call.booker;
+
+      // Ensure we have recipient user data with is_super_linker property
+      if (!recipientUser) {
+        console.error('Recipient user data not found in call object:', call);
+        throw new Error('Recipient user information not available');
+      }
+
+      console.log('Setting call recipient for scheduled call:', recipientUser, 'is_super_linker:', recipientUser.is_super_linker);
 
       // Send invitation (signaling)
       const invitation = await callsService.sendCallInvitation(
@@ -415,15 +464,29 @@ const CallHistoryScreen = () => {
       setScheduledCallUid(call.caller_uid);
       setScheduledCallAppId(call.agora_app_id);
 
-      setCallRecipient({
-        id: receiverId,
-        name: `User ${receiverId}`, // Ideally fetch real name if not in object
-      });
+      // Use the complete user object with is_super_linker property
+      setCallRecipient(recipientUser);
 
     } catch (error) {
       console.error('Failed to join scheduled call:', error);
       showToast("Failed to join call. Please try again.", "error");
     }
+  };
+
+  const handlePaymentSuccess = async (call) => {
+    // Update the call in our local state to reflect payment
+    setScheduledCalls(prevCalls => 
+      prevCalls.map(c => 
+        c.id === call.id 
+          ? { ...c, payment_status: 'paid' }
+          : c
+      )
+    );
+
+    showToast("Payment successful! You can now join the call.", "success");
+
+    // After successful payment, join the call
+    handleJoinScheduledCall({ ...call, payment_status: 'paid' });
   };
 
   const handleRescheduleCall = (call) => {
@@ -488,6 +551,11 @@ const CallHistoryScreen = () => {
                                     <div className="flex-1 min-w-0">
                                     <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mb-2">
                                         <p className="font-semibold text-slate-800 text-sm sm:text-base">Call Request</p>
+                                        {request.price && request.price > 0 && request.payment_status === 'paid' && (
+                                          <span className="px-2 py-1 text-xs font-medium rounded-full bg-indigo-100 text-indigo-700 border border-indigo-200">
+                                            ₹{request.price} • {request.duration_minutes || 30}min
+                                          </span>
+                                        )}
                                     </div>
                                     <p className="text-sm text-slate-600 mb-2"><button 
                                         onClick={() => handleUserProfileClick(request.booker_id)}
@@ -694,18 +762,63 @@ const CallHistoryScreen = () => {
                                     </div>
 
                                     <div className="flex flex-row sm:flex-col gap-2 sm:gap-2 w-full sm:w-32 sm:flex-shrink-0">
-                                    {canJoin && (
-                                        <button onClick={() => handleJoinScheduledCall(call)} className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-3 sm:px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white text-sm font-medium rounded-lg hover:from-green-600 hover:to-green-700 transition-all duration-200 shadow-sm hover:shadow-md">
-                                        <Play className="w-4 h-4" /> <span className="hidden xs:inline">Join Call</span><span className="xs:hidden">Join</span>
-                                        </button>
+                                    {canJoin && (() => {
+                                      const isPaidCall = call.price && call.price > 0;
+                                      const hasBeenPaid = call.payment_status === 'paid';
+                                      const needsPayment = isPaidCall && !hasBeenPaid;
+                                      return !needsPayment || call.booker_id === user.id;
+                                    })() && (
+                                        (() => {
+                                          const isPaidCall = call.price && call.price > 0;
+                                          const hasBeenPaid = call.payment_status === 'paid';
+                                          const needsPayment = isPaidCall && !hasBeenPaid;
+                                          
+                                          return (
+                                            <button 
+                                              onClick={() => handleJoinScheduledCall(call)} 
+                                              className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-3 sm:px-4 py-2 text-white text-sm font-medium rounded-lg transition-all duration-200 shadow-sm hover:shadow-md ${
+                                                needsPayment 
+                                                  ? 'bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700' 
+                                                  : 'bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700'
+                                              }`}
+                                            >
+                                              <Play className="w-4 h-4" /> 
+                                              <span className="hidden xs:inline">
+                                                {needsPayment ? 'Pay & Join' : 'Join Call'}
+                                              </span>
+                                              <span className="xs:hidden">
+                                                {needsPayment ? 'Pay & Join' : 'Join'}
+                                              </span>
+                                            </button>
+                                          );
+                                        })()
                                     )}
-                                    <button 
+                                    {!isExpired ? (
+                                      <button 
                                         onClick={() => handleRescheduleCall(call)} 
-                                        className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 shadow-sm hover:shadow-md ${isExpired ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-white hover:from-amber-600 hover:to-amber-700' : 'bg-gradient-to-r from-blue-500 to-blue-600 text-white hover:from-blue-600 hover:to-blue-700'}`}
-                                    >
+                                        className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 shadow-sm hover:shadow-md bg-gradient-to-r from-blue-500 to-blue-600 text-white hover:from-blue-600 hover:to-blue-700"
+                                      >
                                         <RotateCcw className="w-4 h-4" />
                                         Reschedule
-                                    </button>
+                                      </button>
+                                    ) : (
+                                      <div className="flex flex-row gap-2 w-full">
+                                        <button 
+                                          onClick={() => handleRescheduleCall(call)} 
+                                          className="flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 shadow-sm hover:shadow-md bg-gradient-to-r from-blue-500 to-blue-600 text-white hover:from-blue-600 hover:to-blue-700"
+                                        >
+                                          <RotateCcw className="w-4 h-4" />
+                                          Reschedule
+                                        </button>
+                                        <button 
+                                          onClick={() => handleDeleteScheduledCall(call.id)} 
+                                          className="flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 shadow-sm hover:shadow-md bg-gradient-to-r from-red-500 to-red-600 text-white hover:from-red-600 hover:to-red-700"
+                                        >
+                                          <Trash2 className="w-4 h-4" />
+                                          Delete
+                                        </button>
+                                      </div>
+                                    )}
                                     </div>
                                 </div>
                                 {call.note && (
@@ -740,7 +853,7 @@ const CallHistoryScreen = () => {
                         {calls.map(call => {
                             const type = getCallType(call);
                             return (
-                            <div key={call.id} onClick={() => setSelectedCall(call)} className="bg-white p-3 rounded-lg shadow-sm border border-slate-100 flex items-center cursor-pointer hover:shadow-md transition-shadow active:scale-[0.99]">
+                            <div key={`history-${call.id}`} onClick={() => setSelectedCall(call)} className="bg-white p-3 rounded-lg shadow-sm border border-slate-100 flex items-center cursor-pointer hover:shadow-md transition-shadow active:scale-[0.99]">
                                 <div className="w-8 h-8 flex-shrink-0 flex items-center justify-center bg-slate-100 rounded-full mr-3">
                                 {getCallIcon(type)}
                                 </div>
@@ -821,13 +934,37 @@ const CallHistoryScreen = () => {
               </div>
               
               <div className="p-2 space-y-1">
-                {isCallReadyToJoin(selectedScheduledCall) && (
-                  <button onClick={() => { handleJoinScheduledCall(selectedScheduledCall); setSelectedScheduledCall(null); }} className="w-full p-4 flex items-center gap-4 hover:bg-green-50 rounded-xl transition-colors group text-left">
-                    <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center group-hover:bg-green-200 transition-colors">
-                      <Play className="w-5 h-5 text-green-600" />
-                    </div>
-                    <span className="font-semibold text-slate-700">Join Call</span>
-                  </button>
+                {isCallReadyToJoin(selectedScheduledCall) && (() => {
+                  const isPaidCall = selectedScheduledCall?.price && selectedScheduledCall.price > 0;
+                  const hasBeenPaid = selectedScheduledCall?.payment_status === 'paid';
+                  const needsPayment = isPaidCall && !hasBeenPaid;
+                  return !needsPayment || selectedScheduledCall.booker_id === user.id;
+                })() && (
+                  (() => {
+                    const isPaidCall = selectedScheduledCall?.price && selectedScheduledCall.price > 0;
+                    const hasBeenPaid = selectedScheduledCall?.payment_status === 'paid';
+                    const needsPayment = isPaidCall && !hasBeenPaid;
+                    
+                    return (
+                      <button 
+                        onClick={() => { handleJoinScheduledCall(selectedScheduledCall); setSelectedScheduledCall(null); }} 
+                        className={`w-full p-4 flex items-center gap-4 rounded-xl transition-colors group text-left ${
+                          needsPayment ? 'hover:bg-indigo-50' : 'hover:bg-green-50'
+                        }`}
+                      >
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${
+                          needsPayment 
+                            ? 'bg-indigo-100 group-hover:bg-indigo-200' 
+                            : 'bg-green-100 group-hover:bg-green-200'
+                        }`}>
+                          <Play className={`w-5 h-5 ${needsPayment ? 'text-indigo-600' : 'text-green-600'}`} />
+                        </div>
+                        <span className="font-semibold text-slate-700">
+                          {needsPayment ? 'Pay & Join' : 'Join Call'}
+                        </span>
+                      </button>
+                    );
+                  })()
                 )}
                 <button onClick={() => { handleRescheduleCall(selectedScheduledCall); setSelectedScheduledCall(null); }} className="w-full p-4 flex items-center gap-4 hover:bg-blue-50 rounded-xl transition-colors group text-left">
                   <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center group-hover:bg-blue-200 transition-colors">
@@ -852,6 +989,17 @@ const CallHistoryScreen = () => {
             fetchAllData(); // Refresh list after successful reschedule
             showToast(message, message.includes('Failed') ? 'error' : 'success');
           }}
+        />
+
+        {/* Payment Modal */}
+        <PaymentModal
+          isOpen={showPaymentModal}
+          onClose={() => {
+            setShowPaymentModal(false);
+            setCallToPayFor(null);
+          }}
+          call={callToPayFor}
+          onPaymentSuccess={handlePaymentSuccess}
         />
       </div>
     </div>
