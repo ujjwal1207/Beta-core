@@ -46,7 +46,7 @@ const QuickPostStories = ({ setIsAddReflectionModalOpen, setViewingStory }) => {
 
       // Sort each user's stories by creation time
       Object.keys(storiesByUser).forEach(userId => {
-        storiesByUser[userId].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+        storiesByUser[userId].sort((a, b) => new Date(a.created_at * 1000) - new Date(b.created_at * 1000));
       });
 
       // Check if current user has stories and format as story group
@@ -76,7 +76,7 @@ const QuickPostStories = ({ setIsAddReflectionModalOpen, setViewingStory }) => {
           user_profile_photo: userStories[0].user_profile_photo,
           created_at: userStories[userStories.length - 1].created_at // Latest story time
         }))
-        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+        .sort((a, b) => new Date(b.created_at * 1000) - new Date(a.created_at * 1000))
         .slice(0, 10); // Limit to 10 users
 
       setStories(storyList);
@@ -116,20 +116,19 @@ const QuickPostStories = ({ setIsAddReflectionModalOpen, setViewingStory }) => {
         <div className="flex flex-col items-center relative w-20">
           <button
             onClick={() => userHasStory ? setViewingStory(userHasStory) : setIsAddReflectionModalOpen(true)}
-            className={`w-16 h-16 rounded-full flex items-center justify-center border-2 ${
-              userHasStory 
-                ? 'border-indigo-500 p-0.5' 
+            className={`w-16 h-16 rounded-full flex items-center justify-center border-2 ${userHasStory
+                ? 'border-indigo-500 p-0.5'
                 : 'border-dashed border-slate-400'
-            } bg-slate-100 hover:bg-slate-200 transition-all`}
+              } bg-slate-100 hover:bg-slate-200 transition-all`}
             aria-label={userHasStory ? "View your reflection" : "Add your reflection"}
           >
             {userHasStory ? (
               <div className="w-full h-full rounded-full bg-slate-200 flex items-center justify-center overflow-hidden">
                 {user?.profile_photo ? (
-                  <img 
-                    src={user.profile_photo} 
-                    alt="Your story" 
-                    className="w-full h-full object-cover" 
+                  <img
+                    src={user.profile_photo}
+                    alt="Your story"
+                    className="w-full h-full object-cover"
                   />
                 ) : (
                   <span className="text-lg font-bold text-slate-700">{user?.full_name?.[0] || 'Y'}</span>
@@ -161,17 +160,16 @@ const QuickPostStories = ({ setIsAddReflectionModalOpen, setViewingStory }) => {
             <div key={storyGroup.userId} className="flex flex-col items-center w-20">
               <button
                 onClick={() => setViewingStory(storyGroup)}
-                className={`w-16 h-16 rounded-full flex items-center justify-center border-2 ${
-                  isViewed ? 'border-gray-400' : 'border-rose-500'
-                } p-0.5`}
+                className={`w-16 h-16 rounded-full flex items-center justify-center border-2 ${isViewed ? 'border-gray-400' : 'border-rose-500'
+                  } p-0.5`}
                 aria-label={`View reflection from ${storyGroup.user_name}`}
               >
                 <div className="w-full h-full rounded-full bg-slate-200 flex items-center justify-center text-lg font-bold text-slate-700 overflow-hidden">
                   {storyGroup.user_profile_photo ? (
-                    <img 
-                      src={storyGroup.user_profile_photo} 
-                      alt={storyGroup.user_name} 
-                      className="w-full h-full object-cover" 
+                    <img
+                      src={storyGroup.user_profile_photo}
+                      alt={storyGroup.user_name}
+                      className="w-full h-full object-cover"
                     />
                   ) : (
                     <span>{storyGroup.user_name?.[0] || '?'}</span>

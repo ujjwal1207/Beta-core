@@ -4,6 +4,7 @@ import {
   Lock,
   Mail,
   UserX,
+  Trash2,
   Eye,
   EyeOff,
   AlertTriangle,
@@ -17,7 +18,7 @@ import { useAppContext } from '../context/AppContext';
 import api from '../services/api';
 
 const PrivacySecurityScreen = () => {
-  const { setScreen, user, showToast } = useAppContext();
+  const { setScreen, user, showToast, logout } = useAppContext();
   const [activeSection, setActiveSection] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -36,12 +37,18 @@ const PrivacySecurityScreen = () => {
   const [deactivateReason, setDeactivateReason] = useState('');
   const [deactivateOtp, setDeactivateOtp] = useState('');
   const [confirmDeactivate, setConfirmDeactivate] = useState(false);
-  const [showFinalConfirm, setShowFinalConfirm] = useState(false);
+  const [showDeactivateConfirm, setShowDeactivateConfirm] = useState(false);
+
+  // Delete Account State
+  const [deleteReason, setDeleteReason] = useState('');
+  const [deleteOtp, setDeleteOtp] = useState('');
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // Password Change Confirmation State
   const [showPasswordConfirm, setShowPasswordConfirm] = useState(false);
 
-  // OTP Request State (only for deactivation)
+  // OTP Request State
   const [otpLoading, setOtpLoading] = useState(false);
 
   const isGoogleUser = user?.auth_provider === 'google';
@@ -75,7 +82,6 @@ const PrivacySecurityScreen = () => {
       return;
     }
 
-    // Show UI-based confirmation modal instead of window.confirm
     setShowPasswordConfirm(true);
   };
 
@@ -136,37 +142,66 @@ const PrivacySecurityScreen = () => {
     }
   };
 
+  // --- Deactivate Account (soft delete) ---
   const handleDeactivateAccount = async () => {
     if (!confirmDeactivate) {
       showToast('Please confirm that you want to deactivate your account', 'error');
       return;
     }
-
     if (!deactivateOtp) {
       showToast('Please enter the OTP sent to your email', 'error');
       return;
     }
-
-    // Show UI-based confirmation modal instead of window.confirm
-    setShowFinalConfirm(true);
+    setShowDeactivateConfirm(true);
   };
 
   const confirmFinalDeactivation = async () => {
-    setShowFinalConfirm(false);
+    setShowDeactivateConfirm(false);
     setLoading(true);
     try {
       const payload = {
         reason: deactivateReason || undefined,
         otp_code: deactivateOtp.trim(),
       };
-
       const response = await api.post('/users/me/deactivate', payload);
-
       showToast(response.data.message || 'Account deactivated successfully', 'success');
-      // Logout user after successful deactivation
-      window.location.href = '/'; // Redirect to welcome page
+      // Properly logout to clear tokens before redirecting
+      await logout();
     } catch (error) {
       const errorMessage = error.response?.data?.detail || 'Failed to deactivate account. Please try again.';
+      showToast(errorMessage, 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // --- Delete Account (hard delete) ---
+  const handleDeleteAccount = async () => {
+    if (!confirmDelete) {
+      showToast('Please confirm that you want to permanently delete your account', 'error');
+      return;
+    }
+    if (!deleteOtp) {
+      showToast('Please enter the OTP sent to your email', 'error');
+      return;
+    }
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmFinalDeletion = async () => {
+    setShowDeleteConfirm(false);
+    setLoading(true);
+    try {
+      const payload = {
+        reason: deleteReason || undefined,
+        otp_code: deleteOtp.trim(),
+      };
+      const response = await api.post('/users/me/delete', payload);
+      showToast(response.data.message || 'Account deleted successfully', 'success');
+      // Properly logout to clear tokens before redirecting
+      await logout();
+    } catch (error) {
+      const errorMessage = error.response?.data?.detail || 'Failed to delete account. Please try again.';
       showToast(errorMessage, 'error');
     } finally {
       setLoading(false);
@@ -176,20 +211,20 @@ const PrivacySecurityScreen = () => {
   return (
     <div className="relative flex flex-col h-full bg-slate-50">
 
-      {/* Final Confirmation Modal */}
-      {showFinalConfirm && (
+      {/* Deactivate Confirmation Modal */}
+      {showDeactivateConfirm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
             <div className="flex items-center mb-4">
-              <AlertTriangle className="w-6 h-6 text-red-500 mr-3" />
+              <UserX className="w-6 h-6 text-amber-500 mr-3" />
               <h3 className="text-lg font-semibold text-gray-900">Confirm Account Deactivation</h3>
             </div>
             <p className="text-gray-600 mb-6">
-              Are you absolutely sure you want to deactivate your account? This action cannot be undone and will permanently delete all your data.
+              Your account will be hidden from other users. All your data will be preserved and you can reactivate anytime by logging back in.
             </p>
             <div className="flex space-x-3">
               <button
-                onClick={() => setShowFinalConfirm(false)}
+                onClick={() => setShowDeactivateConfirm(false)}
                 className="flex-1 py-2 px-4 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
                 disabled={loading}
               >
@@ -197,10 +232,41 @@ const PrivacySecurityScreen = () => {
               </button>
               <button
                 onClick={confirmFinalDeactivation}
+                className="flex-1 py-2 px-4 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors disabled:opacity-50"
+                disabled={loading}
+              >
+                {loading ? <Loader className="w-4 h-4 animate-spin mx-auto" /> : 'Deactivate'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="flex items-center mb-4">
+              <AlertTriangle className="w-6 h-6 text-red-500 mr-3" />
+              <h3 className="text-lg font-semibold text-gray-900">Confirm Account Deletion</h3>
+            </div>
+            <p className="text-gray-600 mb-6">
+              Are you absolutely sure? This action <strong>cannot be undone</strong> and will permanently delete all your data including posts, messages, connections, and profile.
+            </p>
+            <div className="flex space-x-3">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="flex-1 py-2 px-4 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                disabled={loading}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmFinalDeletion}
                 className="flex-1 py-2 px-4 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
                 disabled={loading}
               >
-                {loading ? <Loader className="w-4 h-4 animate-spin mx-auto" /> : 'Deactivate Account'}
+                {loading ? <Loader className="w-4 h-4 animate-spin mx-auto" /> : 'Delete Forever'}
               </button>
             </div>
           </div>
@@ -421,41 +487,31 @@ const PrivacySecurityScreen = () => {
           )}
         </div>
 
-        {/* Deactivate Account Section */}
-        <div className="bg-white rounded-xl border border-red-200 shadow-sm overflow-hidden">
+        {/* Deactivate Account Section (Soft Delete) */}
+        <div className="bg-white rounded-xl border border-amber-200 shadow-sm overflow-hidden">
           <button
             onClick={() => setActiveSection(activeSection === 'deactivate' ? null : 'deactivate')}
-            className="flex items-center w-full p-4 hover:bg-red-50 transition-colors"
+            className="flex items-center w-full p-4 hover:bg-amber-50 transition-colors"
           >
-            <UserX className="w-5 h-5 mr-4 text-red-500" />
-            <span className="font-semibold text-base text-red-600 flex-grow text-left">Deactivate Account</span>
+            <UserX className="w-5 h-5 mr-4 text-amber-500" />
+            <span className="font-semibold text-base text-amber-700 flex-grow text-left">Deactivate Account</span>
             <div className={`transform transition-transform ${activeSection === 'deactivate' ? 'rotate-90' : ''}`}>
-              <div className="w-2 h-2 border-r-2 border-b-2 border-red-400 rotate-45"></div>
+              <div className="w-2 h-2 border-r-2 border-b-2 border-amber-400 rotate-45"></div>
             </div>
           </button>
 
           {activeSection === 'deactivate' && (
             <div className="px-4 pb-4 space-y-3">
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3">
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-3">
                 <div className="flex items-start gap-2">
-                  <Shield className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
+                  <Shield className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
                   <div>
-                    <h4 className="text-sm font-semibold text-blue-800">Account Security Verification</h4>
-                    <p className="text-sm text-blue-700 mt-1">
-                      For security, you'll need to verify with an OTP sent to your email.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-                <div className="flex items-start gap-2">
-                  <AlertTriangle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <h4 className="text-sm font-semibold text-red-800">Warning</h4>
-                    <p className="text-sm text-red-700 mt-1">
-                      Deactivating your account will permanently delete all your data and cannot be undone.
-                    </p>
+                    <h4 className="text-sm font-semibold text-amber-800">What happens when you deactivate?</h4>
+                    <ul className="text-sm text-amber-700 mt-1 list-disc ml-4 space-y-0.5">
+                      <li>Your profile will be hidden from other users</li>
+                      <li>All your data (posts, messages, connections) will be preserved</li>
+                      <li>You can reactivate anytime by simply logging back in</li>
+                    </ul>
                   </div>
                 </div>
               </div>
@@ -465,8 +521,8 @@ const PrivacySecurityScreen = () => {
                 <textarea
                   value={deactivateReason}
                   onChange={(e) => setDeactivateReason(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 resize-none"
-                  placeholder="Tell us why you're leaving..."
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 resize-none"
+                  placeholder="Tell us why you're taking a break..."
                   rows={3}
                 />
               </div>
@@ -478,7 +534,7 @@ const PrivacySecurityScreen = () => {
                     type="text"
                     value={deactivateOtp}
                     onChange={(e) => setDeactivateOtp(e.target.value)}
-                    className="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    className="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
                     placeholder="Enter 6-digit code"
                     maxLength="6"
                   />
@@ -500,20 +556,120 @@ const PrivacySecurityScreen = () => {
                   id="confirm-deactivate"
                   checked={confirmDeactivate}
                   onChange={(e) => setConfirmDeactivate(e.target.checked)}
-                  className="w-4 h-4 text-red-600 bg-slate-100 border-slate-300 rounded focus:ring-red-500"
+                  className="w-4 h-4 text-amber-600 bg-slate-100 border-slate-300 rounded focus:ring-amber-500"
                 />
                 <label htmlFor="confirm-deactivate" className="text-sm text-slate-700">
-                  I understand that this action cannot be undone
+                  I understand my account will be hidden until I log back in
                 </label>
               </div>
 
               <button
                 onClick={handleDeactivateAccount}
                 disabled={loading || !confirmDeactivate}
+                className="w-full py-2 bg-gradient-to-r from-amber-500 to-amber-600 text-white rounded-lg hover:from-amber-600 hover:to-amber-700 transition-all duration-200 font-medium shadow-md hover:shadow-lg transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {loading ? <Loader className="w-4 h-4 animate-spin" /> : <UserX className="w-4 h-4" />}
+                Deactivate Account
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Delete Account Section (Hard Delete) */}
+        <div className="bg-white rounded-xl border border-red-200 shadow-sm overflow-hidden">
+          <button
+            onClick={() => setActiveSection(activeSection === 'delete' ? null : 'delete')}
+            className="flex items-center w-full p-4 hover:bg-red-50 transition-colors"
+          >
+            <Trash2 className="w-5 h-5 mr-4 text-red-500" />
+            <span className="font-semibold text-base text-red-600 flex-grow text-left">Delete Account</span>
+            <div className={`transform transition-transform ${activeSection === 'delete' ? 'rotate-90' : ''}`}>
+              <div className="w-2 h-2 border-r-2 border-b-2 border-red-400 rotate-45"></div>
+            </div>
+          </button>
+
+          {activeSection === 'delete' && (
+            <div className="px-4 pb-4 space-y-3">
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-3">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <h4 className="text-sm font-semibold text-red-800">Permanent Deletion Warning</h4>
+                    <ul className="text-sm text-red-700 mt-1 list-disc ml-4 space-y-0.5">
+                      <li>This action <strong>cannot be undone</strong></li>
+                      <li>All your posts, messages, connections, and data will be permanently removed</li>
+                      <li>You will not be able to recover your account</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <div className="flex items-start gap-2">
+                  <Shield className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <h4 className="text-sm font-semibold text-blue-800">Consider deactivating instead</h4>
+                    <p className="text-sm text-blue-700 mt-1">
+                      If you just need a break, deactivating your account will hide your profile while preserving your data. You can come back anytime.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Reason for deletion (optional)</label>
+                <textarea
+                  value={deleteReason}
+                  onChange={(e) => setDeleteReason(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 resize-none"
+                  placeholder="Tell us why you're leaving..."
+                  rows={3}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Verification Code</label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={deleteOtp}
+                    onChange={(e) => setDeleteOtp(e.target.value)}
+                    className="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    placeholder="Enter 6-digit code"
+                    maxLength="6"
+                  />
+                  <button
+                    onClick={() => requestOtp('account_deletion')}
+                    disabled={otpLoading}
+                    className="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+                  >
+                    {otpLoading ? <Loader className="w-4 h-4 animate-spin" /> : <Smartphone className="w-4 h-4" />}
+                    Get Code
+                  </button>
+                </div>
+                <p className="text-xs text-slate-500 mt-1">Enter the verification code sent to your email</p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="confirm-delete"
+                  checked={confirmDelete}
+                  onChange={(e) => setConfirmDelete(e.target.checked)}
+                  className="w-4 h-4 text-red-600 bg-slate-100 border-slate-300 rounded focus:ring-red-500"
+                />
+                <label htmlFor="confirm-delete" className="text-sm text-slate-700">
+                  I understand that this action is permanent and cannot be undone
+                </label>
+              </div>
+
+              <button
+                onClick={handleDeleteAccount}
+                disabled={loading || !confirmDelete}
                 className="w-full py-2 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg hover:from-red-700 hover:to-red-800 transition-all duration-200 font-medium shadow-md hover:shadow-lg transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
-                {loading ? <Loader className="w-4 h-4 animate-spin" /> : <AlertTriangle className="w-4 h-4" />}
-                Deactivate Account
+                {loading ? <Loader className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                Delete Account Permanently
               </button>
             </div>
           )}

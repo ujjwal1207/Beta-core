@@ -4,6 +4,7 @@ import userService from '../services/userService';
 import callsService from '../services/callsService';
 import connectionsService from '../services/connectionsService';
 import chatService from '../services/chatService';
+import notificationService from '../services/notificationService';
 
 const AppContext = createContext();
 
@@ -18,10 +19,10 @@ export const useAppContext = () => {
 export const AppProvider = ({ children }) => {
   const [screen, setScreen] = useState('WELCOME');
   const [previousScreen, setPreviousScreen] = useState('FEED');
-  const [selectedPerson, setSelectedPerson] = useState(null);  const [selectedConversation, setSelectedConversation] = useState(null);  const [isAddMomentModalOpen, setIsAddMomentModalOpen] = useState(false);
+  const [selectedPerson, setSelectedPerson] = useState(null); const [selectedConversation, setSelectedConversation] = useState(null); const [isAddMomentModalOpen, setIsAddMomentModalOpen] = useState(false);
   const [isAddReflectionModalOpen, setIsAddReflectionModalOpen] = useState(false);
   const [viewingStory, setViewingStory] = useState(null);
-  
+
   // Video call state
   const [inVideoCall, setInVideoCall] = useState(false);
   const [isVoiceCall, setIsVoiceCall] = useState(false); // New state for voice-only calls
@@ -33,24 +34,27 @@ export const AppProvider = ({ children }) => {
   const [scheduledCallUid, setScheduledCallUid] = useState(null); // Stores Agora UID for scheduled calls
   const [scheduledCallAppId, setScheduledCallAppId] = useState(null); // Stores Agora App ID for scheduled calls
   const [callDeclined, setCallDeclined] = useState(false); // Flag to show "Call Declined" message
-  
+
   // Call minimization state
   const [isCallMinimized, setIsCallMinimized] = useState(false);
   const [callState, setCallState] = useState({ duration: 0, isMicOn: true, isCameraOn: false });
-  const [callControls, setCallControls] = useState({ toggleMic: () => {}, toggleCamera: () => {}, endCall: () => {}, maximizeCall: () => {} });
-  
+  const [callControls, setCallControls] = useState({ toggleMic: () => { }, toggleCamera: () => { }, endCall: () => { }, maximizeCall: () => { } });
+
   // User authentication state
   const [user, setUser] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [authError, setAuthError] = useState(null);
-  
+
   // Connection requests count
   const [pendingRequestsCount, setPendingRequestsCount] = useState(0);
-  
+
   // Unread messages count
   const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
-  
+
+  // Unread notifications count
+  const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
+
   // Pending call booking requests count
   const [pendingCallRequestsCount, setPendingCallRequestsCount] = useState(0);
 
@@ -66,7 +70,9 @@ export const AppProvider = ({ children }) => {
   const [connectionsMode, setConnectionsMode] = useState(null);
   // Payload used when sharing content into chat (cleared after consumption)
   const [sharePayload, setSharePayload] = useState(null);
-  
+  // Selected post ID for post detail view (navigated from notifications)
+  const [selectedPostId, setSelectedPostId] = useState(null);
+
   // Notification preferences
   const [notificationPreferences, setNotificationPreferences] = useState({
     messageNotifications: true,
@@ -74,7 +80,7 @@ export const AppProvider = ({ children }) => {
     scheduledCallNotifications: true,
     connectionRequestNotifications: true
   });
-  
+
   const [profileData, setProfileData] = useState({
     name: '',
     organization: '',
@@ -87,7 +93,7 @@ export const AppProvider = ({ children }) => {
     expertise: '',
     exploring: '',
   });
-  
+
   const [onboardingAnswers, setOnboardingAnswers] = useState({});
 
   // Check authentication status on mount
@@ -97,25 +103,25 @@ export const AppProvider = ({ children }) => {
         // Check if token is in URL (from Google OAuth redirect)
         const urlParams = new URLSearchParams(window.location.search);
         const tokenFromUrl = urlParams.get('token');
-        
+
         if (tokenFromUrl) {
           // Store token in localStorage
           localStorage.setItem('access_token', tokenFromUrl);
           // Clean up URL
           window.history.replaceState({}, document.title, window.location.pathname);
         }
-        
+
         const userData = await authService.getCurrentUser();
         setUser(userData);
         setIsAuthenticated(true);
-        
+
         // Set user as online
         try {
           await userService.setOnline();
         } catch (error) {
           console.error('Failed to set online status:', error);
         }
-        
+
         // Load onboarding answers from backend
         if (userData.onboarding_answers && Object.keys(userData.onboarding_answers).length > 0) {
           setOnboardingAnswers(userData.onboarding_answers);
@@ -135,7 +141,7 @@ export const AppProvider = ({ children }) => {
             setOnboardingAnswers(answers);
           }
         }
-        
+
         // Only auto-navigate if not already on WELCOME or auth screens
         if (screen === 'WELCOME' || screen === 'LOGIN' || screen === 'SIGNUP') {
           setScreen('FEED');
@@ -165,12 +171,12 @@ export const AppProvider = ({ children }) => {
     const pollInvitations = async () => {
       // Skip polling if page is hidden
       if (document.hidden) return;
-      
+
       try {
         const invitations = await callsService.getPendingInvitations();
         if (invitations && invitations.length > 0) {
           const latestInvitation = invitations[0];
-          
+
           // Check if this is a scheduled call invitation
           if (latestInvitation.booking_id) {
             // Use IncomingCallNotification for scheduled calls - only if notifications are enabled
@@ -205,7 +211,7 @@ export const AppProvider = ({ children }) => {
 
     // Start polling
     interval = setInterval(pollInvitations, 3000);
-    
+
     // Initial poll
     pollInvitations();
 
@@ -244,15 +250,15 @@ export const AppProvider = ({ children }) => {
     const pollOutgoingInvitationStatus = async () => {
       // Skip polling if page is hidden
       if (document.hidden) return;
-      
+
       try {
         const invitation = await callsService.getInvitation(outgoingInvitation.id);
-        
+
         // Check if the invitation was rejected
         if (invitation.status === 'rejected') {
           // Update the invitation status to 'missed' for call history
           await callsService.updateInvitation(outgoingInvitation.id, 'missed', Math.floor(Date.now() / 1000));
-          
+
           // Send missed call log to chat
           try {
             const typeStr = outgoingInvitation.call_type === 'voice' ? 'MISSED_VOICE' : 'MISSED_VIDEO';
@@ -260,10 +266,10 @@ export const AppProvider = ({ children }) => {
           } catch (error) {
             console.error('Failed to log rejected call:', error);
           }
-          
+
           setCallDeclined(true);
           setOutgoingInvitation(null);
-          
+
           // Auto-clear the declined message and exit call after 3 seconds
           setTimeout(() => {
             setCallDeclined(false);
@@ -284,7 +290,7 @@ export const AppProvider = ({ children }) => {
 
     // Start polling every 2 seconds
     interval = setInterval(pollOutgoingInvitationStatus, 2000);
-    
+
     // Initial poll
     pollOutgoingInvitationStatus();
 
@@ -311,14 +317,14 @@ export const AppProvider = ({ children }) => {
       const response = await authService.login(credentials);
       setUser(response.user);
       setIsAuthenticated(true);
-      
+
       // Set user as online
       try {
         await userService.setOnline();
       } catch (error) {
         console.error('Failed to set online status:', error);
       }
-      
+
       setScreen('FEED');
       return response;
     } catch (error) {
@@ -337,14 +343,14 @@ export const AppProvider = ({ children }) => {
       const newUser = await authService.signup(userData);
       setUser(newUser);
       setIsAuthenticated(true);
-      
+
       // Set user as online
       try {
         await userService.setOnline();
       } catch (error) {
         console.error('Failed to set online status:', error);
       }
-      
+
       setScreen('FEED'); // Navigate to main feed
       return newUser;
     } catch (error) {
@@ -364,7 +370,7 @@ export const AppProvider = ({ children }) => {
       } catch (error) {
         console.error('Failed to set offline status:', error);
       }
-      
+
       await authService.logout();
       setUser(null);
       setIsAuthenticated(false);
@@ -406,10 +412,10 @@ export const AppProvider = ({ children }) => {
         lifeLessons: onboardingAnswers['SHARER_TRACK_2'] || [],
         societyChange: onboardingAnswers['SHARER_TRACK_3'] || '',
       };
-      
+
       // Only sync if there's any data
       if (sharerInsights.youngerSelf || sharerInsights.lifeLessons.length > 0 || sharerInsights.societyChange) {
-        await updateUserProfile({ 
+        await updateUserProfile({
           sharer_insights: sharerInsights,
           onboarding_answers: onboardingAnswers // Save all onboarding answers
         });
@@ -424,7 +430,7 @@ export const AppProvider = ({ children }) => {
     try {
       // Only sync if user is authenticated and there are answers
       if (isAuthenticated && user && Object.keys(onboardingAnswers).length > 0) {
-        await updateUserProfile({ 
+        await updateUserProfile({
           onboarding_answers: onboardingAnswers
         });
       }
@@ -440,7 +446,7 @@ export const AppProvider = ({ children }) => {
       const timeoutId = setTimeout(() => {
         syncOnboardingAnswers();
       }, 1000); // Wait 1 second after last change
-      
+
       return () => clearTimeout(timeoutId);
     }
   }, [onboardingAnswers, isAuthenticated, user]);
@@ -449,10 +455,10 @@ export const AppProvider = ({ children }) => {
   useEffect(() => {
     if (isAuthenticated && user) {
       // Check if any wisdom-related answers exist
-      const hasWisdomData = onboardingAnswers['SHARER_TRACK_1'] || 
-                           onboardingAnswers['SHARER_TRACK_2'] || 
-                           onboardingAnswers['SHARER_TRACK_3'];
-      
+      const hasWisdomData = onboardingAnswers['SHARER_TRACK_1'] ||
+        onboardingAnswers['SHARER_TRACK_2'] ||
+        onboardingAnswers['SHARER_TRACK_3'];
+
       if (hasWisdomData) {
         syncSharerInsights();
       }
@@ -475,7 +481,7 @@ export const AppProvider = ({ children }) => {
     fetchPendingRequests();
     // Poll every 30 seconds
     const interval = setInterval(fetchPendingRequests, 30000);
-    
+
     return () => clearInterval(interval);
   }, [isAuthenticated]);
 
@@ -496,7 +502,27 @@ export const AppProvider = ({ children }) => {
     fetchUnreadMessagesCount();
     // Poll every 10 seconds for faster updates
     const interval = setInterval(fetchUnreadMessagesCount, 10000);
-    
+
+    return () => clearInterval(interval);
+  }, [isAuthenticated]);
+
+  // Fetch unread notifications count
+  useEffect(() => {
+    const fetchUnreadNotificationsCount = async () => {
+      if (isAuthenticated) {
+        try {
+          const result = await notificationService.getUnreadCount();
+          setUnreadNotificationsCount(result.count || 0);
+        } catch (error) {
+          console.error('Failed to fetch unread notifications count:', error);
+        }
+      }
+    };
+
+    fetchUnreadNotificationsCount();
+    // Poll every 30 seconds
+    const interval = setInterval(fetchUnreadNotificationsCount, 30000);
+
     return () => clearInterval(interval);
   }, [isAuthenticated]);
 
@@ -519,7 +545,7 @@ export const AppProvider = ({ children }) => {
     fetchPendingCallRequests();
     // Poll every 30 seconds
     const interval = setInterval(fetchPendingCallRequests, 30000);
-    
+
     return () => clearInterval(interval);
   }, [isAuthenticated]);
 
@@ -600,6 +626,9 @@ export const AppProvider = ({ children }) => {
     setConnectionsMode,
     sharePayload,
     setSharePayload,
+    // Selected post for detail view
+    selectedPostId,
+    setSelectedPostId,
     // Toast notifications
     toast,
     setToast,
@@ -610,6 +639,9 @@ export const AppProvider = ({ children }) => {
     // Notification preferences
     notificationPreferences,
     setNotificationPreferences,
+    // Unread notifications count
+    unreadNotificationsCount,
+    setUnreadNotificationsCount,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

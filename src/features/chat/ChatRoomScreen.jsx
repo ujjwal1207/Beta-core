@@ -11,14 +11,14 @@ import PostCard from '../feed/components/PostCard';
 import { getAvatarUrlWithSize } from '../../lib/avatarUtils';
 
 const ChatRoomScreen = () => {
-  const { 
-    setScreen, 
-    previousScreen, 
-    selectedPerson, 
-    selectedConversation, 
-    setSelectedConversation, 
-    setInVideoCall, 
-    setCallRecipient, 
+  const {
+    setScreen,
+    previousScreen,
+    selectedPerson,
+    selectedConversation,
+    setSelectedConversation,
+    setInVideoCall,
+    setCallRecipient,
     setActiveCallChannel,
     setOutgoingInvitation,
     setIsVoiceCall,
@@ -87,14 +87,14 @@ const ChatRoomScreen = () => {
   // Load current user and messages
   useEffect(() => {
     loadData();
-    
+
     // Start polling for new messages every second for instant updates
     pollingIntervalRef.current = setInterval(() => {
       if (conversationId && currentUserId) {
         loadNewMessages();
       }
     }, 1000);
-    
+
     // Cleanup on unmount
     return () => {
       if (pollingIntervalRef.current) {
@@ -108,27 +108,27 @@ const ChatRoomScreen = () => {
 
     try {
       setIsLoading(true);
-      
+
       // Get current user
       const user = await authService.getCurrentUser();
       setCurrentUserId(user.id);
 
       // Get or create conversation
       let convId = selectedConversation?.id;
-      
+
       if (!convId) {
         // No conversation yet, fetch or create it
         const conv = await chatService.getPrivateConversation(selectedPerson.id);
         convId = conv.id;
         setSelectedConversation(conv);
       }
-      
+
       setConversationId(convId);
 
       // Load messages
       if (convId) {
         const messagesData = await chatService.getMessages(convId);
-        
+
         // Transform backend messages to display format
         const transformedMessages = messagesData.map(msg => {
           const msgDate = new Date(msg.created_at * 1000); // Unix timestamp to Date
@@ -141,9 +141,9 @@ const ChatRoomScreen = () => {
             attachment_type: msg.attachment_type
           };
         });
-        
+
         setMessages(transformedMessages);
-        
+
         // Scroll to bottom after initial load, but wait for DOM to update
         // Use setTimeout to ensure the container is rendered
         setTimeout(() => {
@@ -165,7 +165,7 @@ const ChatRoomScreen = () => {
 
     try {
       const messagesData = await chatService.getMessages(conversationId);
-      
+
       // Transform backend messages to display format
       const transformedMessages = messagesData.map(msg => {
         const msgDate = new Date(msg.created_at * 1000); // Unix timestamp to Date
@@ -178,7 +178,7 @@ const ChatRoomScreen = () => {
           attachment_type: msg.attachment_type
         };
       });
-      
+
       // Only update if we have new messages
       if (transformedMessages.length > messages.length) {
         // Check scroll position BEFORE updating
@@ -186,7 +186,7 @@ const ChatRoomScreen = () => {
         setMessages(transformedMessages);
         // Update isAtBottom state to match actual position
         setIsAtBottom(wasAtBottom);
-        
+
         // Update unread count when new messages arrive (if we're viewing this conversation, it's read)
         // But we should still update the global count by fetching conversations
         updateUnreadCount();
@@ -195,7 +195,7 @@ const ChatRoomScreen = () => {
       console.error('Failed to load new messages:', error);
     }
   };
-  
+
   // Update unread messages count
   const updateUnreadCount = async () => {
     try {
@@ -218,11 +218,11 @@ const ChatRoomScreen = () => {
   // Auto-scroll to bottom only if user is already at bottom
   const scrollToBottom = (smooth = true) => {
     if (!messagesContainerRef.current) return;
-    
+
     // Use scrollTop instead of scrollIntoView to avoid scrolling the entire page
     const container = messagesContainerRef.current;
     const scrollHeight = container.scrollHeight;
-    
+
     if (smooth) {
       container.scrollTo({
         top: scrollHeight,
@@ -264,12 +264,12 @@ const ChatRoomScreen = () => {
 
     try {
       let sentMessage;
-      
+
       // Send message with or without file
       if (fileToSend) {
         sentMessage = await chatService.sendMessageWithFile(
-          selectedPerson.id, 
-          messageText, 
+          selectedPerson.id,
+          messageText,
           fileToSend
         );
       } else {
@@ -288,10 +288,10 @@ const ChatRoomScreen = () => {
       };
 
       setMessages(prev => [...prev, newMessage]);
-      
+
       // Always scroll to bottom when user sends a message
       setIsAtBottom(true);
-      
+
       // Immediately check for new messages after sending
       loadNewMessages();
     } catch (error) {
@@ -308,32 +308,32 @@ const ChatRoomScreen = () => {
   if (!selectedPerson) return <div className="p-4">No chat selected</div>;
 
   return (
-    <div className="flex flex-col h-full bg-slate-50">
+    <div className="flex flex-col h-full bg-slate-50 overflow-x-hidden">
       {/* Chat Header */}
       <div className="bg-white px-4 py-3 flex items-center justify-between border-b border-slate-200 shadow-sm z-10 sticky top-0">
         <div className="flex items-center gap-3">
-          <button 
+          <button
             onClick={() => setScreen(previousScreen || 'MY_CONNECTIONS')}
             className="p-2 -ml-2 rounded-full hover:bg-slate-100 text-slate-600"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
-          
-          <button 
+
+          <button
             onClick={() => {
               setScreen('PROFILE_DETAIL');
             }}
             className="flex items-center gap-3 hover:bg-slate-50 rounded-lg px-2 py-1 -ml-2 transition-colors"
           >
             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-white font-bold text-sm overflow-hidden">
-              <img 
-                src={getAvatarUrlWithSize(selectedPerson, 100)} 
-                alt={selectedPerson.full_name || selectedPerson.name} 
+              <img
+                src={getAvatarUrlWithSize(selectedPerson, 100)}
+                alt={selectedPerson.full_name || selectedPerson.name}
                 className="w-10 h-10 rounded-full object-cover"
               />
             </div>
-            <div className="text-left">
-              <h2 className="font-bold text-slate-800 text-sm">{selectedPerson.full_name || selectedPerson.name}</h2>
+            <div className="text-left min-w-0">
+              <h2 className="font-bold text-slate-800 text-sm truncate max-w-[150px] sm:max-w-none">{selectedPerson.full_name || selectedPerson.name}</h2>
               <p className={`text-xs flex items-center gap-1 ${isPersonOnline ? 'text-green-600' : 'text-slate-500'}`}>
                 <span className={`w-1.5 h-1.5 rounded-full ${isPersonOnline ? 'bg-green-500 animate-pulse' : 'bg-slate-400'}`}></span>
                 {isPersonOnline ? 'Online' : 'Offline'}
@@ -343,7 +343,7 @@ const ChatRoomScreen = () => {
         </div>
 
         <div className="flex items-center gap-3 text-slate-600">
-          <button 
+          <button
             onClick={() => setIsScheduleCallModalOpen(true)}
             className="p-2 rounded-full transition-colors hover:bg-slate-100"
             title="Schedule Call"
@@ -354,10 +354,10 @@ const ChatRoomScreen = () => {
       </div>
 
       {/* Messages Area */}
-      <div 
+      <div
         ref={messagesContainerRef}
         onScroll={handleScroll}
-        className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50"
+        className="flex-1 overflow-y-auto overflow-x-hidden p-3 sm:p-4 space-y-3 sm:space-y-4 bg-slate-50"
       >
         {isLoading ? (
           <div className="flex items-center justify-center h-full">
@@ -378,7 +378,7 @@ const ChatRoomScreen = () => {
 
             if (isCallLog) {
               // Remove leading [CALL_LOG] or [CALL_LOG:123] and any spaces
-              const content = msg.text.replace(/^\[CALL_LOG(?::\d+)?\]\s*/,'');
+              const content = msg.text.replace(/^\[CALL_LOG(?::\d+)?\]\s*/, '');
               if (content.startsWith('VOICE ')) {
                 isVoiceCallLog = true;
                 callDuration = content.replace('VOICE ', '');
@@ -398,188 +398,190 @@ const ChatRoomScreen = () => {
             }
 
             return (
-            <div 
-              key={msg.id} 
-              className={`flex ${msg.sender === 'me' ? 'justify-end' : 'justify-start'}`}
-            >
-              <div 
-                className={`
-                  max-w-[75%] px-4 py-3 rounded-2xl text-sm shadow-sm relative group
-                  ${isCallLog || isStoryReply
-                    ? (msg.sender === 'me' ? 'bg-slate-100 text-slate-600 border border-slate-200' : 'bg-slate-100 text-slate-600 border border-slate-200')
-                    : (msg.sender === 'me' 
-                      ? 'bg-indigo-600 text-white rounded-tr-none' 
-                      : 'bg-white text-slate-800 rounded-tl-none border border-slate-100')
-                  }
-                `}
+              <div
+                key={msg.id}
+                className={`flex ${msg.sender === 'me' ? 'justify-end' : 'justify-start'}`}
               >
-                {isCallLog ? (
-                  <div className="flex items-center gap-3">
-                    <div className={`p-2 ${isMissedCall ? 'bg-red-100' : (isVoiceCallLog ? 'bg-green-100' : 'bg-slate-200')} rounded-full`}>
-                      {isMissedCall ? (
-                        isVoiceCallLog ? 
-                          <PhoneMissed className="w-4 h-4 text-red-600" /> : 
-                          <VideoOff className="w-4 h-4 text-red-600" />
-                      ) : (
-                        isVoiceCallLog ? (
-                          <Phone className="w-4 h-4 text-green-600" />
+                <div
+                  className={`
+                  max-w-[80%] sm:max-w-[75%] px-3 sm:px-4 py-2.5 sm:py-3 rounded-2xl text-sm shadow-sm relative group
+                  break-words overflow-hidden
+                  ${isCallLog || isStoryReply
+                      ? (msg.sender === 'me' ? 'bg-slate-100 text-slate-600 border border-slate-200' : 'bg-slate-100 text-slate-600 border border-slate-200')
+                      : (msg.sender === 'me'
+                        ? 'bg-indigo-600 text-white rounded-tr-none'
+                        : 'bg-white text-slate-800 rounded-tl-none border border-slate-100')
+                    }
+                `}
+                  style={{ overflowWrap: 'break-word', wordBreak: 'break-word' }}
+                >
+                  {isCallLog ? (
+                    <div className="flex items-center gap-3">
+                      <div className={`p-2 ${isMissedCall ? 'bg-red-100' : (isVoiceCallLog ? 'bg-green-100' : 'bg-slate-200')} rounded-full`}>
+                        {isMissedCall ? (
+                          isVoiceCallLog ?
+                            <PhoneMissed className="w-4 h-4 text-red-600" /> :
+                            <VideoOff className="w-4 h-4 text-red-600" />
                         ) : (
-                          <Video className="w-4 h-4 text-slate-600" />
-                        )
+                          isVoiceCallLog ? (
+                            <Phone className="w-4 h-4 text-green-600" />
+                          ) : (
+                            <Video className="w-4 h-4 text-slate-600" />
+                          )
+                        )}
+                      </div>
+                      <div>
+                        <p className={`font-medium ${isMissedCall ? 'text-red-800' : ''}`}>
+                          {isMissedCall
+                            ? (isVoiceCallLog ? 'Missed Voice Call' : 'Missed Video Call')
+                            : (isVoiceCallLog ? 'Voice Call Ended' : 'Video Call Ended')
+                          }
+                        </p>
+                        {!isMissedCall && <p className="text-xs opacity-80">{callDuration}</p>}
+                      </div>
+                    </div>
+                  ) : isStoryReply ? (
+                    <div className="flex items-start gap-3">
+                      <div className="p-2 bg-gradient-to-br from-pink-100 to-purple-100 rounded-full">
+                        <MessageCircle className="w-4 h-4 text-purple-600" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-medium text-purple-800 text-xs mb-1">Reflection Reply</p>
+                        <p className="text-slate-700">{storyReplyText}</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      {/* Image attachment */}
+                      {msg.attachment_type === 'image' && msg.attachment_url && (
+                        <div className="mb-2 relative group overflow-hidden rounded-lg">
+                          <img
+                            src={msg.attachment_url}
+                            alt="Shared image"
+                            className="max-w-full w-full rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
+                            onClick={() => setViewingImage(msg.attachment_url)}
+                          />
+                          <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setViewingImage(msg.attachment_url);
+                              }}
+                              className="p-2 bg-black/60 hover:bg-black/80 rounded-full text-white transition-colors"
+                              title="View full size"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
+                            <a
+                              href={msg.attachment_url}
+                              download="image.jpg"
+                              onClick={(e) => e.stopPropagation()}
+                              className="p-2 bg-black/60 hover:bg-black/80 rounded-full text-white transition-colors"
+                              title="Download image"
+                            >
+                              <Download className="w-4 h-4" />
+                            </a>
+                          </div>
+                        </div>
                       )}
-                    </div>
-                    <div>
-                      <p className={`font-medium ${isMissedCall ? 'text-red-800' : ''}`}>
-                        {isMissedCall 
-                          ? (isVoiceCallLog ? 'Missed Voice Call' : 'Missed Video Call')
-                          : (isVoiceCallLog ? 'Voice Call Ended' : 'Video Call Ended')
-                        }
-                      </p>
-                      {!isMissedCall && <p className="text-xs opacity-80">{callDuration}</p>}
-                    </div>
-                  </div>
-                ) : isStoryReply ? (
-                  <div className="flex items-start gap-3">
-                    <div className="p-2 bg-gradient-to-br from-pink-100 to-purple-100 rounded-full">
-                      <MessageCircle className="w-4 h-4 text-purple-600" />
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-medium text-purple-800 text-xs mb-1">Reflection Reply</p>
-                      <p className="text-slate-700">{storyReplyText}</p>
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    {/* Image attachment */}
-                    {msg.attachment_type === 'image' && msg.attachment_url && (
-                      <div className="mb-2 relative group">
-                        <img 
-                          src={msg.attachment_url} 
-                          alt="Shared image" 
-                          className="max-w-full rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
-                          onClick={() => setViewingImage(msg.attachment_url)}
-                        />
-                        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setViewingImage(msg.attachment_url);
-                            }}
-                            className="p-2 bg-black/60 hover:bg-black/80 rounded-full text-white transition-colors"
-                            title="View full size"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </button>
+
+                      {/* PDF attachment */}
+                      {msg.attachment_type === 'pdf' && msg.attachment_url && (
+                        <div className="mb-2 p-3 bg-slate-100 rounded-lg flex items-center gap-3 cursor-pointer hover:bg-slate-200 transition-colors">
+                          <div className="p-2 bg-red-100 rounded-lg">
+                            <FileText className="w-5 h-5 text-red-600" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-slate-800 truncate">PDF Document</p>
+                            <p className="text-xs text-slate-500">Click to view</p>
+                          </div>
                           <a
                             href={msg.attachment_url}
-                            download="image.jpg"
+                            download
                             onClick={(e) => e.stopPropagation()}
-                            className="p-2 bg-black/60 hover:bg-black/80 rounded-full text-white transition-colors"
-                            title="Download image"
+                            className="p-2 hover:bg-slate-300 rounded-full transition-colors"
                           >
-                            <Download className="w-4 h-4" />
+                            <Download className="w-4 h-4 text-slate-600" />
                           </a>
                         </div>
-                      </div>
-                    )}
-                    
-                    {/* PDF attachment */}
-                    {msg.attachment_type === 'pdf' && msg.attachment_url && (
-                      <div className="mb-2 p-3 bg-slate-100 rounded-lg flex items-center gap-3 cursor-pointer hover:bg-slate-200 transition-colors">
-                        <div className="p-2 bg-red-100 rounded-lg">
-                          <FileText className="w-5 h-5 text-red-600" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-slate-800 truncate">PDF Document</p>
-                          <p className="text-xs text-slate-500">Click to view</p>
-                        </div>
-                        <a 
-                          href={msg.attachment_url} 
-                          download 
-                          onClick={(e) => e.stopPropagation()}
-                          className="p-2 hover:bg-slate-300 rounded-full transition-colors"
-                        >
-                          <Download className="w-4 h-4 text-slate-600" />
-                        </a>
-                      </div>
-                    )}
+                      )}
 
-                    {/* Post attachment */}
-                    {msg.attachment_type === 'post' && msg.attachment_url && (
-                      <div className="border border-slate-200 rounded-lg p-3 bg-slate-50">
-                        <div className="flex items-center gap-2 mb-2">
-                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-white font-bold text-xs">
-                            P
-                          </div>
-                          <span className="text-xs text-slate-600">Shared Post</span>
-                        </div>
-                        {(() => {
-                          const postId = msg.attachment_url.split('/').pop();
-                          const postData = postCache.get(postId);
-                          return postData ? (
-                            <div className="space-y-2">
-                              {/* Post content preview */}
-                              <p className="text-sm text-slate-800 line-clamp-2">
-                                {postData.content || postData.text || 'Shared a post'}
-                              </p>
-                              
-                              {/* Post image preview */}
-                              {postData.image_url && (
-                                <div className="rounded-md overflow-hidden border border-slate-200">
-                                  <img
-                                    src={postData.image_url}
-                                    alt="Post image"
-                                    className="w-full h-20 object-cover"
-                                  />
-                                </div>
-                              )}
-                              
-                              {/* Post video preview */}
-                              {postData.video_url && (
-                                <div className="rounded-md overflow-hidden border border-slate-200">
-                                  <video
-                                    src={postData.video_url}
-                                    className="w-full h-20 object-cover"
-                                    preload="metadata"
-                                    muted
-                                  >
-                                    <div className="w-full h-20 bg-slate-200 flex items-center justify-center text-slate-500 text-xs">
-                                      Video
-                                    </div>
-                                  </video>
-                                </div>
-                              )}
+                      {/* Post attachment */}
+                      {msg.attachment_type === 'post' && msg.attachment_url && (
+                        <div className="border border-slate-200 rounded-lg p-3 bg-slate-50">
+                          <div className="flex items-center gap-2 mb-2">
+                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-white font-bold text-xs">
+                              P
                             </div>
-                          ) : (
-                            <p className="text-sm text-slate-600">Loading post...</p>
-                          );
-                        })()}
-                        <button
-                          onClick={() => {
+                            <span className="text-xs text-slate-600">Shared Post</span>
+                          </div>
+                          {(() => {
                             const postId = msg.attachment_url.split('/').pop();
                             const postData = postCache.get(postId);
-                            if (postData) {
-                              setViewingPost(postData);
-                            }
-                          }}
-                          className="text-xs text-indigo-600 hover:text-indigo-800 font-medium mt-2"
-                        >
-                          View
-                        </button>
-                      </div>
-                    )}
-                    
-                    {/* Text content */}
-                    {msg.text && <p>{msg.text}</p>}
-                  </>
-                )}
-                <span 
-                  className={`text-[10px] mt-1 block opacity-70 ${msg.sender === 'me' && !isCallLog && !isStoryReply ? 'text-indigo-200' : 'text-slate-400'}`}
-                >
-                  {msg.time}
-                </span>
+                            return postData ? (
+                              <div className="space-y-2">
+                                {/* Post content preview */}
+                                <p className="text-sm text-slate-800 line-clamp-2">
+                                  {postData.content || postData.text || 'Shared a post'}
+                                </p>
+
+                                {/* Post image preview */}
+                                {postData.image_url && (
+                                  <div className="rounded-md overflow-hidden border border-slate-200">
+                                    <img
+                                      src={postData.image_url}
+                                      alt="Post image"
+                                      className="w-full h-20 object-cover"
+                                    />
+                                  </div>
+                                )}
+
+                                {/* Post video preview */}
+                                {postData.video_url && (
+                                  <div className="rounded-md overflow-hidden border border-slate-200">
+                                    <video
+                                      src={postData.video_url}
+                                      className="w-full h-20 object-cover"
+                                      preload="metadata"
+                                      muted
+                                    >
+                                      <div className="w-full h-20 bg-slate-200 flex items-center justify-center text-slate-500 text-xs">
+                                        Video
+                                      </div>
+                                    </video>
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <p className="text-sm text-slate-600">Loading post...</p>
+                            );
+                          })()}
+                          <button
+                            onClick={() => {
+                              const postId = msg.attachment_url.split('/').pop();
+                              const postData = postCache.get(postId);
+                              if (postData) {
+                                setViewingPost(postData);
+                              }
+                            }}
+                            className="text-xs text-indigo-600 hover:text-indigo-800 font-medium mt-2"
+                          >
+                            View
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Text content */}
+                      {msg.text && <p className="break-words" style={{ overflowWrap: 'break-word', wordBreak: 'break-word' }}>{msg.text}</p>}
+                    </>
+                  )}
+                  <span
+                    className={`text-[10px] mt-1 block opacity-70 ${msg.sender === 'me' && !isCallLog && !isStoryReply ? 'text-indigo-200' : 'text-slate-400'}`}
+                  >
+                    {msg.time}
+                  </span>
+                </div>
               </div>
-            </div>
             );
           })
         )}
@@ -591,9 +593,9 @@ const ChatRoomScreen = () => {
         {selectedFile && (
           <div className="mb-2 px-3 py-2 bg-indigo-50 rounded-lg flex items-center gap-3">
             {selectedFile.type.startsWith('image/') ? (
-              <img 
-                src={URL.createObjectURL(selectedFile)} 
-                alt="Preview" 
+              <img
+                src={URL.createObjectURL(selectedFile)}
+                alt="Preview"
                 className="w-12 h-12 object-cover rounded"
               />
             ) : (
@@ -609,7 +611,7 @@ const ChatRoomScreen = () => {
                 {(selectedFile.size / 1024).toFixed(1)} KB
               </span>
             </div>
-            <button 
+            <button
               onClick={() => setSelectedFile(null)}
               className="ml-2 text-indigo-400 hover:text-indigo-600 text-xl leading-none"
             >
@@ -617,11 +619,11 @@ const ChatRoomScreen = () => {
             </button>
           </div>
         )}
-        <form onSubmit={handleSend} className="flex items-end gap-2 bg-slate-100 p-2 rounded-xl">
-          <input 
+        <form onSubmit={handleSend} className="flex items-end gap-1.5 sm:gap-2 bg-slate-100 p-1.5 sm:p-2 rounded-xl">
+          <input
             ref={fileInputRef}
-            type="file" 
-            className="hidden" 
+            type="file"
+            className="hidden"
             onChange={(e) => {
               const file = e.target.files[0];
               if (file) {
@@ -631,7 +633,7 @@ const ChatRoomScreen = () => {
                   alert('Only images (JPEG, PNG, GIF, WebP) and PDF files are allowed');
                   return;
                 }
-                
+
                 // Validate file size
                 if (file.size > 10 * 1024 * 1024) {
                   alert('File size must be less than 10MB');
@@ -642,8 +644,8 @@ const ChatRoomScreen = () => {
             }}
             accept="image/*,.pdf"
           />
-          <button 
-            type="button" 
+          <button
+            type="button"
             onClick={() => fileInputRef.current?.click()}
             className="p-2 text-slate-400 hover:text-indigo-600 transition-colors"
           >
@@ -653,7 +655,7 @@ const ChatRoomScreen = () => {
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
             placeholder={selectedFile ? "Add a caption (optional)..." : "Type a message..."}
-            className="flex-1 bg-transparent border-none focus:ring-0 text-sm text-slate-800 resize-none max-h-32 py-2"
+            className="flex-1 min-w-0 bg-transparent border-none focus:ring-0 text-sm text-slate-800 resize-none max-h-32 py-2"
             rows="1"
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
@@ -662,9 +664,9 @@ const ChatRoomScreen = () => {
               }
             }}
           />
-          <button 
+          <button
             type="submit"
-            disabled={(!inputText.trim() && !selectedFile) || isSending} 
+            disabled={(!inputText.trim() && !selectedFile) || isSending}
             className="p-2 bg-indigo-600 text-white rounded-full disabled:opacity-50 disabled:cursor-not-allowed hover:bg-indigo-700 transition-all shadow-md"
           >
             {isSending ? <Loader className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
@@ -674,7 +676,7 @@ const ChatRoomScreen = () => {
 
       {/* Image Viewer Modal */}
       {viewingImage && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/90 z-[200] flex items-center justify-center p-4"
           onClick={() => setViewingImage(null)}
         >
@@ -693,9 +695,9 @@ const ChatRoomScreen = () => {
           >
             <Download className="w-6 h-6" />
           </a>
-          <img 
-            src={viewingImage} 
-            alt="Full size" 
+          <img
+            src={viewingImage}
+            alt="Full size"
             className="max-w-full max-h-full object-contain rounded-lg"
             onClick={(e) => e.stopPropagation()}
           />
@@ -723,9 +725,9 @@ const ChatRoomScreen = () => {
       )}
 
       {/* Schedule Call Modal */}
-      <ScheduleCallModal 
-        isOpen={isScheduleCallModalOpen} 
-        onClose={() => setIsScheduleCallModalOpen(false)} 
+      <ScheduleCallModal
+        isOpen={isScheduleCallModalOpen}
+        onClose={() => setIsScheduleCallModalOpen(false)}
         person={selectedPerson}
       />
     </div>

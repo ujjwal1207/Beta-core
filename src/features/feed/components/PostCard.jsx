@@ -36,7 +36,7 @@ const PostCard = ({ post, onUpdate, onHide, showNotInterested = true }) => {
   const [deletingCommentId, setDeletingCommentId] = useState(null);
   const [isDeletingComment, setIsDeletingComment] = useState(false);
   const menuRef = useRef(null);
-  
+
   // Video controls state
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const [videoProgress, setVideoProgress] = useState(0);
@@ -44,7 +44,7 @@ const PostCard = ({ post, onUpdate, onHide, showNotInterested = true }) => {
   const [isVideoMuted, setIsVideoMuted] = useState(true);
   const [showVideoControls, setShowVideoControls] = useState(false);
   const videoRef = useRef(null);
-  
+
   const isOwnPost = user && (post.user_id === user.id || post.userId === user.id);
   const isRepost = post.is_repost || post.isRepost;
 
@@ -123,7 +123,7 @@ const PostCard = ({ post, onUpdate, onHide, showNotInterested = true }) => {
 
   const handleSaveEdit = async () => {
     if (!editedContent.trim() || isUpdating) return;
-    
+
     setIsUpdating(true);
     try {
       await feedService.updatePost(post.id, { content: editedContent });
@@ -162,7 +162,7 @@ const PostCard = ({ post, onUpdate, onHide, showNotInterested = true }) => {
 
   const handleLike = async () => {
     if (isLiking) return;
-    
+
     setIsLiking(true);
     try {
       const result = await engagementService.toggleLike(post.id);
@@ -177,7 +177,7 @@ const PostCard = ({ post, onUpdate, onHide, showNotInterested = true }) => {
 
   const handleSave = async () => {
     if (isSaving) return;
-    
+
     setIsSaving(true);
     try {
       const result = await feedService.toggleSavePost(post.id);
@@ -191,7 +191,7 @@ const PostCard = ({ post, onUpdate, onHide, showNotInterested = true }) => {
 
   const handleRepost = async () => {
     if (isReposting) return;
-    
+
     setIsReposting(true);
     try {
       await feedService.repostPost(post.id);
@@ -309,7 +309,7 @@ const PostCard = ({ post, onUpdate, onHide, showNotInterested = true }) => {
       setComments([...comments, newComment]);
       setCommentsCount(commentsCount + 1);
       setCommentText('');
-      
+
       // Notify parent to refresh if needed
       if (onUpdate) onUpdate();
     } catch (error) {
@@ -338,7 +338,7 @@ const PostCard = ({ post, onUpdate, onHide, showNotInterested = true }) => {
       setComments(comments.map(c => c.id === editingCommentId ? updatedComment : c));
       setEditingCommentId(null);
       setEditingCommentText('');
-      
+
       // Notify parent to refresh if needed
       if (onUpdate) onUpdate();
     } catch (error) {
@@ -358,7 +358,7 @@ const PostCard = ({ post, onUpdate, onHide, showNotInterested = true }) => {
       await engagementService.deleteComment(post.id, commentId);
       setComments(comments.filter(c => c.id !== commentId));
       setCommentsCount(commentsCount - 1);
-      
+
       // Notify parent to refresh if needed
       if (onUpdate) onUpdate();
     } catch (error) {
@@ -379,7 +379,7 @@ const PostCard = ({ post, onUpdate, onHide, showNotInterested = true }) => {
           <span>{post.name || post.user_name} reposted from {post.original_post_user_name || post.originalPostUserName}</span>
         </div>
       )}
-      
+
       <div className="flex items-center mb-3">
         <div className="w-10 h-10 flex items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 text-white font-bold text-base mr-3 overflow-hidden">
           {(post.image || post.user_profile_photo) ? (
@@ -396,13 +396,13 @@ const PostCard = ({ post, onUpdate, onHide, showNotInterested = true }) => {
           <p className="text-xs text-slate-500">{post.role || post.user_role}</p>
         </div>
         <div className="relative" ref={menuRef}>
-          <button 
+          <button
             onClick={() => setShowMenu(!showMenu)}
             className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors"
           >
             <MoreVertical className="w-5 h-5" />
           </button>
-          
+
           {showMenu && (
             <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-lg border border-slate-200 py-1 z-10">
               {isOwnPost ? (
@@ -453,7 +453,7 @@ const PostCard = ({ post, onUpdate, onHide, showNotInterested = true }) => {
           )}
         </div>
       </div>
-      
+
       {isEditMode ? (
         <div className="mb-3">
           <textarea
@@ -483,10 +483,10 @@ const PostCard = ({ post, onUpdate, onHide, showNotInterested = true }) => {
       ) : (
         <>
           <p className="text-sm text-slate-700 mb-3">{post.content || post.text}</p>
-          
+
           {/* Original Post Reference for Reposts */}
           {isRepost && (post.original_post_user_name || post.originalPostUserName) && (
-            <div 
+            <div
               onClick={handleViewOriginalPost}
               className="mt-3 mb-3 p-3 border-2 border-slate-200 rounded-lg bg-slate-50 hover:bg-slate-100 hover:border-indigo-300 cursor-pointer transition-all duration-200"
             >
@@ -509,16 +509,16 @@ const PostCard = ({ post, onUpdate, onHide, showNotInterested = true }) => {
           )}
         </>
       )}
-      
+
       {(post.imageUrl || post.image_url || post.videoUrl || post.video_url) && (
-        <div className="bg-slate-100 h-48 rounded-lg mb-3 flex items-center justify-center overflow-hidden relative group">
+        <div className="bg-slate-100 rounded-lg mb-3 overflow-hidden relative group" style={{ aspectRatio: '4/5' }}>
           {(post.imageUrl || post.image_url) && (
-            <img 
-              src={post.imageUrl || post.image_url} 
-              alt="Post" 
+            <img
+              src={post.imageUrl || post.image_url}
+              alt="Post"
               loading="lazy"
               decoding="async"
-              className="max-w-full max-h-full object-contain cursor-pointer hover:opacity-90 transition-opacity" 
+              className="w-full h-full object-cover cursor-pointer hover:opacity-90 transition-opacity"
               onClick={() => setIsImageFullscreen(true)}
               onError={(e) => {
                 console.error('Failed to load image:', (post.imageUrl || post.image_url)?.substring(0, 100));
@@ -528,7 +528,7 @@ const PostCard = ({ post, onUpdate, onHide, showNotInterested = true }) => {
             />
           )}
           {(post.videoUrl || post.video_url) && (
-            <div 
+            <div
               className="relative w-full h-full cursor-pointer"
               onMouseEnter={() => setShowVideoControls(true)}
               onMouseLeave={() => setShowVideoControls(false)}
@@ -547,7 +547,7 @@ const PostCard = ({ post, onUpdate, onHide, showNotInterested = true }) => {
                 onPause={() => setIsVideoPlaying(false)}
                 onEnded={() => setIsVideoPlaying(false)}
               />
-              
+
               {/* Play/Pause Overlay */}
               {!isVideoPlaying && (
                 <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-20">
@@ -556,24 +556,24 @@ const PostCard = ({ post, onUpdate, onHide, showNotInterested = true }) => {
                   </div>
                 </div>
               )}
-              
+
               {/* Video Controls */}
               <div className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black via-black/50 to-transparent p-3 transition-opacity duration-200 ${showVideoControls ? 'opacity-100' : 'opacity-0'}`}>
                 {/* Progress Bar */}
-                <div 
+                <div
                   className="w-full h-1 bg-white bg-opacity-30 rounded-full mb-2 cursor-pointer"
                   onClick={handleVideoProgressClick}
                 >
-                  <div 
+                  <div
                     className="h-full bg-white rounded-full transition-all duration-100"
                     style={{ width: `${videoProgress}%` }}
                   />
                 </div>
-                
+
                 {/* Control Buttons */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
-                    <button 
+                    <button
                       onClick={(e) => {
                         e.stopPropagation();
                         handleVideoPlayPause();
@@ -582,8 +582,8 @@ const PostCard = ({ post, onUpdate, onHide, showNotInterested = true }) => {
                     >
                       {isVideoPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
                     </button>
-                    
-                    <button 
+
+                    <button
                       onClick={(e) => {
                         e.stopPropagation();
                         toggleVideoMute();
@@ -593,7 +593,7 @@ const PostCard = ({ post, onUpdate, onHide, showNotInterested = true }) => {
                       {isVideoMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
                     </button>
                   </div>
-                  
+
                   <div className="text-white text-xs font-medium">
                     {formatTime(videoRef.current?.currentTime || 0)} / {formatTime(videoDuration)}
                   </div>
@@ -603,10 +603,10 @@ const PostCard = ({ post, onUpdate, onHide, showNotInterested = true }) => {
           )}
         </div>
       )}
-      
+
       <div className="flex justify-between items-center text-slate-500 font-medium mb-2">
         <div className="flex space-x-4">
-          <button 
+          <button
             onClick={handleLike}
             disabled={isLiking}
             className={`flex items-center space-x-1 ${isLiked ? 'text-rose-500' : 'hover:text-rose-500'} p-1 rounded-md transition-colors active:scale-[0.98] disabled:opacity-50`}
@@ -624,16 +624,16 @@ const PostCard = ({ post, onUpdate, onHide, showNotInterested = true }) => {
               />
             </div>
           </button>
-          
-          <button 
+
+          <button
             onClick={handleCommentClick}
             className="flex items-center space-x-1 hover:text-indigo-600 p-1 rounded-md transition-colors active:scale-[0.98]"
           >
             <MessageSquare className="w-6 h-6" />
             {commentsCount > 0 && <span className="text-sm">{commentsCount > 10 ? '10+' : commentsCount}</span>}
           </button>
-          
-          <button 
+
+          <button
             onClick={() => {
               // Prepare a lightweight share payload and navigate to messages
               try {
@@ -654,7 +654,7 @@ const PostCard = ({ post, onUpdate, onHide, showNotInterested = true }) => {
           >
             <Send className="w-6 h-6" />
           </button>
-          <button 
+          <button
             onClick={handleRepost}
             disabled={isReposting || isOwnPost}
             className={`flex items-center ${isOwnPost ? 'text-slate-300 cursor-not-allowed' : 'hover:text-green-500'} p-1 rounded-md transition-colors active:scale-[0.98] disabled:opacity-50`}
@@ -663,7 +663,7 @@ const PostCard = ({ post, onUpdate, onHide, showNotInterested = true }) => {
             <Repeat className="w-6 h-6" />
           </button>
         </div>
-        <button 
+        <button
           onClick={handleSave}
           disabled={isSaving}
           className={`flex items-center ${isSaved ? 'text-indigo-600' : 'hover:text-indigo-600'} p-1 rounded-md transition-colors active:scale-[0.98] disabled:opacity-50`}
@@ -686,13 +686,13 @@ const PostCard = ({ post, onUpdate, onHide, showNotInterested = true }) => {
                   comments.map((comment) => {
                     const isOwnComment = user && comment.user_id === user.id;
                     const isEditing = editingCommentId === comment.id;
-                    
+
                     return (
                       <div key={comment.id} className="flex space-x-2">
                         <div className="w-8 h-8 flex-shrink-0 rounded-full overflow-hidden mt-2">
                           {comment.user_profile_photo ? (
-                            <img 
-                              src={comment.user_profile_photo} 
+                            <img
+                              src={comment.user_profile_photo}
                               alt={comment.user_name}
                               className="w-full h-full object-cover"
                             />
@@ -704,7 +704,7 @@ const PostCard = ({ post, onUpdate, onHide, showNotInterested = true }) => {
                         </div>
                         <div className="flex-1 bg-slate-50 rounded-lg p-2">
                           <div className="flex items-center justify-between mb-1">
-                            <button 
+                            <button
                               onClick={() => handleCommenterClick(comment)}
                               className="text-xs font-semibold text-slate-800 hover:text-indigo-600 hover:underline transition-colors"
                             >
@@ -766,7 +766,7 @@ const PostCard = ({ post, onUpdate, onHide, showNotInterested = true }) => {
                   })
                 )}
               </div>
-              
+
               {/* Add Comment Input */}
               <div className="flex space-x-2">
                 <input
@@ -793,7 +793,7 @@ const PostCard = ({ post, onUpdate, onHide, showNotInterested = true }) => {
 
       {/* Fullscreen Image Viewer */}
       {isImageFullscreen && (post.imageUrl || post.image_url) && (
-        <div 
+        <div
           className="fixed inset-0 bg-black bg-opacity-95 z-50 flex items-center justify-center p-4"
           onClick={() => setIsImageFullscreen(false)}
         >
@@ -803,9 +803,9 @@ const PostCard = ({ post, onUpdate, onHide, showNotInterested = true }) => {
           >
             <X className="w-6 h-6" />
           </button>
-          <img 
-            src={post.imageUrl || post.image_url} 
-            alt="Post fullscreen" 
+          <img
+            src={post.imageUrl || post.image_url}
+            alt="Post fullscreen"
             className="max-w-full max-h-full object-contain"
             onClick={(e) => e.stopPropagation()}
           />
@@ -825,9 +825,9 @@ const PostCard = ({ post, onUpdate, onHide, showNotInterested = true }) => {
                 <X className="w-5 h-5 text-slate-500" />
               </button>
             </div>
-            
+
             {/* Render Original Post as a PostCard for full interactivity */}
-            <PostCard 
+            <PostCard
               post={{
                 id: originalPostData.id,
                 user_id: originalPostData.user_id,

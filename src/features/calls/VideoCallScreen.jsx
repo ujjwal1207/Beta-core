@@ -8,13 +8,13 @@ import { useAppContext } from '../../context/AppContext';
 // Remote video player component defined outside to prevent remounting
 const RemoteVideoPlayer = ({ remoteUser, recipientName }) => {
   const ref = useRef(null);
-  
+
   useEffect(() => {
     console.log('📺 RemoteVideoPlayer effect for:', remoteUser?.uid);
     if (remoteUser?.videoTrack && ref.current) {
       console.log('▶️ Playing remote video track');
       remoteUser.videoTrack.play(ref.current);
-      
+
       // Ensure playsinline for iOS (must be done AFTER play creates the element)
       setTimeout(() => {
         const videoElement = ref.current?.querySelector('video');
@@ -26,7 +26,7 @@ const RemoteVideoPlayer = ({ remoteUser, recipientName }) => {
     } else {
       console.log('⚠️ No video track or ref for remote user');
     }
-    
+
     return () => {
       if (remoteUser?.videoTrack) {
         // Don't stop the track here, just let it be handled by unpublish/leave
@@ -67,7 +67,7 @@ const RemoteVideoPlayer = ({ remoteUser, recipientName }) => {
 const VideoCallScreen = ({ recipientUser, channelName, token, uid, appId, onCallEnd }) => {
   // Get voice call setting from context if not available in props
   const { isVoiceCall, setInVideoCall, setIsCallMinimized, setCallState, setCallControls, showToast } = useAppContext();
-  
+
   // State
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -87,7 +87,8 @@ const VideoCallScreen = ({ recipientUser, channelName, token, uid, appId, onCall
   const isInitializingRef = useRef(false);
   const hasJoinedRef = useRef(false);
   const isJoiningRef = useRef(false); // Track if join is in progress
-  
+  const hasAutoDisconnectedRef = useRef(false); // Prevent multiple auto-disconnect calls
+
   // Keep latest onCallEnd callback available in effects
   const onCallEndRef = useRef(onCallEnd);
   useEffect(() => {
@@ -108,8 +109,8 @@ const VideoCallScreen = ({ recipientUser, channelName, token, uid, appId, onCall
 
   // Sync call state to shared context (separate effect to avoid render issues)
   useEffect(() => {
-    setCallState(prevState => ({ 
-      ...prevState, 
+    setCallState(prevState => ({
+      ...prevState,
       duration: callDuration,
       isMicOn,
       isCameraOn
@@ -127,7 +128,8 @@ const VideoCallScreen = ({ recipientUser, channelName, token, uid, appId, onCall
     }
 
     // Auto-disconnect at 30 minutes (1800 seconds)
-    if (callDuration >= 1800) {
+    if (callDuration >= 1800 && !hasAutoDisconnectedRef.current) {
+      hasAutoDisconnectedRef.current = true;
       console.log('Call duration reached 30 minutes, auto-disconnecting...');
       if (onCallEndRef.current) {
         onCallEndRef.current(callDuration);
@@ -156,7 +158,7 @@ const VideoCallScreen = ({ recipientUser, channelName, token, uid, appId, onCall
         console.log('⚠️ Already initializing, skipping...');
         return;
       }
-      
+
       // Skip if client already exists and is connected/connecting
       if (clientRef.current) {
         const state = clientRef.current.connectionState;
@@ -165,15 +167,15 @@ const VideoCallScreen = ({ recipientUser, channelName, token, uid, appId, onCall
           return;
         }
       }
-      
+
       isInitializingRef.current = true;
-      
+
       try {
         // Get Agora credentials
         // Use provided token/uid if available (for scheduled calls), otherwise fetch new ones
         const targetChannel = channelName || recipientUser.id;
         console.log('📞 Joining channel:', targetChannel);
-        
+
         let agoraCredentials;
         if (token && uid) {
           console.log('📞 Using provided scheduled call credentials');
@@ -187,7 +189,7 @@ const VideoCallScreen = ({ recipientUser, channelName, token, uid, appId, onCall
           console.log('📞 Fetching new Agora credentials for channel:', targetChannel);
           agoraCredentials = await callsService.getAgoraToken(targetChannel);
         }
-        
+
         const { app_id, channel_name, token: agoraToken, uid: agoraUid } = agoraCredentials;
 
         if (!isMounted) return;
@@ -209,7 +211,7 @@ const VideoCallScreen = ({ recipientUser, channelName, token, uid, appId, onCall
           console.log(`📡 User published: ${remoteUser.uid} [${mediaType}]`);
           await client.subscribe(remoteUser, mediaType);
           console.log(`✅ Subscribed to: ${remoteUser.uid} [${mediaType}]`);
-          
+
           if (mediaType === 'video') {
             setRemoteUsers((prev) => {
               const index = prev.findIndex(u => u.uid === remoteUser.uid);
@@ -222,7 +224,7 @@ const VideoCallScreen = ({ recipientUser, channelName, token, uid, appId, onCall
               return [...prev, remoteUser];
             });
           }
-          
+
           if (mediaType === 'audio' && remoteUser.audioTrack) {
             remoteUser.audioTrack.play();
           }
@@ -242,7 +244,7 @@ const VideoCallScreen = ({ recipientUser, channelName, token, uid, appId, onCall
         client.on('user-left', (remoteUser, reason) => {
           console.log(`User left: ${remoteUser.uid}, reason: ${reason}`);
           setRemoteUsers((prev) => prev.filter(u => u.uid !== remoteUser.uid));
-          
+
           // If the remote user leaves (quits), end the call locally as well
           if (reason === 'Quit' || reason === 'ServerTimeOut') {
             console.log('Remote user left, ending call...');
@@ -276,15 +278,15 @@ const VideoCallScreen = ({ recipientUser, channelName, token, uid, appId, onCall
         }
 
         // Join channel
-      isJoiningRef.current = true; // Mark join as in progress
-      await client.join(app_id, channel_name, agoraToken, Number(agoraUid));
-      
-      if (!isMounted) {
-        isJoiningRef.current = false;
-        return;
-      }
-      hasJoinedRef.current = true;
-      isJoiningRef.current = false; // Join completed
+        isJoiningRef.current = true; // Mark join as in progress
+        await client.join(app_id, channel_name, agoraToken, Number(agoraUid));
+
+        if (!isMounted) {
+          isJoiningRef.current = false;
+          return;
+        }
+        hasJoinedRef.current = true;
+        isJoiningRef.current = false; // Join completed
 
         // Publish tracks
         if (isVoiceCall) {
@@ -294,7 +296,7 @@ const VideoCallScreen = ({ recipientUser, channelName, token, uid, appId, onCall
           await client.publish([audioTrack, videoTrack]);
           isVideoPublishedRef.current = true;
         }
-        
+
         hasPublishedRef.current = true;
         console.log('✅ Successfully published tracks');
 
@@ -316,15 +318,15 @@ const VideoCallScreen = ({ recipientUser, channelName, token, uid, appId, onCall
       isInitializingRef.current = false;
       hasJoinedRef.current = false;
       isJoiningRef.current = false; // Reset join flag
-      
+
       console.log('🧹 Cleaning up video call...');
-      
+
       // Async cleanup to avoid race conditions
       const cleanup = async () => {
         try {
           // Wait a bit to let any pending operations complete
           await new Promise(resolve => setTimeout(resolve, 100));
-          
+
           if (localAudioTrackRef.current) {
             try {
               localAudioTrackRef.current.stop();
@@ -333,7 +335,7 @@ const VideoCallScreen = ({ recipientUser, channelName, token, uid, appId, onCall
               console.warn('Audio track cleanup error:', e);
             }
           }
-          
+
           if (localVideoTrackRef.current) {
             try {
               localVideoTrackRef.current.stop();
@@ -342,7 +344,7 @@ const VideoCallScreen = ({ recipientUser, channelName, token, uid, appId, onCall
               console.warn('Video track cleanup error:', e);
             }
           }
-          
+
           if (clientRef.current) {
             try {
               await clientRef.current.leave();
@@ -351,13 +353,13 @@ const VideoCallScreen = ({ recipientUser, channelName, token, uid, appId, onCall
               console.warn('Client cleanup error:', e);
             }
           }
-          
+
           console.log('✅ Cleanup complete');
         } catch (err) {
           console.error('Cleanup error:', err);
         }
       };
-      
+
       cleanup();
     };
   }, [recipientUser?.id]);
@@ -367,7 +369,7 @@ const VideoCallScreen = ({ recipientUser, channelName, token, uid, appId, onCall
     if (!loading && localVideoTrackRef.current && localVideoRef.current) {
       console.log('🎥 Playing local video track');
       localVideoTrackRef.current.play(localVideoRef.current);
-      
+
       // Ensure the video element has playsInline for iOS
       setTimeout(() => {
         const videoElement = localVideoRef.current?.querySelector('video');
@@ -383,12 +385,12 @@ const VideoCallScreen = ({ recipientUser, channelName, token, uid, appId, onCall
   const toggleCamera = useCallback(async () => {
     if (localVideoTrackRef.current) {
       const newState = !isCameraOn;
-      
+
       try {
         if (newState) {
           // Turning camera ON
           await localVideoTrackRef.current.setEnabled(true);
-          
+
           // Publish if not yet published
           if (!isVideoPublishedRef.current && clientRef.current) {
             await clientRef.current.publish([localVideoTrackRef.current]);
@@ -419,7 +421,7 @@ const VideoCallScreen = ({ recipientUser, channelName, token, uid, appId, onCall
       setIsCallMinimized(false);
       setInVideoCall(true);
     };
-    
+
     setCallControls({
       toggleMic,
       toggleCamera,
@@ -479,16 +481,16 @@ const VideoCallScreen = ({ recipientUser, channelName, token, uid, appId, onCall
       {/* Remote Video Area (or Local Mirror if waiting) */}
       <div className="flex-1 relative bg-slate-900">
         {remoteUsers.length > 0 ? (
-          <RemoteVideoPlayer 
-            key={remoteUsers[0].uid} 
-            remoteUser={remoteUsers[0]} 
+          <RemoteVideoPlayer
+            key={remoteUsers[0].uid}
+            remoteUser={remoteUsers[0]}
             recipientName={recipientUser?.full_name || recipientUser?.name}
           />
         ) : (
           <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-500">
             {/* Show local video as background when waiting */}
             <div ref={localVideoRef} className="absolute inset-0 w-full h-full object-cover opacity-50" style={{ width: '100%', height: '100%' }} />
-            
+
             <div className="z-10 flex flex-col items-center">
               <div className="w-24 h-24 rounded-full bg-slate-800/80 animate-pulse flex items-center justify-center mb-4 backdrop-blur-sm">
                 <User className="w-10 h-10 text-slate-400" />
@@ -515,21 +517,21 @@ const VideoCallScreen = ({ recipientUser, channelName, token, uid, appId, onCall
 
       {/* Controls */}
       <div className="pb-12 pt-6 px-10 flex justify-center items-center gap-6 bg-gradient-to-t from-slate-950 to-transparent absolute bottom-0 left-0 right-0 z-30">
-        <button 
+        <button
           onClick={toggleMic}
           className={`p-4 rounded-full transition-all ${!isMicOn ? 'bg-red-500 text-white' : 'bg-white/10 text-white hover:bg-white/20'}`}
         >
           {isMicOn ? <Mic /> : <MicOff />}
         </button>
 
-        <button 
+        <button
           onClick={endCall}
           className="p-6 bg-red-600 text-white rounded-full shadow-xl hover:bg-red-700 hover:scale-105 active:scale-95 transition-all"
         >
           <PhoneOff className="w-8 h-8" />
         </button>
 
-        <button 
+        <button
           onClick={toggleCamera}
           className={`p-4 rounded-full transition-all ${!isCameraOn ? 'bg-red-500 text-white' : 'bg-white/10 text-white hover:bg-white/20'}`}
         >

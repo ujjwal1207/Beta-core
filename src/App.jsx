@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import './App.css';
 import { X } from 'lucide-react';
 import { AppProvider, useAppContext } from './context/AppContext';
@@ -18,6 +18,8 @@ import ChatHistoryScreen from './pages/ChatHistoryScreen';
 import SuperListenerDashboard from './pages/SuperListenerDashboard';
 import BankDetailsScreen from './pages/BankDetailsScreen';
 import ReviewsScreen from './pages/ReviewsScreen';
+import NotificationsScreen from './pages/NotificationsScreen';
+import PostDetailScreen from './pages/PostDetailScreen';
 import FeedScreen from './features/feed/FeedScreen';
 import ConnectionsScreen from './features/connections/ConnectionsScreen';
 import MyConnectionsScreen from './features/connections/MyConnectionsScreen';
@@ -84,6 +86,7 @@ const AppContent = () => {
   // Review modal state
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [reviewCallData, setReviewCallData] = useState(null);
+  const hasLoggedCallRef = useRef(false); // Prevent duplicate call log messages
 
   // Listen for outgoing call answered events
   useEffect(() => {
@@ -124,7 +127,7 @@ const AppContent = () => {
         const isUnansweredOutgoingCall = outgoingInvitation && !outgoingCallAnswered;
         const status = (duration > 0 && !isUnansweredOutgoingCall) ? 'completed' : 'missed';
         const callEndTime = Math.floor(Date.now() / 1000); // Current Unix timestamp
-        
+
         await callsService.updateInvitation(outgoingInvitation.id, status, callEndTime);
       }
       // For incoming calls (receiver), just mark as ended if they have the invitation ID
@@ -143,14 +146,15 @@ const AppContent = () => {
 
     // Log call duration if it was a valid call (duration > 0) or missed call
     // Only the caller sends the log message to avoid duplicates
-    if (callRecipient && outgoingInvitation) {  // Only send from caller side
+    if (callRecipient && outgoingInvitation && !hasLoggedCallRef.current) {  // Only send from caller side, once
+      hasLoggedCallRef.current = true;
       try {
         if (duration > 0) {
           const mins = Math.floor(duration / 60);
           const secs = duration % 60;
           const timeString = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
           const typeStr = isVoiceCall ? 'VOICE' : 'VIDEO';
-          
+
           // Send a system message with call log
           await chatService.sendMessage(callRecipient.id, `[CALL_LOG] ${typeStr} ${timeString}`);
         } else {
@@ -162,10 +166,10 @@ const AppContent = () => {
         console.error('Failed to log call:', error);
       }
     }
-    
+
     // Show review modal for completed calls with Super Linkers
     console.log(`DEBUG: Call ended - duration: ${duration}, callRecipient:`, callRecipient, 'is_super_linker:', callRecipient?.is_super_linker);
-    
+
     if (duration > 0 && callRecipient && callRecipient.is_super_linker) {
       // Capture the data we need BEFORE clearing state to avoid race condition
       const reviewData = {
@@ -173,9 +177,9 @@ const AppContent = () => {
         callInvitationId: outgoingInvitation?.id || currentCallInvitationId,
         duration
       };
-      
+
       console.log(`DEBUG: Review modal should show for Super Linker: ${callRecipient.full_name}`);
-      
+
       // Small delay to ensure backend status update is processed
       setTimeout(() => {
         console.log(`DEBUG: Showing review modal for call invitation ID: ${reviewData.callInvitationId}, duration: ${reviewData.duration}`);
@@ -189,7 +193,7 @@ const AppContent = () => {
         is_super_linker: callRecipient?.is_super_linker
       });
     }
-    
+
     setInVideoCall(false);
     setIsVoiceCall(false); // Reset voice call mode
     setCallRecipient(null);
@@ -198,7 +202,8 @@ const AppContent = () => {
     setCurrentCallInvitationId(null); // Clear current call invitation ID
     setOutgoingCallAnswered(false); // Reset answered state
     setIsCallMinimized(false); // Reset minimized state
-    
+    hasLoggedCallRef.current = false; // Reset for next call
+
     // Notify components to refresh call history
     window.dispatchEvent(new CustomEvent('callEnded'));
   }, [setInVideoCall, setCallRecipient, callRecipient, outgoingInvitation, currentCallInvitationId, incomingCall, setOutgoingInvitation, setIncomingCall, setCurrentCallInvitationId, setIsVoiceCall, isVoiceCall, setIsCallMinimized]);
@@ -238,7 +243,7 @@ const AppContent = () => {
       // Log the missed call
       const typeStr = incomingCall.call_type === 'voice' ? 'MISSED_VOICE' : 'MISSED_VIDEO';
       if (incomingCall.caller) {
-         await chatService.sendMessage(incomingCall.caller.id, `[CALL_LOG] ${typeStr}`);
+        await chatService.sendMessage(incomingCall.caller.id, `[CALL_LOG] ${typeStr}`);
       }
 
       setIncomingCall(null);
@@ -308,6 +313,8 @@ const AppContent = () => {
       POST_SHARE: <PostShareScreen />,
       USER_PROFILE: <UserProfileScreen />,
       PROFILE_DETAIL: <ProfileDetailScreen />,
+      NOTIFICATIONS: <NotificationsScreen />,
+      POST_DETAIL: <PostDetailScreen />,
     };
 
     return screens[screen] || <WelcomePage />;
@@ -433,13 +440,12 @@ const AppContent = () => {
       {/* Global Toast Notification */}
       {toast && (
         <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 max-w-sm w-full mx-4">
-          <div className={`flex items-center p-4 rounded-lg shadow-lg ${
-            toast.type === 'success'
-              ? 'bg-green-500 text-white'
-              : toast.type === 'error'
+          <div className={`flex items-center p-4 rounded-lg shadow-lg ${toast.type === 'success'
+            ? 'bg-green-500 text-white'
+            : toast.type === 'error'
               ? 'bg-red-500 text-white'
               : 'bg-blue-500 text-white'
-          }`}>
+            }`}>
             <div className="flex-1">{toast.message}</div>
             <button
               onClick={() => setToast(null)}
@@ -537,8 +543,8 @@ const App = () => {
   useEffect(() => {
     const handleUnhandledRejection = (event) => {
       // Ignore browser extension errors
-      if (event.reason && event.reason.message && 
-          event.reason.message.includes('disconnected port object')) {
+      if (event.reason && event.reason.message &&
+        event.reason.message.includes('disconnected port object')) {
         event.preventDefault();
         return;
       }
@@ -547,8 +553,8 @@ const App = () => {
 
     const handleError = (event) => {
       // Ignore browser extension errors
-      if (event.error && event.error.message && 
-          event.error.message.includes('disconnected port object')) {
+      if (event.error && event.error.message &&
+        event.error.message.includes('disconnected port object')) {
         event.preventDefault();
         return;
       }

@@ -6,11 +6,11 @@ import chatService from '../services/chatService';
 import { getAvatarUrlWithSize } from '../lib/avatarUtils';
 
 const ChatHistoryScreen = () => {
-  const { 
-    setScreen, 
-    setSelectedPerson, 
-    setSelectedConversation, 
-    setPreviousScreen, 
+  const {
+    setScreen,
+    setSelectedPerson,
+    setSelectedConversation,
+    setPreviousScreen,
     setUnreadMessagesCount
   } = useAppContext();
   const [conversations, setConversations] = useState([]);
@@ -20,7 +20,7 @@ const ChatHistoryScreen = () => {
 
   useEffect(() => {
     loadConversations();
-    
+
     // Close menu when clicking outside
     const handleClickOutside = (event) => {
       if (menuRef.current && !menuRef.current.contains(event.target)) {
@@ -58,8 +58,9 @@ const ChatHistoryScreen = () => {
 
   const formatTimestamp = (timestamp) => {
     if (!timestamp) return '';
-    // Ensure UTC parsing by appending 'Z' if not present
-    let date = typeof timestamp === 'string' && !timestamp.endsWith('Z') ? new Date(timestamp + 'Z') : new Date(timestamp);
+    // Backend sends Unix timestamp in seconds — convert to milliseconds for JS Date
+    const ms = typeof timestamp === 'number' && timestamp < 1e12 ? timestamp * 1000 : timestamp;
+    let date = typeof ms === 'string' && !ms.endsWith('Z') ? new Date(ms + 'Z') : new Date(ms);
     const now = new Date();
     const diff = now - date;
 
@@ -108,9 +109,9 @@ const ChatHistoryScreen = () => {
   };
 
   return (
-    <div className="relative flex flex-col h-full bg-slate-50">
+    <div className="relative flex flex-col h-full bg-slate-50 overflow-x-hidden">
       <TopTabBar setScreen={setScreen} currentScreen="CHAT_HISTORY" />
-      <div className="grow overflow-y-auto pt-[120px] sm:pt-[126px] p-3 sm:p-4">
+      <div className="grow overflow-y-auto overflow-x-hidden pt-[120px] sm:pt-[126px] p-3 sm:p-4">
         <div className="flex items-center justify-between mb-3 sm:mb-4">
           <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-800">Messages</h1>
           <button
@@ -120,7 +121,7 @@ const ChatHistoryScreen = () => {
             <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
         </div>
-        
+
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
             <Loader className="w-6 h-6 animate-spin text-indigo-600" />
@@ -133,30 +134,30 @@ const ChatHistoryScreen = () => {
         ) : (
           <div className="space-y-2 sm:space-y-3">
             {conversations.map(conversation => (
-              <div 
-                key={conversation.id} 
+              <div
+                key={conversation.id}
                 onClick={() => handleChatClick(conversation)}
-                className="bg-white p-3 sm:p-4 rounded-xl shadow-sm border border-slate-100 flex items-center cursor-pointer active:shadow-md active:border-indigo-200 transition-all relative touch-manipulation"
+                className="bg-white p-3 sm:p-4 rounded-xl shadow-sm border border-slate-100 flex items-center cursor-pointer active:shadow-md active:border-indigo-200 transition-all relative touch-manipulation overflow-hidden"
               >
-                <div className="w-12 h-12 sm:w-14 sm:h-14 flex-shrink-0 rounded-full mr-2 sm:mr-3 overflow-hidden">
-                  <img 
-                    src={getAvatarUrlWithSize(conversation.other_user, 100)} 
+                <div className="w-10 h-10 sm:w-14 sm:h-14 flex-shrink-0 rounded-full mr-2 sm:mr-3 overflow-hidden">
+                  <img
+                    src={getAvatarUrlWithSize(conversation.other_user, 100)}
                     alt={conversation.other_user.full_name}
                     className="w-full h-full object-cover"
                   />
                 </div>
-                <div className="flex-grow overflow-hidden">
-                  <p className="font-semibold text-sm sm:text-base text-slate-800">{conversation.other_user.full_name}</p>
+                <div className="flex-1 min-w-0 overflow-hidden">
+                  <p className="font-semibold text-sm sm:text-base text-slate-800 truncate">{conversation.other_user.full_name}</p>
                   <p className="text-xs sm:text-sm text-slate-500 truncate">
                     {conversation.last_message || 'No messages yet'}
                   </p>
                 </div>
-                <div className="text-right ml-2 flex-shrink-0 flex items-center gap-1 sm:gap-2">
+                <div className="flex-shrink-0 flex items-center gap-1 ml-2">
                   {conversation.is_pinned && (
-                    <Pin className="w-4 h-4 text-indigo-500" />
+                    <Pin className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-500" />
                   )}
-                  <div className="flex flex-col items-end mr-1 sm:mr-2">
-                    <p className="text-[10px] sm:text-xs text-slate-400 mb-1">
+                  <div className="flex flex-col items-end">
+                    <p className="text-[10px] sm:text-xs text-slate-400 mb-1 whitespace-nowrap">
                       {formatTimestamp(conversation.last_message_at)}
                     </p>
                     {conversation.unread_count > 0 && (
@@ -168,19 +169,19 @@ const ChatHistoryScreen = () => {
                   <div className="relative">
                     <button
                       onClick={(e) => toggleMenu(e, conversation.id)}
-                      className="p-1.5 sm:p-2 active:bg-slate-100 rounded-full transition-colors text-slate-400 active:text-slate-600 touch-manipulation"
+                      className="p-1 sm:p-1.5 active:bg-slate-100 rounded-full transition-colors text-slate-400 active:text-slate-600 touch-manipulation"
                     >
-                      <MoreVertical className="w-4 h-4 sm:w-5 sm:h-5" />
+                      <MoreVertical className="w-4 h-4" />
                     </button>
-                    
+
                     {activeMenuId === conversation.id && (
-                      <div 
+                      <div
                         ref={menuRef}
-                        className="absolute right-0 top-10 w-48 bg-white rounded-lg shadow-xl border border-slate-100 z-10 overflow-hidden"
+                        className="absolute right-0 top-8 w-44 sm:w-48 bg-white rounded-lg shadow-xl border border-slate-100 z-10 overflow-hidden"
                       >
                         <button
                           onClick={(e) => handlePinConversation(e, conversation.id)}
-                          className="w-full text-left px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                          className="w-full text-left px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
                         >
                           <Pin className="w-4 h-4" />
                           {conversation.is_pinned ? 'Unpin' : 'Pin to top'}
@@ -188,10 +189,10 @@ const ChatHistoryScreen = () => {
                         <div className="h-px bg-slate-100 my-0"></div>
                         <button
                           onClick={(e) => handleDeleteConversation(e, conversation.id)}
-                          className="w-full text-left px-4 py-3 text-sm text-rose-600 hover:bg-rose-50 flex items-center gap-2"
+                          className="w-full text-left px-3 py-2.5 text-sm text-rose-600 hover:bg-rose-50 flex items-center gap-2"
                         >
                           <Trash2 className="w-4 h-4" />
-                          Delete conversation
+                          Delete
                         </button>
                       </div>
                     )}

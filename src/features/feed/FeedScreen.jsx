@@ -11,9 +11,9 @@ import { getAvatarUrlWithSize } from '../../lib/avatarUtils';
 import { quizFlow, TRACK_Q1_KEYS, TRACK_Q2_KEYS } from '../../data/quizFlow';
 
 const FeedScreen = () => {
-  const { 
-    setScreen, 
-    setIsAddMomentModalOpen, 
+  const {
+    setScreen,
+    setIsAddMomentModalOpen,
     setIsAddReflectionModalOpen,
     setViewingStory,
     onboardingAnswers,
@@ -22,7 +22,7 @@ const FeedScreen = () => {
     setSearchQuery,
     setConnectionsMode,
   } = useAppContext();
-  
+
   const [showNudge, setShowNudge] = useState(() => {
     // Check if user has dismissed the quiz nudge
     const dismissed = localStorage.getItem('quizNudgeDismissed');
@@ -96,26 +96,26 @@ const FeedScreen = () => {
       if (typeof answer === 'object' && answer !== null && !Array.isArray(answer)) return Object.keys(answer).length > 0;
       return false;
     };
-    
+
     const vibeAnswers = onboardingAnswers['VIBE_QUIZ'] || [];
     let completedSteps = 0;
     let totalSteps = 4; // Base steps: VIBE_QUIZ + TRACK_Q1 + TRACK_Q2 + NEW_GENERATION
-    
+
     // Check if user goes to GIVE_ADVICE_QUIZ
     const goesToAdviceQuiz = quizFlow['NEW_GENERATION'].nextStepLogic(onboardingAnswers['NEW_GENERATION'], onboardingAnswers) === 'GIVE_ADVICE_QUIZ';
     if (goesToAdviceQuiz) {
       totalSteps = 5; // Add GIVE_ADVICE_QUIZ step
     }
-    
+
     // Step 1: VIBE_QUIZ
     if (hasAnswer('VIBE_QUIZ')) completedSteps++;
-    
+
     // Step 2: TRACK_Q1 step
     const nextTrackStep1Key = quizFlow['VIBE_QUIZ'].nextStepLogic(vibeAnswers, onboardingAnswers);
     if (nextTrackStep1Key && TRACK_Q1_KEYS.includes(nextTrackStep1Key) && hasAnswer(nextTrackStep1Key)) {
       completedSteps++;
     }
-    
+
     // Step 3: TRACK_Q2 step
     if (nextTrackStep1Key && hasAnswer(nextTrackStep1Key)) {
       const nextTrackStep2Key = quizFlow[nextTrackStep1Key]?.nextStepLogic(onboardingAnswers[nextTrackStep1Key], onboardingAnswers);
@@ -123,17 +123,17 @@ const FeedScreen = () => {
         completedSteps++;
       }
     }
-    
+
     // Step 4: NEW_GENERATION
     if (hasAnswer('NEW_GENERATION')) completedSteps++;
-    
+
     // Step 5: GIVE_ADVICE_QUIZ (only if user goes this path)
     if (goesToAdviceQuiz && hasAnswer('GIVE_ADVICE_QUIZ')) {
       completedSteps++;
     }
-    
+
     // Note: SHARER_TRACK steps are separate from the main quiz
-    
+
     const percentage = Math.round((completedSteps / totalSteps) * 100);
     return percentage >= 100;
   })();
@@ -145,21 +145,21 @@ const FeedScreen = () => {
         <div className="p-4">
           {/* Always show mood meter */}
           <ProfileProgress />
-          
+
           {/* Show journey card until quiz is complete */}
           {!isJourneyComplete && showNudge && (
-            <FeedJourneyCard 
-              onboardingAnswers={onboardingAnswers} 
-              setScreen={setScreen} 
+            <FeedJourneyCard
+              onboardingAnswers={onboardingAnswers}
+              setScreen={setScreen}
               onClose={() => {
                 setShowNudge(false);
                 localStorage.setItem('quizNudgeDismissed', 'true');
-              }} 
+              }}
             />
           )}
 
           <div className="relative mb-4">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400"/>
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
             <form onSubmit={e => {
               e.preventDefault();
               if (searchValue.trim()) {
@@ -177,7 +177,7 @@ const FeedScreen = () => {
               />
             </form>
           </div>
-          
+
           <div className="bg-white p-3 rounded-xl shadow-sm border border-slate-100 w-full flex items-center gap-3 my-4">
             <div className="w-10 h-10 rounded-full bg-slate-200 shrink-0 flex items-center justify-center">
               {user?.full_name ? (
@@ -188,7 +188,7 @@ const FeedScreen = () => {
                 <User className="w-6 h-6 text-slate-500" />
               )}
             </div>
-            <button 
+            <button
               onClick={() => setIsAddMomentModalOpen(true)}
               className="w-full text-left bg-slate-50 border border-slate-200 hover:bg-slate-100 transition-colors rounded-full py-2.5 px-4 text-sm font-semibold text-slate-500"
             >
@@ -196,11 +196,11 @@ const FeedScreen = () => {
             </button>
           </div>
 
-          <QuickPostStories 
+          <QuickPostStories
             setIsAddReflectionModalOpen={setIsAddReflectionModalOpen}
             setViewingStory={setViewingStory}
           />
-          
+
           <div className="flex justify-between items-center mb-3">
             <h2 className="text-xl font-bold text-slate-800">Recent Posts</h2>
           </div>
@@ -212,7 +212,7 @@ const FeedScreen = () => {
           ) : error ? (
             <div className="text-center py-8">
               <p className="text-red-600 mb-2">{error}</p>
-              <button 
+              <button
                 onClick={() => window.location.reload()}
                 className="text-indigo-600 hover:text-indigo-800 font-semibold"
               >
@@ -227,35 +227,35 @@ const FeedScreen = () => {
             posts
               .filter(post => !hiddenPostIds.has(post.id))
               .map((post) => (
-              <PostCard 
-                key={post.id} 
-                post={{
-                  id: post.id,
-                  user_id: post.user_id,
-                  name: post.user_name,
-                  role: post.user_role,
-                  trustScore: post.user_trust_score,
-                  image: getAvatarUrlWithSize({ profile_photo: post.user_profile_photo, full_name: post.user_name }, 150),
-                  content: post.content,
-                  likes: post.likes_count,
-                  comments: post.comments_count,
-                  mood: post.mood_at_time,
-                  timestamp: new Date(post.created_at).toLocaleDateString(),
-                  imageUrl: post.image_url,
-                  videoUrl: post.video_url,
-                  type: post.type,
-                  isLiked: post.is_liked,
-                  // Repost fields
-                  is_repost: post.is_repost,
-                  original_post_id: post.original_post_id,
-                  original_post_user_name: post.original_post_user_name,
-                  original_post_user_id: post.original_post_user_id,
-                  original_post_content: post.original_post_content,
-                }}
-                onUpdate={fetchPosts}
-                onHide={hidePost}
-              />
-            ))
+                <PostCard
+                  key={post.id}
+                  post={{
+                    id: post.id,
+                    user_id: post.user_id,
+                    name: post.user_name,
+                    role: post.user_role,
+                    trustScore: post.user_trust_score,
+                    image: getAvatarUrlWithSize({ profile_photo: post.user_profile_photo, full_name: post.user_name }, 150),
+                    content: post.content,
+                    likes: post.likes_count,
+                    comments: post.comments_count,
+                    mood: post.mood_at_time,
+                    timestamp: new Date(post.created_at * 1000).toLocaleDateString(),
+                    imageUrl: post.image_url,
+                    videoUrl: post.video_url,
+                    type: post.type,
+                    isLiked: post.is_liked,
+                    // Repost fields
+                    is_repost: post.is_repost,
+                    original_post_id: post.original_post_id,
+                    original_post_user_name: post.original_post_user_name,
+                    original_post_user_id: post.original_post_user_id,
+                    original_post_content: post.original_post_content,
+                  }}
+                  onUpdate={fetchPosts}
+                  onHide={hidePost}
+                />
+              ))
           )}
         </div>
       </div>

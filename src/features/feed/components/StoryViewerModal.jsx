@@ -4,11 +4,11 @@ import { useAppContext } from '../../../context/AppContext';
 import feedService from '../../../services/feedService';
 
 const StoryViewerModal = ({ person, onClose }) => {
-    const [replyText, setReplyText] = useState("");
-    const [isReplying, setIsReplying] = useState(false);
-    const [replySent, setReplySent] = useState(false);
+  const [replyText, setReplyText] = useState("");
+  const [isReplying, setIsReplying] = useState(false);
+  const [replySent, setReplySent] = useState(false);
   const { setScreen, setPreviousScreen, setSelectedPerson, user } = useAppContext();
-  
+
   // Check if this is a story group (with stories array) or single story/person
   const isStoryGroup = person?.stories !== undefined;
   const stories = isStoryGroup ? person.stories : (person ? [person] : []);
@@ -20,7 +20,7 @@ const StoryViewerModal = ({ person, onClose }) => {
   const [showMenu, setShowMenu] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  
+
   // Use ref for onClose to avoid re-running effect when it changes
   const onCloseRef = useRef(onClose);
   useEffect(() => {
@@ -34,7 +34,7 @@ const StoryViewerModal = ({ person, onClose }) => {
   // Fetch viewers for own story
   const fetchViewers = async () => {
     if (!isOwnStory || !currentStory?.id) return;
-    
+
     setIsLoadingViewers(true);
     try {
       const data = await feedService.getStoryViewers(currentStory.id);
@@ -67,7 +67,7 @@ const StoryViewerModal = ({ person, onClose }) => {
         }
       }
     };
-    
+
     markViewed();
   }, [currentIndex, stories]);
 
@@ -77,7 +77,7 @@ const StoryViewerModal = ({ person, onClose }) => {
       if (isPaused) console.log(`[Story Timer] Timer paused for story ${currentIndex + 1}`);
       return;
     }
-    
+
     console.log(`[Story Timer] Starting timer for story ${currentIndex + 1}/${stories.length}`);
     const timer = setTimeout(() => {
       console.log(`[Story Timer] Timer fired for story ${currentIndex + 1}`);
@@ -89,13 +89,13 @@ const StoryViewerModal = ({ person, onClose }) => {
         onCloseRef.current();
       }
     }, 5000);
-    
+
     return () => {
       console.log(`[Story Timer] Clearing timer for story ${currentIndex + 1}`);
       clearTimeout(timer);
     };
   }, [currentIndex, stories.length, isPaused, person]);
-  
+
   // Close menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -103,24 +103,24 @@ const StoryViewerModal = ({ person, onClose }) => {
         setShowMenu(false);
       }
     };
-    
+
     document.addEventListener('click', handleClickOutside);
     return () => document.removeEventListener('click', handleClickOutside);
   }, [showMenu]);
-  
+
   // Early return after all hooks are defined
   if (!person) return null;
-  
+
   // Check if current item is a story object
   const isStory = currentStory.content !== undefined;
-  
+
   // Get story data
   const storyText = isStory ? currentStory.content : (currentStory.sharerInsights?.youngerSelf || currentStory.bio || "Welcome to my story!");
   const userName = isStory ? currentStory.user_name : currentStory.name;
   const userPhoto = isStory ? currentStory.user_profile_photo : currentStory.image;
   const storyImage = isStory ? currentStory.image_url : null;
   const storyVideo = isStory ? currentStory.video_url : null;
-  
+
   // Get custom styling if available
   const style = isStory && currentStory.style ? currentStory.style : {};
   const backgroundColor = style.backgroundColor || 'bg-gradient-to-br from-indigo-600 to-purple-700';
@@ -147,7 +147,7 @@ const StoryViewerModal = ({ person, onClose }) => {
   const handleNameClick = (e) => {
     e.stopPropagation();
     setPreviousScreen('FEED');
-    
+
     // Create a consistent user object from story data
     // Use the first story in the group for user info (all stories share same user_id)
     const userObject = {
@@ -158,7 +158,7 @@ const StoryViewerModal = ({ person, onClose }) => {
       user_role: stories[0].user_role,
       user_trust_score: stories[0].user_trust_score
     };
-    
+
     console.log('[StoryViewerModal] Navigating to profile for user:', userObject);
     setSelectedPerson(userObject);
     onClose();
@@ -167,7 +167,7 @@ const StoryViewerModal = ({ person, onClose }) => {
 
   const handleDeleteStory = async () => {
     if (!currentStory?.id || !isOwnStory) return;
-    
+
     // Show UI confirmation dialog instead of browser confirm
     setShowDeleteConfirm(true);
   };
@@ -176,25 +176,25 @@ const StoryViewerModal = ({ person, onClose }) => {
     setIsDeleting(true);
     try {
       await feedService.deletePost(currentStory.id);
-      
+
       // Dispatch event to refresh feed
       window.dispatchEvent(new CustomEvent('postDeleted'));
-      
+
       // Close the menu and confirmation dialog
       setShowMenu(false);
       setShowDeleteConfirm(false);
-      
+
       // If this is the only story, close the modal
       if (stories.length === 1) {
         onClose();
         return;
       }
-      
+
       // If there are more stories, remove this one from the array
       // This would require updating the parent component's state
       // For now, we'll just close the modal and let the parent refresh
       onClose();
-      
+
     } catch (error) {
       console.error('Error deleting story:', error);
       alert('Failed to delete reflection. Please try again.');
@@ -208,11 +208,11 @@ const StoryViewerModal = ({ person, onClose }) => {
   };
 
   return (
-    <div 
-      className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex justify-center items-center p-2" 
+    <div
+      className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex justify-center items-center p-2"
       onClick={onClose}
     >
-      <div 
+      <div
         className={`relative ${backgroundColor} rounded-2xl shadow-2xl w-full max-w-md h-full sm:h-[90vh] sm:max-h-175 overflow-hidden flex flex-col p-4`}
         onClick={(e) => e.stopPropagation()}
       >
@@ -220,13 +220,12 @@ const StoryViewerModal = ({ person, onClose }) => {
         <div className="absolute top-2 left-2 right-2 flex gap-1 z-20">
           {stories.map((_, index) => (
             <div key={index} className="flex-1 h-1 bg-white/30 rounded-full overflow-hidden">
-              <div 
-                className={`h-1 bg-white rounded-full ${
-                  index < currentIndex ? 'w-full' : 
-                  index === currentIndex ? 'w-0' : 
-                  'w-0'
-                }`}
-                style={index === currentIndex ? { 
+              <div
+                className={`h-1 bg-white rounded-full ${index < currentIndex ? 'w-full' :
+                    index === currentIndex ? 'w-0' :
+                      'w-0'
+                  }`}
+                style={index === currentIndex ? {
                   animation: 'progress 5s linear forwards',
                   animationPlayState: isPaused ? 'paused' : 'running'
                 } : index < currentIndex ? { width: '100%' } : { width: '0%' }}
@@ -235,33 +234,33 @@ const StoryViewerModal = ({ person, onClose }) => {
             </div>
           ))}
         </div>
-        
+
         {/* Click areas for navigation */}
         {stories.length > 1 && (
           <>
-            <div 
+            <div
               className="absolute left-0 top-0 bottom-0 w-1/3 z-10 cursor-pointer"
               onClick={handlePrevious}
             />
-            <div 
+            <div
               className="absolute right-0 top-0 bottom-0 w-1/3 z-10 cursor-pointer"
               onClick={handleNext}
             />
           </>
         )}
-        
+
         {/* Header */}
         <div className="flex items-center pt-4 z-10">
-          <button 
+          <button
             onClick={handleNameClick}
             className="flex items-center hover:opacity-80 transition-opacity"
           >
             <div className="w-10 h-10 rounded-full border-2 border-white overflow-hidden bg-slate-200 flex items-center justify-center">
               {userPhoto ? (
-                <img 
-                  src={userPhoto} 
-                  alt={userName} 
-                  className="w-full h-full object-cover" 
+                <img
+                  src={userPhoto}
+                  alt={userName}
+                  className="w-full h-full object-cover"
                 />
               ) : (
                 <span className="text-sm font-bold text-slate-700">{userName?.[0] || '?'}</span>
@@ -275,11 +274,11 @@ const StoryViewerModal = ({ person, onClose }) => {
             </span>
           )}
           <div className="flex items-center gap-1 ml-auto">
-            <button 
+            <button
               onClick={(e) => {
                 e.stopPropagation();
                 setIsPaused(!isPaused);
-              }} 
+              }}
               className="p-2 rounded-full hover:bg-white/20 transition-all"
               aria-label={isPaused ? "Play" : "Pause"}
             >
@@ -298,22 +297,22 @@ const StoryViewerModal = ({ person, onClose }) => {
         {/* Bottom right corner buttons for story owner */}
         {isOwnStory && (
           <div className="absolute bottom-6 right-6 flex items-center gap-2 z-30">
-            <button 
+            <button
               onClick={(e) => {
                 e.stopPropagation();
                 setShowViewers(!showViewers);
-              }} 
+              }}
               className="p-2 rounded-full bg-black/50 hover:bg-black/70 transition-all backdrop-blur-sm"
               aria-label="View story viewers"
             >
               <Eye className="w-5 h-5 text-white" />
             </button>
             <div className="relative story-menu">
-              <button 
+              <button
                 onClick={(e) => {
                   e.stopPropagation();
                   setShowMenu(!showMenu);
-                }} 
+                }}
                 className="p-2 rounded-full bg-black/50 hover:bg-black/70 transition-all backdrop-blur-sm"
                 aria-label="Story options"
               >
@@ -342,9 +341,9 @@ const StoryViewerModal = ({ person, onClose }) => {
         <div className="grow flex flex-col justify-center items-center text-center p-6">
           {storyImage ? (
             <div className="w-full h-full flex flex-col items-center justify-center">
-              <img 
-                src={storyImage} 
-                alt="Story content" 
+              <img
+                src={storyImage}
+                alt="Story content"
                 className="max-w-full max-h-full object-contain rounded-lg"
               />
               {storyText && (
@@ -355,9 +354,9 @@ const StoryViewerModal = ({ person, onClose }) => {
             </div>
           ) : storyVideo ? (
             <div className="w-full h-full flex flex-col items-center justify-center">
-              <video 
-                src={storyVideo} 
-                controls 
+              <video
+                src={storyVideo}
+                controls
                 className="max-w-full max-h-full object-contain rounded-lg"
               />
               {storyText && (
@@ -416,7 +415,7 @@ const StoryViewerModal = ({ person, onClose }) => {
 
         {/* Viewers List Modal */}
         {showViewers && isOwnStory && (
-          <div 
+          <div
             className="absolute inset-0 bg-black/80 backdrop-blur-sm z-50 flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
@@ -434,7 +433,7 @@ const StoryViewerModal = ({ person, onClose }) => {
                 <X className="w-6 h-6 text-white" />
               </button>
             </div>
-            
+
             <div className="flex-1 overflow-y-auto p-4">
               {isLoadingViewers ? (
                 <p className="text-white text-center py-4">Loading viewers...</p>
@@ -443,14 +442,14 @@ const StoryViewerModal = ({ person, onClose }) => {
               ) : (
                 <div className="space-y-3">
                   {viewers.map((viewer) => (
-                    <div 
-                      key={viewer.user_id} 
+                    <div
+                      key={viewer.user_id}
                       className="flex items-center gap-3 p-3 bg-white/10 rounded-lg hover:bg-white/20 transition-all"
                     >
                       <div className="w-12 h-12 rounded-full bg-slate-200 flex items-center justify-center overflow-hidden shrink-0">
                         {viewer.user_profile_photo ? (
-                          <img 
-                            src={viewer.user_profile_photo} 
+                          <img
+                            src={viewer.user_profile_photo}
                             alt={viewer.user_name}
                             className="w-full h-full object-cover"
                           />
@@ -471,7 +470,7 @@ const StoryViewerModal = ({ person, onClose }) => {
                         )}
                       </div>
                       <div className="text-white/60 text-xs">
-                        {new Date(viewer.viewed_at).toLocaleDateString()}
+                        {new Date(viewer.viewed_at * 1000).toLocaleDateString()}
                       </div>
                     </div>
                   ))}
@@ -483,7 +482,7 @@ const StoryViewerModal = ({ person, onClose }) => {
 
         {/* Delete Confirmation Dialog */}
         {showDeleteConfirm && (
-          <div 
+          <div
             className="absolute inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center"
             onClick={(e) => e.stopPropagation()}
           >
