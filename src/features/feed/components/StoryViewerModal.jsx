@@ -222,8 +222,8 @@ const StoryViewerModal = ({ person, onClose }) => {
             <div key={index} className="flex-1 h-1 bg-white/30 rounded-full overflow-hidden">
               <div
                 className={`h-1 bg-white rounded-full ${index < currentIndex ? 'w-full' :
-                    index === currentIndex ? 'w-0' :
-                      'w-0'
+                  index === currentIndex ? 'w-0' :
+                    'w-0'
                   }`}
                 style={index === currentIndex ? {
                   animation: 'progress 5s linear forwards',
@@ -374,13 +374,13 @@ const StoryViewerModal = ({ person, onClose }) => {
 
         {/* Footer - Only show reply for other users' stories */}
         {!isOwnStory && (
-          <div className="w-full p-2 z-10 flex gap-2 items-center">
+          <div className="w-full p-1 sm:p-2 z-10 flex gap-2 items-center relative">
             <input
               type="text"
               value={replyText}
               onChange={e => setReplyText(e.target.value)}
               placeholder="Reply to this story..."
-              className="flex-1 p-3 bg-white/20 border border-white/30 rounded-full text-white placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-white"
+              className="flex-1 min-w-0 px-3 py-2 sm:p-3 bg-white/20 border border-white/30 rounded-full text-white text-sm sm:text-base placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-white"
               disabled={isReplying}
             />
             <button
@@ -402,13 +402,13 @@ const StoryViewerModal = ({ person, onClose }) => {
                   setIsReplying(false);
                 }
               }}
-              className="px-4 py-2 bg-indigo-600 text-white rounded-full disabled:opacity-50 hover:bg-indigo-700 transition-all"
+              className="px-3 py-2 sm:px-4 sm:py-2 bg-indigo-600 text-white text-sm sm:text-base rounded-full disabled:opacity-50 hover:bg-indigo-700 transition-all shrink-0"
               disabled={!replyText.trim() || isReplying}
             >
               Send
             </button>
             {replySent && (
-              <span className="ml-2 text-green-400 font-semibold">Reply sent!</span>
+              <span className="absolute bottom-full right-2 mb-2 bg-black/70 px-2 py-1 rounded text-xs text-green-400 font-semibold z-20">Reply sent!</span>
             )}
           </div>
         )}

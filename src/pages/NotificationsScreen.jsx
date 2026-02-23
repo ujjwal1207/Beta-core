@@ -232,15 +232,6 @@ const NotificationsScreen = () => {
                     </button>
                     <h1 className="text-lg font-bold text-slate-900">Activity</h1>
                 </div>
-                {hasUnread && (
-                    <button
-                        onClick={handleMarkAllRead}
-                        className="flex items-center gap-1.5 text-xs font-semibold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-full transition-colors"
-                    >
-                        <CheckCheck className="w-3.5 h-3.5" />
-                        Mark all read
-                    </button>
-                )}
             </div>
 
             {/* Content */}

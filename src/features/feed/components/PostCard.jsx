@@ -146,6 +146,7 @@ const PostCard = ({ post, onUpdate, onHide, showNotInterested = true }) => {
     setIsDeleting(true);
     try {
       await feedService.deletePost(post.id);
+      showToast('Post deleted successfully!', 'success');
       if (onUpdate) onUpdate(null, post.id); // Pass null and postId to indicate deletion
     } catch (error) {
       console.error('Error deleting post:', error);
@@ -797,18 +798,20 @@ const PostCard = ({ post, onUpdate, onHide, showNotInterested = true }) => {
           className="fixed inset-0 bg-black bg-opacity-95 z-50 flex items-center justify-center p-4"
           onClick={() => setIsImageFullscreen(false)}
         >
-          <button
-            onClick={() => setIsImageFullscreen(false)}
-            className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center  bg-opacity-10 hover:bg-opacity-20 rounded-full text-white transition-colors z-50"
-          >
-            <X className="w-6 h-6" />
-          </button>
-          <img
-            src={post.imageUrl || post.image_url}
-            alt="Post fullscreen"
-            className="max-w-full max-h-full object-contain"
-            onClick={(e) => e.stopPropagation()}
-          />
+          <div className="relative max-w-full max-h-full flex items-center justify-center">
+            <button
+              onClick={() => setIsImageFullscreen(false)}
+              className="absolute -top-4 -right-4 md:-top-6 md:-right-6 w-8 h-8 md:w-10 md:h-10 flex items-center justify-center bg-black/50 hover:bg-black/80 rounded-full text-white transition-colors z-50 border border-white/20"
+            >
+              <X className="w-5 h-5 md:w-6 md:h-6" />
+            </button>
+            <img
+              src={post.imageUrl || post.image_url}
+              alt="Post fullscreen"
+              className="max-w-full max-h-full object-contain rounded-md"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
         </div>
       )}
 
