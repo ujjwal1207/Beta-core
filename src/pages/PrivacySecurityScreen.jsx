@@ -377,14 +377,14 @@ const PrivacySecurityScreen = () => {
                     type="text"
                     value={passwordOtp}
                     onChange={(e) => setPasswordOtp(e.target.value)}
-                    className="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    className="flex-1 min-w-0 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                     placeholder="Enter 6-digit code"
                     maxLength="6"
                   />
                   <button
                     onClick={() => requestOtp('password_change')}
                     disabled={otpLoading}
-                    className="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+                    className="px-3 sm:px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1 whitespace-nowrap flex-shrink-0 text-sm sm:text-base"
                   >
                     {otpLoading ? <Loader className="w-4 h-4 animate-spin" /> : <Smartphone className="w-4 h-4" />}
                     Get Code
@@ -443,14 +443,14 @@ const PrivacySecurityScreen = () => {
                     type="text"
                     value={emailOtp}
                     onChange={(e) => setEmailOtp(e.target.value)}
-                    className="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    className="flex-1 min-w-0 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                     placeholder="Enter 6-digit code"
                     maxLength="6"
                   />
                   <button
                     onClick={() => requestOtp('email_change')}
                     disabled={otpLoading}
-                    className="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+                    className="px-3 sm:px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1 whitespace-nowrap flex-shrink-0 text-sm sm:text-base"
                   >
                     {otpLoading ? <Loader className="w-4 h-4 animate-spin" /> : <Smartphone className="w-4 h-4" />}
                     Get Code
@@ -534,14 +534,14 @@ const PrivacySecurityScreen = () => {
                     type="text"
                     value={deactivateOtp}
                     onChange={(e) => setDeactivateOtp(e.target.value)}
-                    className="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                    className="flex-1 min-w-0 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
                     placeholder="Enter 6-digit code"
                     maxLength="6"
                   />
                   <button
                     onClick={() => requestOtp('account_deactivation')}
                     disabled={otpLoading}
-                    className="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+                    className="px-3 sm:px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1 whitespace-nowrap flex-shrink-0 text-sm sm:text-base"
                   >
                     {otpLoading ? <Loader className="w-4 h-4 animate-spin" /> : <Smartphone className="w-4 h-4" />}
                     Get Code
@@ -634,14 +634,14 @@ const PrivacySecurityScreen = () => {
                     type="text"
                     value={deleteOtp}
                     onChange={(e) => setDeleteOtp(e.target.value)}
-                    className="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    className="flex-1 min-w-0 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                     placeholder="Enter 6-digit code"
                     maxLength="6"
                   />
                   <button
                     onClick={() => requestOtp('account_deletion')}
                     disabled={otpLoading}
-                    className="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+                    className="px-3 sm:px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1 whitespace-nowrap flex-shrink-0 text-sm sm:text-base"
                   >
                     {otpLoading ? <Loader className="w-4 h-4 animate-spin" /> : <Smartphone className="w-4 h-4" />}
                     Get Code
