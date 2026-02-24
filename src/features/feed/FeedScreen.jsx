@@ -34,6 +34,12 @@ const FeedScreen = () => {
   const [error, setError] = useState(null);
   const [hiddenPostIds, setHiddenPostIds] = useState(new Set());
 
+  // Pagination state
+  const [skip, setSkip] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const observerTarget = React.useRef(null);
+
   // Fetch posts from backend
   const fetchPosts = async () => {
     if (!isAuthenticated) {
@@ -45,8 +51,10 @@ const FeedScreen = () => {
       setIsLoadingPosts(true);
       setError(null);
       // Fetch with Vibe Engine enabled
-      const feedData = await feedService.getFeed({ limit: 20, useVibe: true });
+      const feedData = await feedService.getFeed({ limit: 10, skip: 0, useVibe: true });
       setPosts(feedData);
+      setSkip(10);
+      setHasMore(feedData.length === 10);
     } catch (err) {
       console.error('Error fetching feed:', err);
       setError('Failed to load feed. Please try again.');
@@ -54,6 +62,54 @@ const FeedScreen = () => {
       setIsLoadingPosts(false);
     }
   };
+
+  // Fetch more posts for infinite scroll
+  const fetchMorePosts = async () => {
+    if (!isAuthenticated || isLoadingMore || !hasMore || isLoadingPosts) return;
+
+    try {
+      setIsLoadingMore(true);
+      const feedData = await feedService.getFeed({ limit: 10, skip, useVibe: true });
+
+      if (feedData.length > 0) {
+        setPosts(prev => {
+          // Filter out duplicates just in case
+          const newPosts = feedData.filter(newPost => !prev.some(p => p.id === newPost.id));
+          return [...prev, ...newPosts];
+        });
+        setSkip(prev => prev + 10);
+      }
+
+      if (feedData.length < 10) {
+        setHasMore(false);
+      }
+    } catch (err) {
+      console.error('Error fetching more posts:', err);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  };
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      entries => {
+        if (entries[0].isIntersecting && hasMore && !isLoadingPosts && !isLoadingMore) {
+          fetchMorePosts();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (observerTarget.current) {
+      observer.observe(observerTarget.current);
+    }
+
+    return () => {
+      if (observerTarget.current) {
+        observer.unobserve(observerTarget.current);
+      }
+    };
+  }, [observerTarget.current, hasMore, isLoadingPosts, isLoadingMore, skip]);
 
   useEffect(() => {
     fetchPosts();
@@ -256,6 +312,17 @@ const FeedScreen = () => {
                   onHide={hidePost}
                 />
               ))
+          )}
+
+          {/* Infinite Scroll Target */}
+          {posts.length > 0 && !error && (
+            <div ref={observerTarget} className="py-8 flex justify-center">
+              {isLoadingMore ? (
+                <Loader className="w-6 h-6 text-indigo-500 animate-spin" />
+              ) : !hasMore ? (
+                <p className="text-slate-400 text-sm">You've caught up on all posts!</p>
+              ) : null}
+            </div>
           )}
         </div>
       </div>

@@ -43,12 +43,12 @@ const feedService = {
   /**
    * Get personalized feed with Vibe Engine filtering
    * @param {Object} options - Feed options
-   * @param {number} [options.limit=20] - Maximum posts to return
+   * @param {number} [options.limit=10] - Maximum posts to return
    * @param {number} [options.skip=0] - Posts to skip (pagination)
    * @param {boolean} [options.useVibe=true] - Enable mood-based filtering
    * @returns {Promise<Array>} Array of posts with user info
    */
-  getFeed: async ({ limit = 20, skip = 0, useVibe = true } = {}) => {
+  getFeed: async ({ limit = 10, skip = 0, useVibe = true } = {}) => {
     try {
       const response = await api.get('/feed/feed', {
         params: { limit, skip, use_vibe: useVibe }
