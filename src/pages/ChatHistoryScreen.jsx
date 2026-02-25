@@ -137,7 +137,7 @@ const ChatHistoryScreen = () => {
               <div
                 key={conversation.id}
                 onClick={() => handleChatClick(conversation)}
-                className="bg-white p-3 sm:p-4 rounded-xl shadow-sm border border-slate-100 flex items-center cursor-pointer active:shadow-md active:border-indigo-200 transition-all relative touch-manipulation overflow-hidden"
+                className={`bg-white p-3 sm:p-4 rounded-xl shadow-sm border border-slate-100 flex items-center cursor-pointer active:shadow-md active:border-indigo-200 transition-all relative touch-manipulation ${activeMenuId === conversation.id ? 'z-50' : 'z-0'}`}
               >
                 <div className="w-10 h-10 sm:w-14 sm:h-14 flex-shrink-0 rounded-full mr-2 sm:mr-3 overflow-hidden">
                   <img
