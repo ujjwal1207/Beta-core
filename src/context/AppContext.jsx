@@ -61,6 +61,9 @@ export const AppProvider = ({ children }) => {
   // Incoming scheduled call notifications
   const [incomingScheduledCall, setIncomingScheduledCall] = useState(null);
 
+  // Joinable scheduled live calls
+  const [hasLiveCall, setHasLiveCall] = useState(false);
+
   // Toast notification state
   const [toast, setToast] = useState(null);
 
@@ -209,8 +212,8 @@ export const AppProvider = ({ children }) => {
       }
     };
 
-    // Start polling
-    interval = setInterval(pollInvitations, 3000);
+    // Start polling every 1.5 seconds for instant call rings
+    interval = setInterval(pollInvitations, 1500);
 
     // Initial poll
     pollInvitations();
@@ -479,8 +482,8 @@ export const AppProvider = ({ children }) => {
     };
 
     fetchPendingRequests();
-    // Poll every 30 seconds
-    const interval = setInterval(fetchPendingRequests, 30000);
+    // Poll every 3 seconds
+    const interval = setInterval(fetchPendingRequests, 3000);
 
     return () => clearInterval(interval);
   }, [isAuthenticated]);
@@ -500,8 +503,8 @@ export const AppProvider = ({ children }) => {
     };
 
     fetchUnreadMessagesCount();
-    // Poll every 10 seconds for faster updates
-    const interval = setInterval(fetchUnreadMessagesCount, 10000);
+    // Poll every 2 seconds for faster updates
+    const interval = setInterval(fetchUnreadMessagesCount, 2000);
 
     return () => clearInterval(interval);
   }, [isAuthenticated]);
@@ -520,8 +523,8 @@ export const AppProvider = ({ children }) => {
     };
 
     fetchUnreadNotificationsCount();
-    // Poll every 30 seconds
-    const interval = setInterval(fetchUnreadNotificationsCount, 30000);
+    // Poll every 3 seconds
+    const interval = setInterval(fetchUnreadNotificationsCount, 3000);
 
     return () => clearInterval(interval);
   }, [isAuthenticated]);
@@ -543,8 +546,31 @@ export const AppProvider = ({ children }) => {
     };
 
     fetchPendingCallRequests();
-    // Poll every 30 seconds
-    const interval = setInterval(fetchPendingCallRequests, 30000);
+    // Poll every 2 seconds
+    const interval = setInterval(fetchPendingCallRequests, 2000);
+
+    return () => clearInterval(interval);
+  }, [isAuthenticated]);
+
+  // Fetch upcoming live scheduled calls (to power the green notification badge)
+  // Get all scheduled calls that are starting soon or currently active
+  useEffect(() => {
+    const fetchUpcomingCalls = async () => {
+      if (isAuthenticated) {
+        try {
+          const upcoming = await callsService.getUpcomingScheduledCalls();
+          // Set to true if there is at least 1 upcoming call
+          setHasLiveCall(upcoming && upcoming.length > 0);
+        } catch (error) {
+          console.error('Failed to fetch upcoming calls:', error);
+          setHasLiveCall(false);
+        }
+      }
+    };
+
+    fetchUpcomingCalls();
+    // Poll every 5 seconds since scheduled calls require less real-time immediacy than invites
+    const interval = setInterval(fetchUpcomingCalls, 5000);
 
     return () => clearInterval(interval);
   }, [isAuthenticated]);
@@ -636,6 +662,9 @@ export const AppProvider = ({ children }) => {
     // Incoming scheduled call notifications
     incomingScheduledCall,
     setIncomingScheduledCall,
+    // Live call state
+    hasLiveCall,
+    setHasLiveCall,
     // Notification preferences
     notificationPreferences,
     setNotificationPreferences,

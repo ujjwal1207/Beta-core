@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAppContext } from '../../../context/AppContext';
-import { UserPlus, Calendar } from 'lucide-react';
+import { UserPlus, Calendar, CheckCircle } from 'lucide-react';
 import MoodDisplay from '../../../components/ui/MoodDisplay';
 import StarBadge from '../../../components/ui/StarBadge';
 import Button from '../../../components/ui/Button';
@@ -9,6 +9,7 @@ import ScheduleCallModal from './ScheduleCallModal';
 const SwipeablePersonCard = ({ person, onAction, style, isTop }) => {
   const { setScreen, setSelectedPerson, setPreviousScreen } = useAppContext();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isRequested, setIsRequested] = useState(false);
   
   const handleNameClick = () => {
     setPreviousScreen('CONNECTIONS_DASHBOARD');
@@ -48,9 +49,26 @@ const SwipeablePersonCard = ({ person, onAction, style, isTop }) => {
             ))}
           </div>
           <div className="flex gap-2 sm:gap-3 pt-2">
-            <Button onClick={() => onAction(person, 'connect')} primary className="flex-1 !bg-white !text-slate-800 !text-sm sm:!text-base !py-2.5 sm:!py-3 touch-manipulation">
-              <UserPlus className="w-4 h-4 inline mr-1 sm:mr-2 text-indigo-500"/> Connect
-            </Button>
+            {isRequested ? (
+              <Button disabled className="flex-1 !bg-green-500 !text-white !text-sm sm:!text-base !py-2.5 sm:!py-3 touch-manipulation">
+                <CheckCircle className="w-4 h-4 inline mr-1 sm:mr-2 text-white"/> Sent
+              </Button>
+            ) : (
+              <Button 
+                onClick={async () => {
+                  try {
+                    setIsRequested(true);
+                    await onAction(person, 'connect');
+                  } catch (e) {
+                    setIsRequested(false);
+                  }
+                }} 
+                primary 
+                className="flex-1 !bg-white !text-slate-800 !text-sm sm:!text-base !py-2.5 sm:!py-3 touch-manipulation"
+              >
+                <UserPlus className="w-4 h-4 inline mr-1 sm:mr-2 text-indigo-500"/> Connect
+              </Button>
+            )}
             <Button onClick={() => setIsModalOpen(true)} className="flex-1 !text-sm sm:!text-base !py-2.5 sm:!py-3 touch-manipulation">
               <Calendar className="w-4 h-4 inline mr-1 sm:mr-2"/> Schedule Call
             </Button>

@@ -2,7 +2,7 @@ import React from 'react';
 import { Home, Users, Phone, MessageSquare as ChatIcon, User, BarChart3, Bell } from 'lucide-react';
 import { useAppContext } from '../../context/AppContext';
 
-const NavItem = ({ icon: Icon, text, current, setScreen, showBadge = false }) => (
+const NavItem = ({ icon: Icon, text, current, setScreen, showBadge = false, badgeColor = 'red' }) => (
   <button
     className={`flex flex-col items-center justify-center p-2 sm:p-1 rounded-none transition-colors flex-grow h-full text-xs font-semibold min-w-0 relative ${current
       ? 'text-indigo-600 font-bold border-b-2 border-indigo-600 bg-indigo-50'
@@ -13,7 +13,8 @@ const NavItem = ({ icon: Icon, text, current, setScreen, showBadge = false }) =>
     <div className="relative">
       <Icon className="w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0" />
       {showBadge && (
-        <span className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-red-500 rounded-full border-2 border-white"></span>
+        <span className={`absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white ${badgeColor === 'green' ? 'bg-green-500' : 'bg-red-500'
+          }`}></span>
       )}
     </div>
     <span className="text-[10px] sm:text-[11px] mt-0.5 sm:mt-1 truncate w-full">{text}</span>
@@ -21,12 +22,26 @@ const NavItem = ({ icon: Icon, text, current, setScreen, showBadge = false }) =>
 );
 
 export const TopTabBar = ({ setScreen, currentScreen }) => {
-  const { pendingRequestsCount, unreadMessagesCount, pendingCallRequestsCount, notificationPreferences, user, unreadNotificationsCount } = useAppContext();
+  const {
+    pendingRequestsCount,
+    unreadMessagesCount,
+    pendingCallRequestsCount,
+    notificationPreferences,
+    user,
+    unreadNotificationsCount,
+    hasLiveCall
+  } = useAppContext();
 
   const navItems = [
     { name: 'Feed', icon: Home, screen: 'FEED' },
     { name: 'People', icon: Users, screen: 'CONNECTIONS_DASHBOARD' },
-    { name: 'Calls', icon: Phone, screen: 'CALL_HISTORY', showBadge: notificationPreferences.scheduledCallNotifications && pendingCallRequestsCount > 0 },
+    {
+      name: 'Calls',
+      icon: Phone,
+      screen: 'CALL_HISTORY',
+      showBadge: hasLiveCall || (notificationPreferences.scheduledCallNotifications && pendingCallRequestsCount > 0),
+      badgeColor: hasLiveCall ? 'green' : 'red'
+    },
     { name: 'Messages', icon: ChatIcon, screen: 'CHAT_HISTORY', showBadge: notificationPreferences.messageNotifications && unreadMessagesCount > 0 },
   ];
 
@@ -73,6 +88,7 @@ export const TopTabBar = ({ setScreen, currentScreen }) => {
             current={currentScreen === item.screen}
             setScreen={() => setScreen(item.screen)}
             showBadge={item.showBadge || false}
+            badgeColor={item.badgeColor}
           />
         ))}
       </nav>

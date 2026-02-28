@@ -18,7 +18,7 @@ const SwipeablePeopleScreen = () => {
   const [error, setError] = useState(null);
   const [notification, setNotification] = useState(null);
   const notificationTimeoutRef = useRef(null);
-  
+
   const showNotification = (message, type = 'success') => {
     // Clear any existing timeout to prevent premature clearing
     if (notificationTimeoutRef.current) {
@@ -71,13 +71,12 @@ const SwipeablePeopleScreen = () => {
       {/* Notification */}
       {notification && (
         <div className="fixed top-4 left-4 right-4 z-50">
-          <div className={`p-4 rounded-xl shadow-lg border backdrop-blur-sm ${
-            notification.type === 'success' 
-              ? 'bg-green-50 border-green-200 text-green-800' 
-              : notification.type === 'error'
+          <div className={`p-4 rounded-xl shadow-lg border backdrop-blur-sm ${notification.type === 'success'
+            ? 'bg-green-50 border-green-200 text-green-800'
+            : notification.type === 'error'
               ? 'bg-red-50 border-red-200 text-red-800'
               : 'bg-blue-50 border-blue-200 text-blue-800'
-          }`}>
+            }`}>
             <div className="flex items-center gap-3">
               {notification.type === 'success' && <CheckCircle className="w-5 h-5 text-green-600" />}
               {notification.type === 'error' && <XCircle className="w-5 h-5 text-red-600" />}
@@ -87,57 +86,58 @@ const SwipeablePeopleScreen = () => {
           </div>
         </div>
       )}
-      
+
       <div className="flex flex-row overflow-x-auto w-full scroll-snap-x-mandatory hide-scrollbar">
-      {sections.map((section, index) => (
-        <div key={index} className="flex-shrink-0 w-full h-full scroll-snap-align-start flex">
-          <div className="w-full p-0 flex justify-center items-start">
-            <div className="flex flex-col items-center space-y-3 pb-12 w-full px-3 sm:px-4">
-              <h2 className="text-xl sm:text-2xl font-bold text-slate-800 mt-3 sm:mt-4 pb-2 sm:pb-3 border-b-2 border-slate-200 w-full text-center max-w-sm mx-auto">
-                {section.title}
-              </h2>
-              {section.people.map(person => (
-                <div key={person.id} className="w-full max-w-sm mx-auto flex-shrink-0">
-                  <div className="relative w-full" style={{ height: '45vh', minHeight: '300px', maxHeight: '500px' }}>
-                    <SwipeablePersonCard 
-                      person={{
-                        id: person.id,
-                        name: person.full_name,
-                        age: person.age,
-                        role: person.role,
-                        image: getAvatarUrlWithSize(person, 400),
-                        mood: person.mood,
-                        location: person.location,
-                        tags: person.tags || [],
-                        bio: person.bio,
-                        trustScore: person.trust_score,
-                      }} 
-                      onAction={async () => {
-                        try {
-                          await connectionsService.sendRequest(person.id);
-                          showNotification('Connection request sent! We\'ll let you know when they accept.', 'success');
-                        } catch (error) {
-                          console.error('Failed to send connection request:', error);
-                          showNotification('Failed to send connection request. Please try again.', 'error');
-                        }
-                      }} 
-                      isTop={true}
-                    />
+        {sections.map((section, index) => (
+          <div key={index} className="flex-shrink-0 w-full h-full scroll-snap-align-start flex">
+            <div className="w-full p-0 flex justify-center items-start">
+              <div className="flex flex-col items-center space-y-3 pb-12 w-full px-3 sm:px-4">
+                <h2 className="text-xl sm:text-2xl font-bold text-slate-800 mt-3 sm:mt-4 pb-2 sm:pb-3 border-b-2 border-slate-200 w-full text-center max-w-sm mx-auto">
+                  {section.title}
+                </h2>
+                {section.people.map(person => (
+                  <div key={person.id} className="w-full max-w-sm mx-auto flex-shrink-0">
+                    <div className="relative w-full" style={{ height: '45vh', minHeight: '300px', maxHeight: '500px' }}>
+                      <SwipeablePersonCard
+                        person={{
+                          id: person.id,
+                          name: person.full_name,
+                          age: person.age,
+                          role: person.role,
+                          image: getAvatarUrlWithSize(person, 400),
+                          mood: person.mood,
+                          location: person.location,
+                          tags: person.tags || [],
+                          bio: person.bio,
+                          trustScore: person.trust_score,
+                        }}
+                        onAction={async () => {
+                          try {
+                            await connectionsService.sendRequest(person.id);
+                            showNotification('Connection request sent! We\'ll let you know when they accept.', 'success');
+                          } catch (error) {
+                            console.error('Failed to send connection request:', error);
+                            showNotification('Failed to send connection request. Please try again.', 'error');
+                            throw error;
+                          }
+                        }}
+                        isTop={true}
+                      />
+                    </div>
                   </div>
-                </div>
-              ))}
-              {section.people.length === 0 && (
-                <div className="text-center p-8 bg-white rounded-xl shadow-lg border border-slate-200 w-full max-w-sm mt-8">
-                  <Users className="w-10 h-10 text-rose-500 mx-auto mb-4"/>
-                  <p className="font-semibold text-base text-slate-700">That's everyone for now.</p>
-                  <p className="text-sm text-slate-500 mt-1">Try another category or come back later.</p>
-                </div>
-              )}
+                ))}
+                {section.people.length === 0 && (
+                  <div className="text-center p-8 bg-white rounded-xl shadow-lg border border-slate-200 w-full max-w-sm mt-8">
+                    <Users className="w-10 h-10 text-rose-500 mx-auto mb-4" />
+                    <p className="font-semibold text-base text-slate-700">That's everyone for now.</p>
+                    <p className="text-sm text-slate-500 mt-1">Try another category or come back later.</p>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      ))}
-    </div>
+        ))}
+      </div>
     </>
   );
 };
@@ -146,9 +146,10 @@ const SwipeablePeopleScreen = () => {
 const PersonResultCard = ({ person }) => {
   const { setScreen, setSelectedPerson, setPreviousScreen } = useAppContext();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isRequested, setIsRequested] = useState(false);
   const [notification, setNotification] = useState(null);
   const notificationTimeoutRef = useRef(null);
-  
+
   const showNotification = (message, type = 'success') => {
     // Clear any existing timeout to prevent premature clearing
     if (notificationTimeoutRef.current) {
@@ -160,13 +161,13 @@ const PersonResultCard = ({ person }) => {
       notificationTimeoutRef.current = null;
     }, 3000);
   };
-  
+
   const handleNameClick = () => {
     setPreviousScreen('CONNECTIONS_DASHBOARD');
     setSelectedPerson(person);
     setScreen('PROFILE_DETAIL');
   };
-  
+
   const isSuperLinker = person.is_super_linker || false;
 
   return (
@@ -174,13 +175,12 @@ const PersonResultCard = ({ person }) => {
       {/* Notification */}
       {notification && (
         <div className="fixed top-4 left-4 right-4 z-50">
-          <div className={`p-4 rounded-xl shadow-lg border backdrop-blur-sm ${
-            notification.type === 'success' 
-              ? 'bg-green-50 border-green-200 text-green-800' 
-              : notification.type === 'error'
+          <div className={`p-4 rounded-xl shadow-lg border backdrop-blur-sm ${notification.type === 'success'
+            ? 'bg-green-50 border-green-200 text-green-800'
+            : notification.type === 'error'
               ? 'bg-red-50 border-red-200 text-red-800'
               : 'bg-blue-50 border-blue-200 text-blue-800'
-          }`}>
+            }`}>
             <div className="flex items-center gap-3">
               {notification.type === 'success' && <CheckCircle className="w-5 h-5 text-green-600" />}
               {notification.type === 'error' && <XCircle className="w-5 h-5 text-red-600" />}
@@ -190,7 +190,7 @@ const PersonResultCard = ({ person }) => {
           </div>
         </div>
       )}
-      
+
       <div className="bg-white p-3 sm:p-4 rounded-xl shadow-sm border border-slate-100 flex items-center mb-3 w-full touch-manipulation">
         <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-cover bg-center mr-3 flex-shrink-0 relative overflow-hidden">
           <img src={getAvatarUrlWithSize(person, 100)} alt={person.full_name} className="w-full h-full rounded-full object-cover" />
@@ -210,32 +210,43 @@ const PersonResultCard = ({ person }) => {
           </button>
         </div>
         <div className="flex gap-2 ml-2 sm:ml-3 flex-shrink-0">
-          <button 
-            onClick={async () => {
-              try {
-                await connectionsService.sendRequest(person.id);
-                showNotification('Connection request sent! We\'ll let you know when they accept.', 'success');
-              } catch (error) {
-                console.error('Failed to send connection request:', error);
-                showNotification('Failed to send connection request. Please try again.', 'error');
-              }
-            }} 
-            className="p-2 sm:p-2.5 rounded-lg bg-slate-100 text-indigo-600 active:bg-slate-200 touch-manipulation"
-          >
-            <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5"/>
-          </button>
-          <button 
-            onClick={() => setIsModalOpen(true)} 
+          {isRequested ? (
+            <button
+              disabled
+              className="p-2 sm:p-2.5 rounded-lg bg-green-100 text-green-600 touch-manipulation"
+            >
+              <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5" />
+            </button>
+          ) : (
+            <button
+              onClick={async () => {
+                try {
+                  setIsRequested(true);
+                  await connectionsService.sendRequest(person.id);
+                  showNotification('Connection request sent! We\'ll let you know when they accept.', 'success');
+                } catch (error) {
+                  setIsRequested(false);
+                  console.error('Failed to send connection request:', error);
+                  showNotification('Failed to send connection request. Please try again.', 'error');
+                }
+              }}
+              className="p-2 sm:p-2.5 rounded-lg bg-slate-100 text-indigo-600 active:bg-slate-200 touch-manipulation"
+            >
+              <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5" />
+            </button>
+          )}
+          <button
+            onClick={() => setIsModalOpen(true)}
             className="p-2 sm:p-2.5 rounded-lg bg-slate-100 text-rose-500 active:bg-slate-200 touch-manipulation"
           >
-            <Calendar className="w-4 h-4 sm:w-5 sm:h-5"/>
+            <Calendar className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
         </div>
       </div>
-      <ScheduleCallModal 
-        isOpen={isModalOpen} 
-        onClose={() => setIsModalOpen(false)} 
-        person={person} 
+      <ScheduleCallModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        person={person}
         setScreen={setScreen}
       />
     </>
@@ -261,10 +272,10 @@ const FindConnectionScreen = () => {
 
   const handleSearch = useCallback(async (query) => {
     const trimmedQuery = query.trim();
-    
+
     // Check if we have any filters or query
     const hasActiveFilters = Object.values(filters).some(val => val.trim());
-    
+
     if (!trimmedQuery && !hasActiveFilters) {
       setResults([]);
       // keep searchTerm so UI shows the query
@@ -276,7 +287,7 @@ const FindConnectionScreen = () => {
       setIsLoading(true);
       setSearchTerm(query);
       setSearchPerformed(true);
-      
+
       // Create clean filters object (only non-empty values)
       const activeFilters = {};
       Object.keys(filters).forEach(key => {
@@ -284,7 +295,7 @@ const FindConnectionScreen = () => {
           activeFilters[key] = filters[key].trim();
         }
       });
-      
+
       const data = await connectionsService.search(trimmedQuery, 20, activeFilters);
       setResults(data);
     } catch (err) {
@@ -307,31 +318,30 @@ const FindConnectionScreen = () => {
   return (
     <div className="flex flex-col w-full bg-slate-50 p-3 sm:p-4 pt-0">
       <div className='pt-3 sm:pt-4'>
-        <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-800 mb-1">Find Someone</h1> 
+        <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-800 mb-1">Find Someone</h1>
         <p className="text-sm sm:text-base text-slate-500 mb-3 sm:mb-4">Look for shared experiences or topics.</p>
         <div className="flex gap-2">
-          <div className="relative flex-1"> 
+          <div className="relative flex-1">
             <Search className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-slate-400" />
-            <input 
-              type="text" 
-              placeholder="e.g., UX design, Startups..." 
-              value={searchTerm} 
-              onChange={e => handleSearch(e.target.value)} 
+            <input
+              type="text"
+              placeholder="e.g., UX design, Startups..."
+              value={searchTerm}
+              onChange={e => handleSearch(e.target.value)}
               className="w-full p-3 sm:p-4 pl-10 sm:pl-12 border border-slate-300 rounded-xl focus:ring-indigo-500 focus:border-indigo-500 text-sm sm:text-base shadow-sm touch-manipulation"
             />
           </div>
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className={`p-3 sm:p-4 border rounded-xl transition-colors touch-manipulation ${
-              showFilters 
-                ? 'bg-indigo-600 text-white border-indigo-600' 
-                : 'bg-white text-slate-700 border-slate-300 active:bg-slate-50'
-            }`}
+            className={`p-3 sm:p-4 border rounded-xl transition-colors touch-manipulation ${showFilters
+              ? 'bg-indigo-600 text-white border-indigo-600'
+              : 'bg-white text-slate-700 border-slate-300 active:bg-slate-50'
+              }`}
           >
             <Filter className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
         </div>
-        
+
         {/* Filter Panel */}
         {showFilters && (
           <div className="mt-3 sm:mt-4 bg-white border border-slate-200 rounded-xl p-3 sm:p-4 space-y-2 sm:space-y-3">
@@ -359,7 +369,7 @@ const FindConnectionScreen = () => {
                 type="text"
                 placeholder="Role"
                 value={filters.role}
-                onChange={e => setFilters({...filters, role: e.target.value})}
+                onChange={e => setFilters({ ...filters, role: e.target.value })}
                 onBlur={() => handleSearch(searchTerm)}
                 className="p-2.5 sm:p-2 text-sm border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 touch-manipulation"
               />
@@ -367,7 +377,7 @@ const FindConnectionScreen = () => {
                 type="text"
                 placeholder="Company"
                 value={filters.company}
-                onChange={e => setFilters({...filters, company: e.target.value})}
+                onChange={e => setFilters({ ...filters, company: e.target.value })}
                 onBlur={() => handleSearch(searchTerm)}
                 className="p-2.5 sm:p-2 text-sm border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 touch-manipulation"
               />
@@ -375,7 +385,7 @@ const FindConnectionScreen = () => {
                 type="text"
                 placeholder="School"
                 value={filters.school}
-                onChange={e => setFilters({...filters, school: e.target.value})}
+                onChange={e => setFilters({ ...filters, school: e.target.value })}
                 onBlur={() => handleSearch(searchTerm)}
                 className="p-2.5 sm:p-2 text-sm border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 touch-manipulation"
               />
@@ -383,7 +393,7 @@ const FindConnectionScreen = () => {
                 type="text"
                 placeholder="Expertise"
                 value={filters.expertise}
-                onChange={e => setFilters({...filters, expertise: e.target.value})}
+                onChange={e => setFilters({ ...filters, expertise: e.target.value })}
                 onBlur={() => handleSearch(searchTerm)}
                 className="p-2.5 sm:p-2 text-sm border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 touch-manipulation"
               />
@@ -391,7 +401,7 @@ const FindConnectionScreen = () => {
                 type="text"
                 placeholder="Location"
                 value={filters.location}
-                onChange={e => setFilters({...filters, location: e.target.value})}
+                onChange={e => setFilters({ ...filters, location: e.target.value })}
                 onBlur={() => handleSearch(searchTerm)}
                 className="p-2.5 sm:p-2 text-sm border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 touch-manipulation"
               />
@@ -399,7 +409,7 @@ const FindConnectionScreen = () => {
                 type="text"
                 placeholder="Industry"
                 value={filters.industry}
-                onChange={e => setFilters({...filters, industry: e.target.value})}
+                onChange={e => setFilters({ ...filters, industry: e.target.value })}
                 onBlur={() => handleSearch(searchTerm)}
                 className="p-2 text-sm border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
               />
@@ -418,9 +428,9 @@ const FindConnectionScreen = () => {
           <h3 className="text-base font-semibold text-slate-800 my-4">Popular Topics</h3>
           <div className="flex flex-wrap gap-2 mb-4">
             {POPULAR_TOPICS.slice(0, 6).map(topic => (
-              <button 
-                key={topic} 
-                onClick={() => handleSearch(topic)} 
+              <button
+                key={topic}
+                onClick={() => handleSearch(topic)}
                 className="px-3 py-1.5 text-sm font-semibold bg-white text-slate-700 border border-slate-300 rounded-full hover:bg-slate-100 shadow-sm"
               >
                 {topic}
@@ -444,7 +454,7 @@ const FindConnectionScreen = () => {
             ) : (
               searchPerformed && (
                 <div className="text-center p-8 bg-white rounded-xl shadow-lg border border-slate-200">
-                  <Frown className="w-10 h-10 text-slate-400 mx-auto mb-4"/>
+                  <Frown className="w-10 h-10 text-slate-400 mx-auto mb-4" />
                   <p className="font-semibold text-base text-slate-700">No one matched that search.</p>
                   <p className="text-sm text-slate-500 mt-1">Try a different or more general topic.</p>
                 </div>
@@ -481,7 +491,8 @@ const SuperListenLinkerScreen = () => {
   const SuperPersonCard = ({ person }) => {
     const { setScreen, setSelectedPerson, setPreviousScreen } = useAppContext();
     const [isModalOpen, setIsModalOpen] = useState(false);
-    
+    const [isRequested, setIsRequested] = useState(false);
+
     const handleNameClick = () => {
       setPreviousScreen('CONNECTIONS_DASHBOARD');
       setSelectedPerson(person);
@@ -491,9 +502,9 @@ const SuperListenLinkerScreen = () => {
     return (
       <>
         <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex items-center mb-3 w-full">
-          <div 
-            className="w-16 h-16 rounded-full bg-cover bg-center mr-4 flex-shrink-0 overflow-hidden" 
-            style={{backgroundImage: `url(${getAvatarUrlWithSize(person, 100)})`}}
+          <div
+            className="w-16 h-16 rounded-full bg-cover bg-center mr-4 flex-shrink-0 overflow-hidden"
+            style={{ backgroundImage: `url(${getAvatarUrlWithSize(person, 100)})` }}
           ></div>
           <div className="flex-grow min-w-0">
             <button onClick={handleNameClick} className="text-left">
@@ -509,17 +520,42 @@ const SuperListenLinkerScreen = () => {
               </div>
             </div>
           </div>
-          <button 
-            onClick={() => setIsModalOpen(true)} 
-            className="p-2 rounded-lg bg-rose-100 text-rose-500 hover:bg-rose-200 ml-3 flex-shrink-0"
-          >
-            <Calendar className="w-5 h-5"/>
-          </button>
+          <div className="flex gap-2 ml-3 flex-shrink-0">
+            {isRequested ? (
+              <button
+                disabled
+                className="p-2 rounded-lg bg-green-100 text-green-600"
+              >
+                <CheckCircle className="w-5 h-5" />
+              </button>
+            ) : (
+              <button
+                onClick={async () => {
+                  try {
+                    setIsRequested(true);
+                    await connectionsService.sendRequest(person.id);
+                  } catch (error) {
+                    setIsRequested(false);
+                    console.error('Failed to send connection request:', error);
+                  }
+                }}
+                className="p-2 rounded-lg bg-slate-100 text-indigo-600 active:bg-slate-200"
+              >
+                <MessageSquare className="w-5 h-5" />
+              </button>
+            )}
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="p-2 rounded-lg bg-rose-100 text-rose-500 hover:bg-rose-200"
+            >
+              <Calendar className="w-5 h-5" />
+            </button>
+          </div>
         </div>
-        <ScheduleCallModal 
-          isOpen={isModalOpen} 
-          onClose={() => setIsModalOpen(false)} 
-          person={person} 
+        <ScheduleCallModal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          person={person}
           setScreen={setScreen}
         />
       </>
@@ -537,7 +573,7 @@ const SuperListenLinkerScreen = () => {
   return (
     <div className="flex flex-col w-full bg-slate-50 p-4 pt-0">
       <div className='pt-4'>
-        <h1 className="text-3xl font-extrabold text-slate-800 mb-1">Super ListenLinkers</h1> 
+        <h1 className="text-3xl font-extrabold text-slate-800 mb-1">Super ListenLinkers</h1>
         <p className="text-base text-slate-500 mb-4">Our most trusted and experienced sharers, available for dedicated calls.</p>
       </div>
       <div className='flex-grow pt-4'>
@@ -545,7 +581,7 @@ const SuperListenLinkerScreen = () => {
           <div className="space-y-0">{superLinkers.map(person => <SuperPersonCard key={person.id} person={person} />)}</div>
         ) : (
           <div className="text-center p-8 bg-white rounded-xl shadow-lg border border-slate-200">
-            <Star className="w-10 h-10 text-slate-400 mx-auto mb-4"/>
+            <Star className="w-10 h-10 text-slate-400 mx-auto mb-4" />
             <p className="font-semibold text-base text-slate-700">Coming Soon</p>
             <p className="text-sm text-slate-500 mt-1">We're still growing our community of Super ListenLinkers!</p>
           </div>
@@ -578,7 +614,8 @@ const AlumniScreen = () => {
 
   const AlumniPersonCard = ({ person }) => {
     const { setScreen, setSelectedPerson, setPreviousScreen } = useAppContext();
-    
+    const [isRequested, setIsRequested] = useState(false);
+
     const handleClick = () => {
       setPreviousScreen('CONNECTIONS_DASHBOARD');
       setSelectedPerson(person);
@@ -594,17 +631,17 @@ const AlumniScreen = () => {
     const commonSchools = getCommonSchools();
 
     return (
-      <div 
+      <div
         onClick={handleClick}
         className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex items-center mb-3 w-full hover:border-indigo-300 transition-colors cursor-pointer"
       >
-        <div 
-          className="w-16 h-16 rounded-full bg-cover bg-center mr-4 flex-shrink-0 overflow-hidden" 
-          style={{backgroundImage: `url(${getAvatarUrlWithSize(person, 100)})`}}
+        <div
+          className="w-16 h-16 rounded-full bg-cover bg-center mr-4 flex-shrink-0 overflow-hidden"
+          style={{ backgroundImage: `url(${getAvatarUrlWithSize(person, 100)})` }}
         >
-          <img 
-            src={getAvatarUrlWithSize(person, 100)} 
-            alt={person.full_name} 
+          <img
+            src={getAvatarUrlWithSize(person, 100)}
+            alt={person.full_name}
             className="w-full h-full object-cover"
           />
         </div>
@@ -620,7 +657,34 @@ const AlumniScreen = () => {
             </div>
           )}
         </div>
-        <MoodDisplay mood={person.mood} size="sm" />
+        <div className="flex gap-2 sm:gap-3 ml-2 flex-shrink-0">
+          <MoodDisplay mood={person.mood} size="sm" />
+          {isRequested ? (
+            <button
+              disabled
+              onClick={(e) => e.stopPropagation()}
+              className="p-2 rounded-lg bg-green-100 text-green-600"
+            >
+              <CheckCircle className="w-4 h-4" />
+            </button>
+          ) : (
+            <button
+              onClick={async (e) => {
+                e.stopPropagation();
+                try {
+                  setIsRequested(true);
+                  await connectionsService.sendRequest(person.id);
+                } catch (error) {
+                  setIsRequested(false);
+                  console.error('Failed to send connection request:', error);
+                }
+              }}
+              className="p-2 rounded-lg bg-slate-100 text-indigo-600 active:bg-slate-200"
+            >
+              <MessageSquare className="w-4 h-4" />
+            </button>
+          )}
+        </div>
       </div>
     );
   };
@@ -637,10 +701,10 @@ const AlumniScreen = () => {
     <div className="flex flex-col w-full bg-slate-50 p-4">
       <h1 className="text-3xl font-extrabold text-slate-800 mb-1">Alumni Network</h1>
       <p className="text-base text-slate-500 mb-4">Connect with people from your schools</p>
-      
+
       {alumni.length === 0 ? (
         <div className="text-center p-8 bg-white rounded-xl shadow-lg border border-slate-200">
-          <Users className="w-12 h-12 text-slate-400 mx-auto mb-4"/>
+          <Users className="w-12 h-12 text-slate-400 mx-auto mb-4" />
           <p className="font-semibold text-base text-slate-700">No alumni found</p>
           <p className="text-sm text-slate-500 mt-1">Add schools to your profile to find alumni</p>
         </div>
@@ -676,7 +740,7 @@ const ConnectionsScreen = () => {
   return (
     <div className="flex flex-col h-full bg-slate-50">
       <TopTabBar setScreen={setScreen} currentScreen="CONNECTIONS_DASHBOARD" />
-      
+
       <div className="flex-grow overflow-y-auto pt-[121px]">
         {/* Mode Selector - constrained to app width */}
         <div className="w-full p-3 sm:p-4 flex justify-center bg-slate-50 border-b border-slate-200">
@@ -686,16 +750,15 @@ const ConnectionsScreen = () => {
                 key={m}
                 onClick={() => setMode(m)}
                 className={`flex-1 min-w-0 px-2 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-bold
-                            rounded-full transition-all duration-300 whitespace-nowrap touch-manipulation ${
-                  mode === m ? 'bg-white text-indigo-600 shadow-md' : 'text-slate-600 active:bg-slate-300'
-                }`}
+                            rounded-full transition-all duration-300 whitespace-nowrap touch-manipulation ${mode === m ? 'bg-white text-indigo-600 shadow-md' : 'text-slate-600 active:bg-slate-300'
+                  }`}
               >
                 {m === 'SWIPE' ? 'Discover' : m === 'SEARCH' ? 'Search' : m === 'ALUMNI' ? 'Alumni' : 'Super'}
               </button>
             ))}
           </div>
         </div>
-        
+
         {/* Incoming Requests Section - Only show on Discover tab */}
         {mode === 'SWIPE' && (
           <div className="pt-4">
