@@ -237,14 +237,8 @@ const AppContent = () => {
     if (!incomingCall) return;
 
     try {
-      // Reject the invitation
+      // Reject the invitation. Centralized logging ensures the caller will detect this rejection and dispatch a single log.
       await callsService.updateInvitation(incomingCall.id, 'rejected');
-
-      // Log the missed call
-      const typeStr = incomingCall.call_type === 'voice' ? 'MISSED_VOICE' : 'MISSED_VIDEO';
-      if (incomingCall.caller) {
-        await chatService.sendMessage(incomingCall.caller.id, `[CALL_LOG] ${typeStr}`);
-      }
 
       setIncomingCall(null);
     } catch (error) {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Heart, MessageCircle, CheckCheck, Loader, Bell, UserPlus, UserCheck } from 'lucide-react';
+import { ArrowLeft, Heart, MessageCircle, CheckCheck, Loader, Bell, UserPlus, UserCheck, PhoneCall } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import notificationService from '../services/notificationService';
 import { getAvatarUrlWithSize } from '../lib/avatarUtils';
@@ -51,6 +51,8 @@ const NotificationItem = ({ notification, onPress }) => {
     const isComment = notification.type === 'comment';
     const isConnectionReq = notification.type === 'connection_req';
     const isConnectionAccepted = notification.type === 'connection_accepted';
+    const isCallAccepted = notification.type === 'call_accepted';
+    const isRescheduleAccepted = notification.type === 'reschedule_accepted';
 
     // Build avatar URL
     const avatarUrl = notification.source_user_photo
@@ -60,7 +62,7 @@ const NotificationItem = ({ notification, onPress }) => {
     const initial = (notification.source_user_name || 'U').charAt(0).toUpperCase();
 
     // Badge color based on type
-    const badgeColor = isLike ? 'bg-red-500' : (isConnectionReq || isConnectionAccepted) ? 'bg-emerald-500' : 'bg-indigo-500';
+    const badgeColor = isLike ? 'bg-red-500' : (isConnectionReq || isConnectionAccepted) ? 'bg-emerald-500' : (isCallAccepted || isRescheduleAccepted) ? 'bg-blue-500' : 'bg-indigo-500';
 
     return (
         <button
@@ -85,6 +87,8 @@ const NotificationItem = ({ notification, onPress }) => {
                         <Heart className="w-3 h-3 text-white fill-white" />
                     ) : (isConnectionReq || isConnectionAccepted) ? (
                         <UserPlus className="w-3 h-3 text-white" />
+                    ) : (isCallAccepted || isRescheduleAccepted) ? (
+                        <PhoneCall className="w-3 h-3 text-white" />
                     ) : (
                         <MessageCircle className="w-3 h-3 text-white fill-white" />
                     )}
@@ -102,6 +106,10 @@ const NotificationItem = ({ notification, onPress }) => {
                         <span className="text-slate-600">sent you a connection request</span>
                     ) : isConnectionAccepted ? (
                         <span className="text-slate-600">accepted your connection request</span>
+                    ) : isCallAccepted ? (
+                        <span className="text-slate-600">accepted your scheduled call request</span>
+                    ) : isRescheduleAccepted ? (
+                        <span className="text-slate-600">accepted your reschedule request</span>
                     ) : (
                         <span className="text-slate-600">
                             commented on your post
@@ -112,14 +120,14 @@ const NotificationItem = ({ notification, onPress }) => {
                     )}
                 </p>
                 {/* Post preview (only for like/comment) */}
-                {notification.post_content && !isConnectionReq && !isConnectionAccepted && (
+                {notification.post_content && !isConnectionReq && !isConnectionAccepted && !isCallAccepted && !isRescheduleAccepted && (
                     <p className="text-xs text-slate-400 mt-0.5 truncate">{notification.post_content}</p>
                 )}
                 <p className="text-[11px] text-slate-400 mt-1">{getRelativeTime(notification.created_at)}</p>
             </div>
 
             {/* Post thumbnail (only for like/comment) */}
-            {notification.post_image_url && !isConnectionReq && !isConnectionAccepted && (
+            {notification.post_image_url && !isConnectionReq && !isConnectionAccepted && !isCallAccepted && !isRescheduleAccepted && (
                 <div className="w-11 h-11 rounded-lg overflow-hidden shrink-0 bg-slate-100">
                     <img src={notification.post_image_url} alt="" className="w-full h-full object-cover" />
                 </div>
@@ -192,6 +200,8 @@ const NotificationsScreen = () => {
                 setScreen('CONNECTION_REQUESTS');
             } else if (notification.type === 'connection_accepted') {
                 setScreen('MY_CONNECTIONS');
+            } else if (notification.type === 'call_accepted' || notification.type === 'reschedule_accepted') {
+                setScreen('CALL_HISTORY');
             } else if (notification.reference_id) {
                 setSelectedPostId(notification.reference_id);
                 setScreen('POST_DETAIL');
