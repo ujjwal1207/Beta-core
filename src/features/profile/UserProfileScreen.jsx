@@ -36,15 +36,15 @@ const UserProfileScreen = () => {
   // Calculate if user has incomplete profile (should show expanded About Me section)
   const hasIncompleteProfile = () => {
     if (!user) return true; // New users should see expanded section
-    
+
     // Check basic profile fields
-    const basicFieldsIncomplete = !user.full_name?.trim() || !user.bio?.trim() || 
-                                  !user.location?.trim() || !user.industry?.trim() || 
-                                  !user.role?.trim() || !user.expertise?.trim();
-    
+    const basicFieldsIncomplete = !user.full_name?.trim() || !user.bio?.trim() ||
+      !user.location?.trim() || !user.industry?.trim() ||
+      !user.role?.trim() || !user.expertise?.trim();
+
     // Check if onboarding journey is incomplete
     const onboardingIncomplete = !onboardingAnswers || Object.keys(onboardingAnswers).length === 0;
-    
+
     return basicFieldsIncomplete || onboardingIncomplete;
   };
 
@@ -151,7 +151,7 @@ const UserProfileScreen = () => {
   const handleSave = async () => {
     setIsSaving(true);
     setSaveError(null);
-    
+
     try {
       // Sync sharer insights data to onboarding answers
       const sharerInsightsData = {
@@ -159,21 +159,21 @@ const UserProfileScreen = () => {
         lifeLessons: editingSharerInsights.lifeLessons.filter(l => l.lesson.trim() || l.where.trim()),
         societyChange: editingSharerInsights.societyChange.trim()
       };
-      
+
       // Update onboarding answers for compatibility
       const updatedOnboardingAnswers = { ...onboardingAnswers };
       if (sharerInsightsData.youngerSelf) updatedOnboardingAnswers['SHARER_TRACK_1'] = sharerInsightsData.youngerSelf;
       else delete updatedOnboardingAnswers['SHARER_TRACK_1'];
-      
+
       if (sharerInsightsData.lifeLessons.length > 0) updatedOnboardingAnswers['SHARER_TRACK_2'] = sharerInsightsData.lifeLessons;
       else delete updatedOnboardingAnswers['SHARER_TRACK_2'];
-      
+
       if (sharerInsightsData.societyChange) updatedOnboardingAnswers['SHARER_TRACK_3'] = sharerInsightsData.societyChange;
       else delete updatedOnboardingAnswers['SHARER_TRACK_3'];
-      
+
       // Update the state
       setOnboardingAnswers(updatedOnboardingAnswers);
-      
+
       const updateData = {
         full_name: localName,
         role: localRole,
@@ -202,7 +202,7 @@ const UserProfileScreen = () => {
 
       // Update profile via backend API (excluding profile_photo since it's already updated)
       await updateUserProfile(updateData);
-      
+
       setIsDirty(false);
       setIsEditingSharerInsights(false);
       setProfilePhoto(null); // Clear the file object, keep preview from server
@@ -217,7 +217,7 @@ const UserProfileScreen = () => {
   const handleMoodChange = async (newMood) => {
     setCurrentMood(newMood);
     setIsDirty(true);
-    
+
     try {
       await updateUserMood(newMood);
     } catch (error) {
@@ -272,7 +272,7 @@ const UserProfileScreen = () => {
       {/* Top Header */}
       <div className="fixed top-0 left-0 right-0 bg-white border-b border-slate-200 px-4 py-3 flex justify-between items-center z-50">
         <div className="flex items-center">
-          <button 
+          <button
             onClick={() => setScreen('FEED')}
             className="p-2 hover:bg-slate-100 rounded-lg transition-colors mr-2"
             aria-label="Back to Feed"
@@ -282,14 +282,14 @@ const UserProfileScreen = () => {
           <h1 className="text-xl font-bold text-slate-800">Profile</h1>
         </div>
         <div className="flex items-center space-x-2">
-          <button 
+          <button
             onClick={() => setScreen('MY_CONNECTIONS')}
             className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
             aria-label="My Connections"
           >
             <Users className="w-5 h-5 text-slate-600" />
           </button>
-          <button 
+          <button
             onClick={() => setScreen('SETTINGS')}
             className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
             aria-label="Settings"
@@ -308,10 +308,10 @@ const UserProfileScreen = () => {
                 {photoPreview ? (
                   <img src={photoPreview} alt="Profile" className="w-full h-full object-cover rounded-full" />
                 ) : (
-                  <img 
-                    src={getAvatarUrlWithSize({ ...user, full_name: localName }, 80)} 
-                    alt="Profile" 
-                    className="w-full h-full object-cover rounded-full" 
+                  <img
+                    src={getAvatarUrlWithSize({ ...user, full_name: localName }, 80)}
+                    alt="Profile"
+                    className="w-full h-full object-cover rounded-full"
                   />
                 )}
               </div>
@@ -332,20 +332,20 @@ const UserProfileScreen = () => {
             </div>
             <div className="flex-grow min-w-0">
               <label className="text-xs font-semibold text-slate-500">Display Name</label>
-              <input 
-                type="text" 
-                value={localName} 
+              <input
+                type="text"
+                value={localName}
                 onChange={(e) => { setLocalName(e.target.value); setIsDirty(true); }}
                 placeholder="Name"
                 className="w-full text-2xl font-extrabold text-slate-800 border-b-2 border-slate-200 focus:border-indigo-500 outline-none pb-1 bg-transparent"
               />
             </div>
           </div>
-          
+
           {/* Mood Slider */}
           <div className="mb-6">
             <label className="text-sm font-semibold text-slate-700 mb-2 block">
-              How are you feeling today? <span className="font-bold" style={{color: MOOD_COLORS[currentMood]}}>{MOOD_LABELS[currentMood]}</span>
+              How are you feeling today? <span className="font-bold" style={{ color: MOOD_COLORS[currentMood] }}>{MOOD_LABELS[currentMood]}</span>
             </label>
             <input
               type="range"
@@ -358,10 +358,10 @@ const UserProfileScreen = () => {
               style={{ background: getMoodGradient() }}
             />
           </div>
-          
+
           {/* Connections Stats */}
           <div className="flex items-center gap-6 mb-6 bg-slate-50 p-4 rounded-xl border border-slate-200">
-            <button 
+            <button
               onClick={() => setScreen('MY_CONNECTIONS')}
               className="flex-1 text-center hover:bg-white rounded-lg p-2 transition-colors cursor-pointer"
             >
@@ -369,7 +369,7 @@ const UserProfileScreen = () => {
               <p className="text-xs font-medium text-slate-500 mt-1">Connections</p>
             </button>
             <div className="w-px h-10 bg-slate-300"></div>
-            <button 
+            <button
               onClick={() => setActiveTab('posts')}
               className="flex-1 text-center hover:bg-white rounded-lg p-2 transition-colors cursor-pointer"
             >
@@ -382,12 +382,12 @@ const UserProfileScreen = () => {
           <FeedJourneyCard
             onboardingAnswers={onboardingAnswers}
             setScreen={setScreen}
-            onClose={() => {}} // No close action for profile screen - always available for editing
+            onClose={() => { }} // No close action for profile screen - always available for editing
             dismissible={false}
           />
 
           <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 w-full mb-6">
-            <div 
+            <div
               className="flex items-center justify-between cursor-pointer"
               onClick={() => setIsAboutMeExpanded(!isAboutMeExpanded)}
             >
@@ -411,7 +411,7 @@ const UserProfileScreen = () => {
             </div>
             {isAboutMeExpanded && (
               <div className="mt-4 space-y-4">
-                
+
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="text-sm font-semibold text-slate-700 mb-1.5 block">Role</label>
@@ -426,7 +426,7 @@ const UserProfileScreen = () => {
                   <label className="text-sm font-semibold text-slate-700 mb-1.5 block">Bio</label>
                   <input type="text" placeholder="e.g., 'Exploring new career paths'" value={localTagline} onChange={(e) => { setLocalTagline(e.target.value); setIsDirty(true); }} className="w-full p-3 bg-slate-50 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-base" />
                 </div>
-                
+
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="text-sm font-semibold text-slate-700 mb-1.5 block">Location</label>
@@ -437,7 +437,7 @@ const UserProfileScreen = () => {
                     <input type="text" placeholder="e.g., Technology" value={localIndustry} onChange={(e) => { setLocalIndustry(e.target.value); setIsDirty(true); }} className="w-full p-3 bg-slate-50 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-base" />
                   </div>
                 </div>
-                
+
                 <div>
                   <label className="text-sm font-semibold text-slate-700 mb-1.5 block">My Expertise</label>
                   <textarea
@@ -635,31 +635,28 @@ const UserProfileScreen = () => {
           <div className="flex gap-4 px-4 overflow-x-auto hide-scrollbar">
             <button
               onClick={() => setActiveTab('bio')}
-              className={`py-3 px-1 font-semibold text-sm transition-all whitespace-nowrap ${
-                activeTab === 'bio'
+              className={`py-3 px-1 font-semibold text-sm transition-all whitespace-nowrap ${activeTab === 'bio'
                   ? 'text-indigo-600 border-b-2 border-indigo-600'
                   : 'text-slate-500 hover:text-slate-700'
-              }`}
+                }`}
             >
               Bio
             </button>
             <button
               onClick={() => setActiveTab('posts')}
-              className={`py-3 px-1 font-semibold text-sm transition-all whitespace-nowrap ${
-                activeTab === 'posts'
+              className={`py-3 px-1 font-semibold text-sm transition-all whitespace-nowrap ${activeTab === 'posts'
                   ? 'text-indigo-600 border-b-2 border-indigo-600'
                   : 'text-slate-500 hover:text-slate-700'
-              }`}
+                }`}
             >
               Posts
             </button>
             <button
               onClick={() => setActiveTab('saved')}
-              className={`py-3 px-1 font-semibold text-sm transition-all whitespace-nowrap ${
-                activeTab === 'saved'
+              className={`py-3 px-1 font-semibold text-sm transition-all whitespace-nowrap ${activeTab === 'saved'
                   ? 'text-indigo-600 border-b-2 border-indigo-600'
                   : 'text-slate-500 hover:text-slate-700'
-              }`}
+                }`}
             >
               Saved
             </button>
@@ -683,7 +680,7 @@ const UserProfileScreen = () => {
                   </button>
                 )}
               </div>
-              
+
               {isEditingSharerInsights ? (
                 <div className="space-y-6">
                   {/* Advice to Younger Self */}
@@ -700,7 +697,7 @@ const UserProfileScreen = () => {
                       rows="3"
                     />
                   </div>
-                  
+
                   {/* Key Life Lessons */}
                   <div>
                     <label className="text-sm font-bold text-slate-600 mb-2 block">Key Life Lessons</label>
@@ -757,7 +754,7 @@ const UserProfileScreen = () => {
                       </button>
                     </div>
                   </div>
-                  
+
                   {/* Change I Want to See */}
                   <div>
                     <label className="text-sm font-bold text-slate-600 mb-2 block">Change I Want to See in Society</label>
@@ -828,8 +825,8 @@ const UserProfileScreen = () => {
               </div>
             ) : (
               (userPosts || []).map((post) => (
-                <PostCard 
-                  key={post.id} 
+                <PostCard
+                  key={post.id}
                   post={post}
                   onUpdate={(updatedPost, deletedPostId) => {
                     if (deletedPostId) {
@@ -859,8 +856,8 @@ const UserProfileScreen = () => {
               </div>
             ) : (
               (savedPosts || []).map((post) => (
-                <PostCard 
-                  key={post.id} 
+                <PostCard
+                  key={post.id}
                   post={post}
                   onUpdate={(updatedPost, deletedPostId) => {
                     if (deletedPostId) {
@@ -879,17 +876,17 @@ const UserProfileScreen = () => {
 
 
       </div>
-      
+
       {isDirty && (
-        <div className="absolute bottom-0 left-0 w-full p-4 bg-white/90 backdrop-blur-lg border-t border-slate-200 z-40">
+        <div className="fixed bottom-0 left-0 w-full p-4 pb-8 sm:pb-4 bg-white/90 backdrop-blur-lg border-t border-slate-200 z-[100] shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
           {saveError && (
             <p className="text-sm text-red-600 mb-2 text-center">{saveError}</p>
           )}
-          <Button 
-            primary 
+          <Button
+            primary
             onClick={handleSave}
             disabled={isSaving}
-            className="relative"
+            className="w-full relative shadow-lg"
           >
             {isSaving ? (
               <>

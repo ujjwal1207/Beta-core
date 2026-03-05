@@ -165,7 +165,38 @@ export const AppProvider = ({ children }) => {
     checkAuth();
   }, []);
 
-  // Poll for incoming call invitations
+  // Ping online status periodically
+  useEffect(() => {
+    if (!isAuthenticated || !user) return;
+
+    const pingOnlineStatus = async () => {
+      // Skip if page is hidden
+      if (document.hidden) return;
+
+      try {
+        await userService.setOnline();
+      } catch (error) {
+        console.error('Failed to ping online status:', error);
+      }
+    };
+
+    // Ping every 60 seconds
+    const interval = setInterval(pingOnlineStatus, 60000);
+
+    // Initial ping on visibility change (when returning to app)
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        pingOnlineStatus();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [isAuthenticated, user]);
   useEffect(() => {
     if (!isAuthenticated || !user) return;
 

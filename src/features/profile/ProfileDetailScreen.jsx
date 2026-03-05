@@ -243,13 +243,21 @@ const ProfileDetailScreen = () => {
 
   if (!person) return null;
 
+  const handleGoBack = () => {
+    if (previousScreen === 'PROFILE_DETAIL') {
+      setScreen('CONNECTIONS_DASHBOARD');
+    } else {
+      setScreen(previousScreen || 'FEED');
+    }
+  };
+
   // Show deactivated or deleted account message
   if (person.is_deactivated || person.is_deleted) {
     const isDeleted = person.is_deleted;
     return (
       <div className="flex flex-col h-full bg-slate-100">
         <div className="flex items-center p-4 bg-white border-b border-slate-200">
-          <button onClick={() => setScreen(previousScreen || 'FEED')} className="p-2 hover:bg-slate-100 rounded-full transition-colors mr-3">
+          <button onClick={handleGoBack} className="p-2 hover:bg-slate-100 rounded-full transition-colors mr-3">
             <ArrowLeft className="w-6 h-6 text-slate-700" />
           </button>
           <h1 className="text-lg font-bold text-slate-800">Profile</h1>
@@ -328,7 +336,7 @@ const ProfileDetailScreen = () => {
         <div className="flex-grow overflow-y-auto pb-28">
           <div className="relative w-full h-64 bg-cover bg-center" style={{ backgroundImage: `url(${getAvatarUrlWithSize(person, 400)})` }}>
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent"></div>
-            <button onClick={() => setScreen(previousScreen || 'FEED')} className="absolute top-4 left-4 p-2 bg-black/30 backdrop-blur-sm rounded-full text-white hover:bg-black/50 transition-colors z-10">
+            <button onClick={handleGoBack} className="absolute top-4 left-4 p-2 bg-black/30 backdrop-blur-sm rounded-full text-white hover:bg-black/50 transition-colors z-10">
               <ArrowLeft className="w-6 h-6" />
             </button>
 
