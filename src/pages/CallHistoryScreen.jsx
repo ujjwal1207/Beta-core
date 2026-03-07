@@ -8,8 +8,8 @@ import CallsCalendar from '../features/calls/CallsCalendar';
 import PaymentModal from '../components/PaymentModal';
 
 const CallHistoryScreen = () => {
-  const { 
-    setScreen, 
+  const {
+    setScreen,
     user,
     setInVideoCall,
     setIsVoiceCall,
@@ -30,10 +30,10 @@ const CallHistoryScreen = () => {
   const [scheduledCalls, setScheduledCalls] = useState([]);
   const [callBookingRequests, setCallBookingRequests] = useState([]);
   const [rescheduleRequests, setRescheduleRequests] = useState([]);
-  
+
   // Loading States
   const [isLoading, setIsLoading] = useState(true);
-  
+
   // UI States
   const [selectedCall, setSelectedCall] = useState(null);
   const [selectedScheduledCall, setSelectedScheduledCall] = useState(null);
@@ -41,11 +41,11 @@ const CallHistoryScreen = () => {
   const [callToReschedule, setCallToReschedule] = useState(null);
   const [mode, setMode] = useState('SCHEDULED'); // SCHEDULED, HISTORY
   const [scheduledViewMode, setScheduledViewMode] = useState('LIST'); // LIST, CALENDAR
-  
+
   // Payment States
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [callToPayFor, setCallToPayFor] = useState(null);
-  
+
   const modalRef = useRef(null);
 
   // Close modal when clicking outside
@@ -64,7 +64,7 @@ const CallHistoryScreen = () => {
   // --- FIXED DATA FETCHING ---
   const fetchAllData = useCallback(async () => {
     if (!user) return;
-    
+
     // Only set loading on initial load if data is empty
     if (calls.length === 0 && scheduledCalls.length === 0) {
       setIsLoading(true);
@@ -91,7 +91,7 @@ const CallHistoryScreen = () => {
       // Filter out expired scheduled calls and booking requests
       const filteredScheduledData = scheduledData || [];
       const filteredBookingData = bookingData || [];
-      
+
       setScheduledCalls(filteredScheduledData);
       setCallBookingRequests(filteredBookingData);
       setRescheduleRequests(rescheduleData || []);
@@ -128,17 +128,17 @@ const CallHistoryScreen = () => {
     if (call.receiver_id === user.id && ['missed', 'rejected'].includes(call.status)) {
       return 'missed';
     }
-    
+
     // If I am caller -> outgoing
     if (call.caller_id === user.id) {
       return 'outgoing';
     }
-    
+
     // If I am receiver -> incoming
     if (call.receiver_id === user.id) {
       return 'incoming';
     }
-    
+
     return 'unknown';
   };
 
@@ -155,15 +155,15 @@ const CallHistoryScreen = () => {
   // --- FIXED TIMESTAMP FUNCTION ---
   const formatTimestamp = (timestamp) => {
     if (!timestamp) return '';
-    
+
     const date = new Date(timestamp * 1000); // Unix timestamp to Date
-    
+
     // Check if date is valid
     if (isNaN(date.getTime())) return 'Invalid Date';
-    
+
     const now = new Date();
     const diff = now - date;
-    
+
     if (diff < 24 * 60 * 60 * 1000) return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     if (diff < 7 * 24 * 60 * 60 * 1000) return date.toLocaleDateString([], { weekday: 'short' });
     return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
@@ -172,17 +172,17 @@ const CallHistoryScreen = () => {
   const formatScheduledDateTime = (scheduledAt) => {
     if (!scheduledAt) return '';
     const date = new Date(scheduledAt * 1000); // Unix timestamp to Date
-    
+
     // Check if date is valid
     if (isNaN(date.getTime())) return 'Invalid Date';
-    
+
     const now = new Date();
 
     const isToday = date.toDateString() === now.toDateString();
     const isTomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000).toDateString() === date.toDateString();
 
     const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    
+
     if (isToday) return `Today at ${timeStr}`;
     if (isTomorrow) return `Tomorrow at ${timeStr}`;
     return `${date.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })} at ${timeStr}`;
@@ -303,7 +303,7 @@ const CallHistoryScreen = () => {
     const now = new Date();
     const timeDiff = scheduledTime - now;
     // Expired if more than 5 minutes past scheduled time
-    return timeDiff < -5 * 60 * 1000; 
+    return timeDiff < -5 * 60 * 1000;
   };
 
   // --- Navigation Helpers ---
@@ -319,13 +319,13 @@ const CallHistoryScreen = () => {
     if (!selectedCall) return;
     const recipient = getOtherParty(selectedCall);
     if (!recipient) return;
-    
+
     try {
       setSelectedCall(null);
       setIsVoiceCall(type === 'voice');
-      
+
       const invitation = await callsService.sendCallInvitation(recipient.id, type);
-      
+
       setOutgoingInvitation(invitation);
       setCallRecipient(recipient);
       setActiveCallChannel(invitation.channel_name);
@@ -341,12 +341,12 @@ const CallHistoryScreen = () => {
     setCalls(prev => prev.filter(c => c.id !== selectedCall.id));
     const idToDelete = selectedCall.id;
     setSelectedCall(null);
-    
+
     try {
-        await callsService.deleteCallLog(idToDelete);
+      await callsService.deleteCallLog(idToDelete);
     } catch (error) {
-        console.error('Failed to delete log:', error);
-        setCalls(previousCalls); // Revert
+      console.error('Failed to delete log:', error);
+      setCalls(previousCalls); // Revert
     }
   };
 
@@ -412,15 +412,15 @@ const CallHistoryScreen = () => {
   const handleJoinScheduledCall = async (call) => {
     // Debug: log the call data to see the structure
     console.log('Call data structure:', call);
-    
+
     // Check if this is a paid call that hasn't been paid for yet
     const isPaidCall = call.price && call.price > 0;
     const hasBeenPaid = call.payment_status === 'paid';
-    
-    console.log('Payment check:', { 
-      price: call.price, 
-      payment_status: call.payment_status, 
-      isPaidCall, 
+
+    console.log('Payment check:', {
+      price: call.price,
+      payment_status: call.payment_status,
+      isPaidCall,
       hasBeenPaid,
       needsPayment: isPaidCall && !hasBeenPaid
     });
@@ -455,7 +455,7 @@ const CallHistoryScreen = () => {
       );
 
       setOutgoingInvitation(invitation);
-      
+
       // Set Call State
       setInVideoCall(true);
       setIsVoiceCall(call.call_type === 'voice');
@@ -475,9 +475,9 @@ const CallHistoryScreen = () => {
 
   const handlePaymentSuccess = async (call) => {
     // Update the call in our local state to reflect payment
-    setScheduledCalls(prevCalls => 
-      prevCalls.map(c => 
-        c.id === call.id 
+    setScheduledCalls(prevCalls =>
+      prevCalls.map(c =>
+        c.id === call.id
           ? { ...c, payment_status: 'paid' }
           : c
       )
@@ -497,7 +497,7 @@ const CallHistoryScreen = () => {
   return (
     <div className="flex flex-col h-full bg-slate-50">
       <TopTabBar setScreen={setScreen} currentScreen="CALL_HISTORY" />
-      
+
       <div className="flex-grow overflow-y-auto pt-[121px]">
         {/* Mode Selector */}
         <div className="w-full p-3 sm:p-4 flex justify-center bg-slate-50 border-b border-slate-200">
@@ -507,9 +507,8 @@ const CallHistoryScreen = () => {
                 key={m}
                 onClick={() => setMode(m)}
                 className={`flex-1 min-w-0 px-2 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-bold
-                            rounded-full transition-all duration-300 whitespace-nowrap touch-manipulation relative ${
-                  mode === m ? 'bg-white text-indigo-600 shadow-md' : 'text-slate-600 active:bg-slate-300'
-                }`}
+                            rounded-full transition-all duration-300 whitespace-nowrap touch-manipulation relative ${mode === m ? 'bg-white text-indigo-600 shadow-md' : 'text-slate-600 active:bg-slate-300'
+                  }`}
               >
                 {m === 'SCHEDULED' ? 'Scheduled' : 'History'}
                 {m === 'SCHEDULED' && pendingCallRequestsCount > 0 && (
@@ -522,246 +521,257 @@ const CallHistoryScreen = () => {
 
         <div className="w-full p-4">
           {isLoading ? (
-             <div className="flex items-center justify-center py-12">
-                <Loader className="w-6 h-6 animate-spin text-indigo-600" />
-             </div>
+            <div className="flex items-center justify-center py-12">
+              <Loader className="w-6 h-6 animate-spin text-indigo-600" />
+            </div>
           ) : (
             <>
-                {mode === 'SCHEDULED' && (
-                    <>
-                    {/* Booking Requests */}
-                    {callBookingRequests.length > 0 && (
-                        <div className="mb-8">
-                        <div className="flex items-center gap-2 mb-4">
-                            <User className="w-5 h-5 text-orange-600" />
-                            <h2 className="text-xl font-bold text-slate-700">Call Requests</h2>
-                            <span className="bg-orange-100 text-orange-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
-                            {callBookingRequests.length}
-                            </span>
-                        </div>
-
-                        <div className="space-y-4">
-                            {callBookingRequests.map(request => (
-                            <div key={request.id} className="bg-gradient-to-r from-orange-50 to-white p-3 sm:p-4 rounded-xl shadow-sm border border-orange-200/50 hover:shadow-lg hover:border-orange-300 transition-all duration-200">
-                                <div className="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4">
-                                <div className="flex items-start gap-3 sm:gap-4 flex-1 min-w-0 sm:pr-4">
-                                    <div className="w-10 h-10 flex-shrink-0 flex items-center justify-center bg-gradient-to-br from-orange-100 to-orange-200 rounded-xl shadow-sm">
-                                    {request.call_type === 'video' ? <Video className="w-5 h-5 text-orange-600" /> : <Phone className="w-5 h-5 text-orange-600" />}
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                    <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mb-2">
-                                        <p className="font-semibold text-slate-800 text-sm sm:text-base">Call Request</p>
-                                        {request.price && request.price > 0 && request.payment_status === 'paid' && (
-                                          <span className="px-2 py-1 text-xs font-medium rounded-full bg-indigo-100 text-indigo-700 border border-indigo-200">
-                                            ₹{request.price} • {request.duration_minutes || 30}min
-                                          </span>
-                                        )}
-                                    </div>
-                                    <p className="text-sm text-slate-600 mb-2"><button 
-                                        onClick={() => handleUserProfileClick(request.booker_id)}
-                                        className="font-medium text-slate-700 hover:text-blue-600 hover:underline transition-colors cursor-pointer"
-                                    >{getBookingRequesterName(request)}</button></p>
-                                    <div className="flex items-center gap-2 text-sm text-slate-500">
-                                        <Clock className="w-4 h-4 text-orange-500" />
-                                        <span className="font-medium whitespace-nowrap">{formatScheduledDateTime(request.scheduled_at)}</span>
-                                    </div>
-                                    </div>
-                                </div>
-                                <div className="flex flex-row sm:flex-col gap-2 sm:gap-2 w-full sm:w-32 sm:flex-shrink-0">
-                                    <button onClick={() => handleAcceptBookingRequest(request.id)} className="flex-1 sm:flex-none flex items-center justify-center gap-1 px-3 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white text-sm font-medium rounded-lg hover:from-green-600 hover:to-green-700 transition-all duration-200 shadow-sm hover:shadow-md">
-                                    <Check className="w-4 h-4" />
-                                    <span className="hidden xs:inline">Accept</span>
-                                    </button>
-                                    <button onClick={() => handleDeclineBookingRequest(request.id)} className="flex-1 sm:flex-none flex items-center justify-center gap-1 px-3 py-2 bg-gradient-to-r from-red-500 to-red-600 text-white text-sm font-medium rounded-lg hover:from-red-600 hover:to-red-700 transition-all duration-200 shadow-sm hover:shadow-md">
-                                    <XIcon className="w-4 h-4" />
-                                    <span className="hidden xs:inline">Decline</span>
-                                    </button>
-                                </div>
-                                </div>
-                                {request.note && (
-                                <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-orange-100">
-                                    <p className="text-sm text-slate-600 italic bg-orange-50/50 p-3 rounded-lg">"{request.note}"</p>
-                                </div>
-                                )}
-                            </div>
-                            ))}
-                        </div>
-                        </div>
-                    )}
-
-                    {/* Reschedule Requests */}
-                    {rescheduleRequests.length > 0 && (
-                        <div className="mb-8">
-                        <div className="flex items-center gap-2 mb-4">
-                            <RotateCcw className="w-5 h-5 text-blue-600" />
-                            <h2 className="text-xl font-bold text-slate-700">Reschedule Requests</h2>
-                            <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
-                            {rescheduleRequests.length}
-                            </span>
-                        </div>
-                        <div className="space-y-4">
-                            {rescheduleRequests.map(request => (
-                            <div key={request.id} className="bg-gradient-to-r from-blue-50 to-white p-3 sm:p-4 rounded-xl shadow-sm border border-blue-200/50 hover:shadow-lg transition-all duration-200 hover:border-blue-300">
-                                <div className="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4">
-                                <div className="flex items-start gap-3 sm:gap-4 flex-1 min-w-0 sm:pr-4">
-                                    <div className="w-10 h-10 flex-shrink-0 flex items-center justify-center bg-gradient-to-br from-blue-100 to-blue-200 rounded-xl shadow-sm">
-                                    <RotateCcw className="w-5 h-5 text-blue-600" />
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                    <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mb-2">
-                                        <p className="font-semibold text-slate-800 text-sm sm:text-base">Reschedule Request</p>
-                                        <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-700 border border-blue-200">Pending</span>
-                                    </div>
-                                    <div className="text-sm text-slate-600 mb-2">
-                                        <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mb-2">
-                                        <button 
-                                            onClick={() => handleUserProfileClick(request.requester_id)}
-                                            className="font-medium text-slate-800 hover:text-blue-600 hover:underline transition-colors cursor-pointer"
-                                        >
-                                            {getRescheduleRequesterName(request)}
-                                        </button>
-                                        </div>
-                                        <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mb-2">
-                                        <span className="text-slate-500">Current:</span>
-                                        <span className="line-through text-slate-400">{formatScheduledDateTime(request.booking?.scheduled_at)}</span>
-                                        </div>
-                                        <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
-                                        <span className="text-blue-600 font-medium">New Time:</span>
-                                        <span className="text-blue-700 font-medium">{formatScheduledDateTime(request.new_scheduled_at)}</span>
-                                        </div>
-                                    </div>
-                                    </div>
-                                </div>
-                                <div className="flex flex-row sm:flex-col gap-2 sm:gap-2 w-full sm:w-32 sm:flex-shrink-0">
-                                    <button onClick={() => handleAcceptRescheduleRequest(request.id)} className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-3 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white text-sm font-medium rounded-lg hover:from-green-600 hover:to-green-700 transition-all duration-200 shadow-sm hover:shadow-md">
-                                    <Check className="w-4 h-4" />
-                                    <span className="hidden xs:inline">Accept</span>
-                                    </button>
-                                    <button onClick={() => handleRejectRescheduleRequest(request.id)} className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-3 py-2 bg-gradient-to-r from-red-500 to-red-600 text-white text-sm font-medium rounded-lg hover:from-red-600 hover:to-red-700 transition-all duration-200 shadow-sm hover:shadow-md">
-                                    <XIcon className="w-4 h-4" />
-                                    <span className="hidden xs:inline">Decline</span>
-                                    </button>
-                                </div>
-                                </div>
-                            </div>
-                            ))}
-                        </div>
-                        </div>
-                    )}
-
-                    {/* Scheduled Calls */}
+              {mode === 'SCHEDULED' && (
+                <>
+                  {/* Booking Requests */}
+                  {callBookingRequests.length > 0 && (
                     <div className="mb-8">
-                        <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center gap-2 flex-1 min-w-0">
-                            <Calendar className="w-5 h-5 text-indigo-600 flex-shrink-0" />
-                            <h2 className="text-lg sm:text-xl font-bold text-slate-700 truncate">Scheduled Calls</h2>
-                        </div>
-                        <div className="flex bg-slate-200 p-1 rounded-full shadow-inner flex-shrink-0">
-                            {['LIST', 'CALENDAR'].map(view => (
-                            <button
-                                key={view}
-                                onClick={() => setScheduledViewMode(view)}
-                                className={`px-3 py-1.5 text-xs font-bold rounded-full transition-all duration-300 ${
-                                scheduledViewMode === view ? 'bg-white text-indigo-600 shadow-md' : 'text-slate-600 active:bg-slate-300'
-                                }`}
-                            >
-                                {view}
-                            </button>
-                            ))}
-                        </div>
-                        </div>
+                      <div className="flex items-center gap-2 mb-4">
+                        <User className="w-5 h-5 text-orange-600" />
+                        <h2 className="text-xl font-bold text-slate-700">Call Requests</h2>
+                        <span className="bg-orange-100 text-orange-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
+                          {callBookingRequests.length}
+                        </span>
+                      </div>
 
-                        {(() => {
-                            const filteredCalls = scheduledCalls.filter(call => ['accepted', 'scheduled'].includes(call.status));
-                            const sortedCalls = filteredCalls.sort((a, b) => {
-                            const aTime = new Date(a.scheduled_at * 1000);
-                            const bTime = new Date(b.scheduled_at * 1000);
-                            
-                            // If either date is invalid, sort by ID or something
-                            if (isNaN(aTime.getTime()) && isNaN(bTime.getTime())) return 0;
-                            if (isNaN(aTime.getTime())) return 1;
-                            if (isNaN(bTime.getTime())) return -1;
-                            
-                            const aCanJoin = isCallReadyToJoin(a);
-                            const bCanJoin = isCallReadyToJoin(b);
-                            const aExpired = isCallExpired(a.scheduled_at);
-                            const bExpired = isCallExpired(b.scheduled_at);
-                            
-                            // Priority 1: Calls that can be joined (ready to join) come first
-                            if (aCanJoin && !bCanJoin) return -1;
-                            if (!aCanJoin && bCanJoin) return 1;
-                            
-                            // Priority 2: Active (not expired) calls come before expired calls
-                            if (!aExpired && bExpired) return -1;
-                            if (aExpired && !bExpired) return 1;
-                            
-                            // Priority 3: Sort by scheduled time (chronological)
-                            return aTime - bTime;
-                            });
-                            
-                            if (scheduledViewMode === 'CALENDAR') {
-                                return (
-                                    <CallsCalendar
-                                        scheduledCalls={sortedCalls}
-                                        user={user}
-                                        onEventClick={(call) => {
-                                            setSelectedScheduledCall(call);
-                                        }}
-                                        onDateClick={(dateStr) => {
-                                            console.log('Date clicked:', dateStr);
-                                            // TODO: Open create new call modal at this time
-                                        }}
-                                        onEventDrop={(callId, newStart) => {
-                                            console.log('Event dropped:', callId, newStart);
-                                            // TODO: Handle reschedule
-                                        }}
-                                    />
-                                );
-                            }
-                            
-                            return sortedCalls.length === 0 ? (
-                            <div className="bg-slate-50 p-6 rounded-xl border border-slate-100 text-center">
-                                <Calendar className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-                                <p className="text-slate-500 mb-2">No scheduled calls</p>
+                      <div className="space-y-4">
+                        {callBookingRequests.map(request => (
+                          <div key={request.id} className="bg-gradient-to-r from-orange-50 to-white p-3 sm:p-4 rounded-xl shadow-sm border border-orange-200/50 hover:shadow-lg hover:border-orange-300 transition-all duration-200">
+                            <div className="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4">
+                              <div className="flex items-start gap-3 sm:gap-4 flex-1 min-w-0 sm:pr-4">
+                                <div className="w-10 h-10 flex-shrink-0 flex items-center justify-center bg-gradient-to-br from-orange-100 to-orange-200 rounded-xl shadow-sm">
+                                  {request.call_type === 'video' ? <Video className="w-5 h-5 text-orange-600" /> : <Phone className="w-5 h-5 text-orange-600" />}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mb-2">
+                                    <p className="font-semibold text-slate-800 text-sm sm:text-base">Call Request</p>
+                                    {request.price && request.price > 0 && request.payment_status === 'paid' && (
+                                      <span className="px-2 py-1 text-xs font-medium rounded-full bg-indigo-100 text-indigo-700 border border-indigo-200">
+                                        ₹{request.price} • {request.duration_minutes || 30}min
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="text-sm text-slate-600 mb-2"><button
+                                    onClick={() => handleUserProfileClick(request.booker_id)}
+                                    className="font-medium text-slate-700 hover:text-blue-600 hover:underline transition-colors cursor-pointer"
+                                  >{getBookingRequesterName(request)}</button></p>
+                                  <div className="flex items-center gap-2 text-sm text-slate-500">
+                                    <Clock className="w-4 h-4 text-orange-500" />
+                                    <span className="font-medium whitespace-nowrap">{formatScheduledDateTime(request.scheduled_at)}</span>
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="flex flex-row sm:flex-col gap-2 sm:gap-2 w-full sm:w-32 sm:flex-shrink-0">
+                                <button onClick={() => handleAcceptBookingRequest(request.id)} className="flex-1 sm:flex-none flex items-center justify-center gap-1 px-3 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white text-sm font-medium rounded-lg hover:from-green-600 hover:to-green-700 transition-all duration-200 shadow-sm hover:shadow-md">
+                                  <Check className="w-4 h-4" />
+                                  <span className="hidden xs:inline">Accept</span>
+                                </button>
+                                <button onClick={() => handleDeclineBookingRequest(request.id)} className="flex-1 sm:flex-none flex items-center justify-center gap-1 px-3 py-2 bg-gradient-to-r from-red-500 to-red-600 text-white text-sm font-medium rounded-lg hover:from-red-600 hover:to-red-700 transition-all duration-200 shadow-sm hover:shadow-md">
+                                  <XIcon className="w-4 h-4" />
+                                  <span className="hidden xs:inline">Decline</span>
+                                </button>
+                              </div>
                             </div>
-                            ) : (
-                            <div className="space-y-4">
-                                {sortedCalls.map(call => {
+                            {request.note && (
+                              <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-orange-100">
+                                <p className="text-sm text-slate-600 italic bg-orange-50/50 p-3 rounded-lg">"{request.note}"</p>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Reschedule Requests */}
+                  {rescheduleRequests.length > 0 && (
+                    <div className="mb-8">
+                      <div className="flex items-center gap-2 mb-4">
+                        <RotateCcw className="w-5 h-5 text-blue-600" />
+                        <h2 className="text-xl font-bold text-slate-700">Reschedule Requests</h2>
+                        <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
+                          {rescheduleRequests.length}
+                        </span>
+                      </div>
+                      <div className="space-y-4">
+                        {rescheduleRequests.map(request => (
+                          <div key={request.id} className="bg-gradient-to-r from-blue-50 to-white p-3 sm:p-4 rounded-xl shadow-sm border border-blue-200/50 hover:shadow-lg transition-all duration-200 hover:border-blue-300">
+                            <div className="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4">
+                              <div className="flex items-start gap-3 sm:gap-4 flex-1 min-w-0 sm:pr-4">
+                                <div className="w-10 h-10 flex-shrink-0 flex items-center justify-center bg-gradient-to-br from-blue-100 to-blue-200 rounded-xl shadow-sm">
+                                  <RotateCcw className="w-5 h-5 text-blue-600" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mb-2">
+                                    <p className="font-semibold text-slate-800 text-sm sm:text-base">Reschedule Request</p>
+                                    <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-700 border border-blue-200">Pending</span>
+                                  </div>
+                                  <div className="text-sm text-slate-600 mb-2">
+                                    <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mb-2">
+                                      <button
+                                        onClick={() => handleUserProfileClick(request.requester_id)}
+                                        className="font-medium text-slate-800 hover:text-blue-600 hover:underline transition-colors cursor-pointer"
+                                      >
+                                        {getRescheduleRequesterName(request)}
+                                      </button>
+                                    </div>
+                                    <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mb-2">
+                                      <span className="text-slate-500">Current:</span>
+                                      <span className="line-through text-slate-400">{formatScheduledDateTime(request.booking?.scheduled_at)}</span>
+                                    </div>
+                                    <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+                                      <span className="text-blue-600 font-medium">New Time:</span>
+                                      <span className="text-blue-700 font-medium">{formatScheduledDateTime(request.new_scheduled_at)}</span>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="flex flex-row sm:flex-col gap-2 sm:gap-2 w-full sm:w-32 sm:flex-shrink-0">
+                                <button onClick={() => handleAcceptRescheduleRequest(request.id)} className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-3 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white text-sm font-medium rounded-lg hover:from-green-600 hover:to-green-700 transition-all duration-200 shadow-sm hover:shadow-md">
+                                  <Check className="w-4 h-4" />
+                                  <span className="hidden xs:inline">Accept</span>
+                                </button>
+                                <button onClick={() => handleRejectRescheduleRequest(request.id)} className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-3 py-2 bg-gradient-to-r from-red-500 to-red-600 text-white text-sm font-medium rounded-lg hover:from-red-600 hover:to-red-700 transition-all duration-200 shadow-sm hover:shadow-md">
+                                  <XIcon className="w-4 h-4" />
+                                  <span className="hidden xs:inline">Decline</span>
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Scheduled Calls */}
+                  <div className="mb-8">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <Calendar className="w-5 h-5 text-indigo-600 flex-shrink-0" />
+                        <h2 className="text-lg sm:text-xl font-bold text-slate-700 truncate">Scheduled Calls</h2>
+                      </div>
+                      <div className="flex bg-slate-200 p-1 rounded-full shadow-inner flex-shrink-0">
+                        {['LIST', 'CALENDAR'].map(view => (
+                          <button
+                            key={view}
+                            onClick={() => setScheduledViewMode(view)}
+                            className={`px-3 py-1.5 text-xs font-bold rounded-full transition-all duration-300 ${scheduledViewMode === view ? 'bg-white text-indigo-600 shadow-md' : 'text-slate-600 active:bg-slate-300'
+                              }`}
+                          >
+                            {view}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {(() => {
+                      const filteredCalls = scheduledCalls.filter(call => ['accepted', 'scheduled'].includes(call.status));
+                      const sortedCalls = filteredCalls.sort((a, b) => {
+                        const aTime = new Date(a.scheduled_at * 1000);
+                        const bTime = new Date(b.scheduled_at * 1000);
+
+                        // If either date is invalid, sort by ID or something
+                        if (isNaN(aTime.getTime()) && isNaN(bTime.getTime())) return 0;
+                        if (isNaN(aTime.getTime())) return 1;
+                        if (isNaN(bTime.getTime())) return -1;
+
+                        const aCanJoin = isCallReadyToJoin(a);
+                        const bCanJoin = isCallReadyToJoin(b);
+                        const aExpired = isCallExpired(a.scheduled_at);
+                        const bExpired = isCallExpired(b.scheduled_at);
+
+                        // Priority 1: Calls that can be joined (ready to join) come first
+                        if (aCanJoin && !bCanJoin) return -1;
+                        if (!aCanJoin && bCanJoin) return 1;
+
+                        // Priority 2: Active (not expired) calls come before expired calls
+                        if (!aExpired && bExpired) return -1;
+                        if (aExpired && !bExpired) return 1;
+
+                        // Priority 3: Sort by scheduled time (chronological)
+                        return aTime - bTime;
+                      });
+
+                      if (scheduledViewMode === 'CALENDAR') {
+                        return (
+                          <CallsCalendar
+                            scheduledCalls={sortedCalls}
+                            user={user}
+                            onEventClick={(call) => {
+                              setSelectedScheduledCall(call);
+                            }}
+                            onDateClick={(dateStr) => {
+                              console.log('Date clicked:', dateStr);
+                              // TODO: Open create new call modal at this time
+                            }}
+                            onEventDrop={(callId, newStart) => {
+                              console.log('Event dropped:', callId, newStart);
+                              // TODO: Handle reschedule
+                            }}
+                          />
+                        );
+                      }
+
+                      return sortedCalls.length === 0 ? (
+                        <div className="bg-slate-50 p-6 rounded-xl border border-slate-100 text-center">
+                          <Calendar className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+                          <p className="text-slate-500 mb-2">No scheduled calls</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          {sortedCalls.map(call => {
                             const canJoin = isCallReadyToJoin(call);
                             const isExpired = isCallExpired(call.scheduled_at);
 
                             return (
-                                <div key={call.id} className={`bg-gradient-to-r ${isExpired ? 'from-amber-50 to-white' : 'from-white to-slate-50'} p-3 sm:p-4 rounded-xl shadow-sm border hover:shadow-lg transition-all duration-200 ${isExpired ? 'border-amber-200/50 hover:border-amber-300' : 'border-slate-200 hover:border-slate-300'}`}>
+                              <div key={call.id} className={`bg-gradient-to-r ${isExpired ? 'from-amber-50 to-white' : 'from-white to-slate-50'} p-3 sm:p-4 rounded-xl shadow-sm border hover:shadow-lg transition-all duration-200 ${isExpired ? 'border-amber-200/50 hover:border-amber-300' : 'border-slate-200 hover:border-slate-300'}`}>
                                 <div className="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4">
-                                    <div className="flex items-start gap-3 sm:gap-4 flex-1 min-w-0 sm:pr-4">
+                                  <div className="flex items-start gap-3 sm:gap-4 flex-1 min-w-0 sm:pr-4">
                                     <div className={`w-10 h-10 flex-shrink-0 flex items-center justify-center rounded-xl shadow-sm ${isExpired ? 'bg-gradient-to-br from-amber-100 to-amber-200' : 'bg-gradient-to-br from-indigo-100 to-indigo-200'}`}>
-                                        {call.call_type === 'video' ? <Video className={`w-5 h-5 ${isExpired ? 'text-amber-600' : 'text-indigo-600'}`} /> : <Phone className={`w-5 h-5 ${isExpired ? 'text-amber-600' : 'text-indigo-600'}`} />}
+                                      {call.call_type === 'video' ? <Video className={`w-5 h-5 ${isExpired ? 'text-amber-600' : 'text-indigo-600'}`} /> : <Phone className={`w-5 h-5 ${isExpired ? 'text-amber-600' : 'text-indigo-600'}`} />}
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                        <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mb-2">
-                                        <button 
-                                            onClick={() => handleUserProfileClick(getScheduledCallOtherPartyId(call))}
-                                            className="font-semibold text-slate-800 truncate text-sm sm:text-base hover:text-blue-600 hover:underline transition-colors cursor-pointer text-left"
+                                      <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mb-2">
+                                        <button
+                                          onClick={() => handleUserProfileClick(getScheduledCallOtherPartyId(call))}
+                                          className="font-semibold text-slate-800 truncate text-sm sm:text-base hover:text-blue-600 hover:underline transition-colors cursor-pointer text-left"
                                         >
-                                            {getScheduledCallOtherPartyName(call)}
+                                          {getScheduledCallOtherPartyName(call)}
                                         </button>
                                         <div className="flex gap-1 flex-wrap">
-                                            {isExpired && <span className="px-2 py-1 text-xs font-medium rounded-full bg-amber-100 text-amber-700 border border-amber-200">Expired</span>}
+                                          {isExpired && <span className="px-2 py-1 text-xs font-medium rounded-full bg-amber-100 text-amber-700 border border-amber-200">Expired</span>}
                                         </div>
-                                        </div>
-                                        <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 text-sm text-slate-500 mb-2">
+                                      </div>
+                                      <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 text-sm text-slate-500 mb-2">
                                         <div className="flex items-center gap-1">
-                                            <Clock className={`w-4 h-4 ${isExpired ? 'text-amber-500' : 'text-indigo-500'}`} />
-                                            <span className="font-medium whitespace-nowrap">{formatScheduledDateTime(call.scheduled_at)}</span>
+                                          <Clock className={`w-4 h-4 ${isExpired ? 'text-amber-500' : 'text-indigo-500'}`} />
+                                          <span className="font-medium whitespace-nowrap">{formatScheduledDateTime(call.scheduled_at)}</span>
                                         </div>
                                         {canJoin && (
-                                        <span className="text-sm text-green-600 font-semibold animate-pulse">🔴 Live Now</span>
+                                          <span className="text-sm text-green-600 font-semibold animate-pulse">🔴 Live Now</span>
                                         )}
-                                        </div>
+                                      </div>
+                                      {call.calendar_url && !isExpired && (
+                                        <a
+                                          href={call.calendar_url}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="inline-flex items-center gap-1.5 mt-2 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-medium rounded-lg border border-blue-200 transition-colors"
+                                          onClick={(e) => e.stopPropagation()}
+                                        >
+                                          <Calendar className="w-3.5 h-3.5" />
+                                          Add to Google Calendar
+                                        </a>
+                                      )}
                                     </div>
-                                    </div>
+                                  </div>
 
-                                    <div className="flex flex-row sm:flex-col gap-2 sm:gap-2 w-full sm:w-32 sm:flex-shrink-0">
+                                  <div className="flex flex-row sm:flex-col gap-2 sm:gap-2 w-full sm:w-32 sm:flex-shrink-0">
                                     {canJoin && (() => {
                                       const isPaidCall = call.price && call.price > 0;
                                       const hasBeenPaid = call.payment_status === 'paid';
@@ -772,17 +782,16 @@ const CallHistoryScreen = () => {
                                           const isPaidCall = call.price && call.price > 0;
                                           const hasBeenPaid = call.payment_status === 'paid';
                                           const needsPayment = isPaidCall && !hasBeenPaid;
-                                          
+
                                           return (
-                                            <button 
-                                              onClick={() => handleJoinScheduledCall(call)} 
-                                              className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-3 sm:px-4 py-2 text-white text-sm font-medium rounded-lg transition-all duration-200 shadow-sm hover:shadow-md ${
-                                                needsPayment 
-                                                  ? 'bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700' 
-                                                  : 'bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700'
-                                              }`}
+                                            <button
+                                              onClick={() => handleJoinScheduledCall(call)}
+                                              className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-3 sm:px-4 py-2 text-white text-sm font-medium rounded-lg transition-all duration-200 shadow-sm hover:shadow-md ${needsPayment
+                                                ? 'bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700'
+                                                : 'bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700'
+                                                }`}
                                             >
-                                              <Play className="w-4 h-4" /> 
+                                              <Play className="w-4 h-4" />
                                               <span className="hidden xs:inline">
                                                 {needsPayment ? 'Pay & Join' : 'Join Call'}
                                               </span>
@@ -792,10 +801,10 @@ const CallHistoryScreen = () => {
                                             </button>
                                           );
                                         })()
-                                    )}
+                                      )}
                                     {!isExpired ? (
-                                      <button 
-                                        onClick={() => handleRescheduleCall(call)} 
+                                      <button
+                                        onClick={() => handleRescheduleCall(call)}
                                         className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 shadow-sm hover:shadow-md bg-gradient-to-r from-blue-500 to-blue-600 text-white hover:from-blue-600 hover:to-blue-700"
                                       >
                                         <RotateCcw className="w-4 h-4" />
@@ -803,15 +812,15 @@ const CallHistoryScreen = () => {
                                       </button>
                                     ) : (
                                       <div className="flex flex-row gap-2 w-full">
-                                        <button 
-                                          onClick={() => handleRescheduleCall(call)} 
+                                        <button
+                                          onClick={() => handleRescheduleCall(call)}
                                           className="flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 shadow-sm hover:shadow-md bg-gradient-to-r from-blue-500 to-blue-600 text-white hover:from-blue-600 hover:to-blue-700"
                                         >
                                           <RotateCcw className="w-4 h-4" />
                                           Reschedule
                                         </button>
-                                        <button 
-                                          onClick={() => handleDeleteScheduledCall(call.id)} 
+                                        <button
+                                          onClick={() => handleDeleteScheduledCall(call.id)}
                                           className="flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 shadow-sm hover:shadow-md bg-gradient-to-r from-red-500 to-red-600 text-white hover:from-red-600 hover:to-red-700"
                                         >
                                           <Trash2 className="w-4 h-4" />
@@ -819,63 +828,63 @@ const CallHistoryScreen = () => {
                                         </button>
                                       </div>
                                     )}
-                                    </div>
+                                  </div>
                                 </div>
                                 {call.note && (
-                                    <div className="mt-4 pt-4 border-t border-slate-200">
+                                  <div className="mt-4 pt-4 border-t border-slate-200">
                                     <p className="text-sm text-slate-600 italic bg-slate-50 p-3 rounded-lg">"{call.note}"</p>
-                                    </div>
+                                  </div>
                                 )}
-                                </div>
+                              </div>
                             );
-                            })}
+                          })}
                         </div>
-                        );
-                        })()}
-                    </div>
-                    </>
-                )}
+                      );
+                    })()}
+                  </div>
+                </>
+              )}
 
-                {mode === 'HISTORY' && (
-                    <>
-                    <div className="mb-4">
-                        <div className="flex items-center gap-2 mb-4">
-                        <Phone className="w-5 h-5 text-slate-600" />
-                        <h2 className="text-xl font-bold text-slate-700">Call History</h2>
-                        </div>
+              {mode === 'HISTORY' && (
+                <>
+                  <div className="mb-4">
+                    <div className="flex items-center gap-2 mb-4">
+                      <Phone className="w-5 h-5 text-slate-600" />
+                      <h2 className="text-xl font-bold text-slate-700">Call History</h2>
                     </div>
-                    {calls.length === 0 ? (
-                        <div className="text-center py-12 text-slate-400">
-                        <p>No recent calls</p>
-                        </div>
-                    ) : (
-                        <div className="space-y-3">
-                        {calls.map(call => {
-                            const type = getCallType(call);
-                            return (
-                            <div key={`history-${call.id}`} onClick={() => setSelectedCall(call)} className="bg-white p-3 rounded-lg shadow-sm border border-slate-100 flex items-center cursor-pointer hover:shadow-md transition-shadow active:scale-[0.99]">
-                                <div className="w-8 h-8 flex-shrink-0 flex items-center justify-center bg-slate-100 rounded-full mr-3">
-                                {getCallIcon(type)}
-                                </div>
-                                <div className="flex-grow min-w-0">
-                                <p className="font-medium text-sm text-slate-800 truncate">{getOtherPartyName(call)}</p>
-                                <p className="text-xs text-slate-500">{formatTimestamp(call.created_at)}</p>
-                                </div>
-                                <div className="text-right ml-2">
-                                <p className={`text-xs font-medium ${['missed', 'rejected'].includes(call.status) ? 'text-red-500' : 'text-slate-500'}`}>
-                                    {call.call_type === 'voice' ? 'Voice' : 'Video'}
-                                </p>
-                                {call.status === 'missed' && <p className="text-xs text-red-400">Missed</p>}
-                                {call.status === 'rejected' && <p className="text-xs text-red-400">Declined</p>}
-                                {(call.status === 'completed' || call.status === 'ended' || call.status === 'accepted') && <p className="text-xs text-emerald-600">Completed</p>}
-                                </div>
+                  </div>
+                  {calls.length === 0 ? (
+                    <div className="text-center py-12 text-slate-400">
+                      <p>No recent calls</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {calls.map(call => {
+                        const type = getCallType(call);
+                        return (
+                          <div key={`history-${call.id}`} onClick={() => setSelectedCall(call)} className="bg-white p-3 rounded-lg shadow-sm border border-slate-100 flex items-center cursor-pointer hover:shadow-md transition-shadow active:scale-[0.99]">
+                            <div className="w-8 h-8 flex-shrink-0 flex items-center justify-center bg-slate-100 rounded-full mr-3">
+                              {getCallIcon(type)}
                             </div>
-                            );
-                        })}
-                        </div>
-                    )}
-                    </>
-                )}
+                            <div className="flex-grow min-w-0">
+                              <p className="font-medium text-sm text-slate-800 truncate">{getOtherPartyName(call)}</p>
+                              <p className="text-xs text-slate-500">{formatTimestamp(call.created_at)}</p>
+                            </div>
+                            <div className="text-right ml-2">
+                              <p className={`text-xs font-medium ${['missed', 'rejected'].includes(call.status) ? 'text-red-500' : 'text-slate-500'}`}>
+                                {call.call_type === 'voice' ? 'Voice' : 'Video'}
+                              </p>
+                              {call.status === 'missed' && <p className="text-xs text-red-400">Missed</p>}
+                              {call.status === 'rejected' && <p className="text-xs text-red-400">Declined</p>}
+                              {(call.status === 'completed' || call.status === 'ended' || call.status === 'accepted') && <p className="text-xs text-emerald-600">Completed</p>}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </>
+              )}
             </>
           )}
         </div>
@@ -893,7 +902,7 @@ const CallHistoryScreen = () => {
                   <X className="w-5 h-5 text-slate-500" />
                 </button>
               </div>
-              
+
               <div className="p-2 space-y-1">
                 <button onClick={() => handleStartCall('voice')} className="w-full p-4 flex items-center gap-4 hover:bg-slate-50 rounded-xl transition-colors group text-left">
                   <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center group-hover:bg-green-200 transition-colors">
@@ -918,7 +927,7 @@ const CallHistoryScreen = () => {
             </div>
           </div>
         )}
-      
+
         {/* Scheduled Call Modal */}
         {selectedScheduledCall && (
           <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
@@ -932,7 +941,7 @@ const CallHistoryScreen = () => {
                   <X className="w-5 h-5 text-slate-500" />
                 </button>
               </div>
-              
+
               <div className="p-2 space-y-1">
                 {isCallReadyToJoin(selectedScheduledCall) && (() => {
                   const isPaidCall = selectedScheduledCall?.price && selectedScheduledCall.price > 0;
@@ -940,32 +949,30 @@ const CallHistoryScreen = () => {
                   const needsPayment = isPaidCall && !hasBeenPaid;
                   return !needsPayment || selectedScheduledCall.booker_id === user.id;
                 })() && (
-                  (() => {
-                    const isPaidCall = selectedScheduledCall?.price && selectedScheduledCall.price > 0;
-                    const hasBeenPaid = selectedScheduledCall?.payment_status === 'paid';
-                    const needsPayment = isPaidCall && !hasBeenPaid;
-                    
-                    return (
-                      <button 
-                        onClick={() => { handleJoinScheduledCall(selectedScheduledCall); setSelectedScheduledCall(null); }} 
-                        className={`w-full p-4 flex items-center gap-4 rounded-xl transition-colors group text-left ${
-                          needsPayment ? 'hover:bg-indigo-50' : 'hover:bg-green-50'
-                        }`}
-                      >
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${
-                          needsPayment 
-                            ? 'bg-indigo-100 group-hover:bg-indigo-200' 
+                    (() => {
+                      const isPaidCall = selectedScheduledCall?.price && selectedScheduledCall.price > 0;
+                      const hasBeenPaid = selectedScheduledCall?.payment_status === 'paid';
+                      const needsPayment = isPaidCall && !hasBeenPaid;
+
+                      return (
+                        <button
+                          onClick={() => { handleJoinScheduledCall(selectedScheduledCall); setSelectedScheduledCall(null); }}
+                          className={`w-full p-4 flex items-center gap-4 rounded-xl transition-colors group text-left ${needsPayment ? 'hover:bg-indigo-50' : 'hover:bg-green-50'
+                            }`}
+                        >
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${needsPayment
+                            ? 'bg-indigo-100 group-hover:bg-indigo-200'
                             : 'bg-green-100 group-hover:bg-green-200'
-                        }`}>
-                          <Play className={`w-5 h-5 ${needsPayment ? 'text-indigo-600' : 'text-green-600'}`} />
-                        </div>
-                        <span className="font-semibold text-slate-700">
-                          {needsPayment ? 'Pay & Join' : 'Join Call'}
-                        </span>
-                      </button>
-                    );
-                  })()
-                )}
+                            }`}>
+                            <Play className={`w-5 h-5 ${needsPayment ? 'text-indigo-600' : 'text-green-600'}`} />
+                          </div>
+                          <span className="font-semibold text-slate-700">
+                            {needsPayment ? 'Pay & Join' : 'Join Call'}
+                          </span>
+                        </button>
+                      );
+                    })()
+                  )}
                 <button onClick={() => { handleRescheduleCall(selectedScheduledCall); setSelectedScheduledCall(null); }} className="w-full p-4 flex items-center gap-4 hover:bg-blue-50 rounded-xl transition-colors group text-left">
                   <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center group-hover:bg-blue-200 transition-colors">
                     <RotateCcw className="w-5 h-5 text-blue-600" />
@@ -976,7 +983,7 @@ const CallHistoryScreen = () => {
             </div>
           </div>
         )}
-      
+
         {/* Reschedule Call Modal */}
         <RescheduleCallModal
           isOpen={showRescheduleModal}

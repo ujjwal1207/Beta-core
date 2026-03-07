@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Calendar, Loader, Clock } from 'lucide-react';
+import { X, Calendar, Loader, Clock, CheckCircle } from 'lucide-react';
 import Button from '../../../components/ui/Button';
 import callsService from '../../../services/callsService';
 
@@ -26,6 +26,7 @@ const ScheduleCallModal = ({ isOpen, onClose, person, onSuccess }) => {
   const [selectedDuration, setSelectedDuration] = useState(30); // Default to 30 minutes
   const [message, setMessage] = useState(`Hi ${person?.name || ''}, I'd love to chat about ${person?.tags?.[0] || 'your work'}!`);
   const [isLoading, setIsLoading] = useState(false);
+  const [successData, setSuccessData] = useState(null); // Will store booking response including calendar_url
 
   const isSuperLinker = person?.is_super_linker || ((person?.connections || 0) > 200 && (person?.trustScore || 0) >= 3.0);
   const payRatePerMin = person?.pay_rate_per_min || 0;
@@ -84,7 +85,7 @@ const ScheduleCallModal = ({ isOpen, onClose, person, onSuccess }) => {
       }
 
       // Create the call booking
-      await callsService.createCallBooking(
+      const bookingResponse = await callsService.createCallBooking(
         person.id,
         scheduledDate,
         'video', // Default to video call
@@ -93,8 +94,10 @@ const ScheduleCallModal = ({ isOpen, onClose, person, onSuccess }) => {
         selectedDuration // Pass duration to backend
       );
 
-      onClose();
-      // Call onSuccess callback to show notification
+      // Show success screen inside modal instead of closing immediately
+      setSuccessData(bookingResponse);
+      
+      // Call onSuccess callback to show notification (optional now since modal stays open)
       if (onSuccess) {
         onSuccess('Call scheduled successfully! Waiting for confirmation.');
       }
@@ -113,13 +116,42 @@ const ScheduleCallModal = ({ isOpen, onClose, person, onSuccess }) => {
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex justify-center items-center p-4">
       <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md h-full sm:h-auto sm:max-h-[90vh] overflow-hidden flex flex-col"> 
         <div className="flex justify-between items-center p-6 border-b border-slate-200">
-          <h2 className="text-xl font-extrabold text-slate-800">Schedule a chat with {person.name}</h2>
+          <h2 className="text-xl font-extrabold text-slate-800">
+            {successData ? 'Booking Sent' : `Schedule a chat with ${person?.name}`}
+          </h2>
           <button onClick={onClose} className="p-2 rounded-full hover:bg-slate-100">
             <X className="w-6 h-6 text-slate-600" />
           </button>
         </div>
-        <div className="p-6 overflow-y-auto flex-grow">
-          {isSuperLinker && (
+
+        {successData ? (
+          <div className="p-8 flex flex-col items-center justify-center text-center flex-grow">
+            <CheckCircle className="w-16 h-16 text-green-500 mb-4" />
+            <h3 className="text-2xl font-bold text-slate-800 mb-2">Request Sent!</h3>
+            <p className="text-slate-600 mb-8 max-w-sm">
+              Your call request has been sent to {person?.name || 'the host'}. They will review and confirm it soon.
+            </p>
+            
+            {successData.calendar_url && (
+               <a 
+                href={successData.calendar_url} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="w-full mb-4 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-xl font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              >
+                <Calendar className="w-5 h-5" />
+                Add to Google Calendar
+              </a>
+            )}
+            
+            <Button onClick={onClose} variant="outline" className="w-full border-slate-300 text-slate-700 hover:bg-slate-50">
+              Done
+            </Button>
+          </div>
+        ) : (
+          <>
+            <div className="p-6 overflow-y-auto flex-grow">
+              {isSuperLinker && (
             <div className="p-4 bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 rounded-lg mb-6">
               <div className="flex items-center justify-between mb-3">
                 <h4 className="font-bold text-indigo-700">💰 Consultation Fee</h4>
@@ -279,6 +311,8 @@ const ScheduleCallModal = ({ isOpen, onClose, person, onSuccess }) => {
             )}
           </Button>
         </div>
+        </>
+        )}
       </div>
     </div>
   );

@@ -6,7 +6,7 @@ import authService from '../../services/authService';
 
 export const AuthForm = ({ isLogin }) => {
   const { setScreen, login, signup, isLoading, authError } = useAppContext();
-  
+
   const [formData, setFormData] = useState({
     full_name: '',
     email: '',
@@ -81,50 +81,50 @@ export const AuthForm = ({ isLogin }) => {
           <ArrowLeft className="w-6 h-6 text-slate-600" />
         </button>
       </div>
-      
+
       <h1 className="text-3xl font-extrabold text-slate-800 mb-2">
         {isLogin ? 'Hello Again!' : 'Create your profile.'}
       </h1>
       <p className="text-slate-500 mb-8">
         {isLogin ? 'Welcome back, we missed you.' : 'Join to start connecting with the community.'}
       </p>
-      
+
       {(error || authError) && (
         <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
           {error || authError}
         </div>
       )}
-      
+
       <form onSubmit={handleAuth} className="space-y-4 flex-grow overflow-y-auto">
         {!isLogin && (
-          <input 
-            className="w-full p-4 bg-white border border-slate-300 rounded-lg placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-base" 
-            type="text" 
+          <input
+            className="w-full p-4 bg-white border border-slate-300 rounded-lg placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-base"
+            type="text"
             name="full_name"
             value={formData.full_name}
             onChange={handleInputChange}
-            placeholder="Your Full Name" 
-            required 
+            placeholder="Your Full Name"
+            required
           />
         )}
-        <input 
-          className="w-full p-4 bg-white border border-slate-300 rounded-lg placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-base" 
-          type="email" 
+        <input
+          className="w-full p-4 bg-white border border-slate-300 rounded-lg placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-base"
+          type="email"
           name="email"
           value={formData.email}
           onChange={handleInputChange}
-          placeholder="Email" 
-          required 
+          placeholder="Email"
+          required
         />
         <div className="relative">
-          <input 
-            className="w-full p-4 bg-white border border-slate-300 rounded-lg placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-base" 
+          <input
+            className="w-full p-4 bg-white border border-slate-300 rounded-lg placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-base"
             type={showPassword ? "text" : "password"}
             name="password"
             value={formData.password}
             onChange={handleInputChange}
-            placeholder="Your Password" 
-            required 
+            placeholder="Your Password"
+            required
           />
           <button
             type="button"
@@ -140,12 +140,12 @@ export const AuthForm = ({ isLogin }) => {
         </div>
         {!isLogin && (
           <div className="flex items-center text-sm pt-2">
-            <input 
-              type="checkbox" 
-              id="terms" 
+            <input
+              type="checkbox"
+              id="terms"
               checked={agreedToTerms}
               onChange={(e) => setAgreedToTerms(e.target.checked)}
-              className="w-4 h-4 rounded text-indigo-600 mr-2 focus:ring-indigo-500" 
+              className="w-4 h-4 rounded text-indigo-600 mr-2 focus:ring-indigo-500"
             />
             <label htmlFor="terms" className="text-slate-600">
               I agree to the <a href="#" onClick={(e) => e.preventDefault()} className="font-semibold underline text-indigo-600">Terms & Conditions</a>
@@ -167,23 +167,28 @@ export const AuthForm = ({ isLogin }) => {
           </div>
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <button 
+          <button
             type="button"
             onClick={handleGoogleLogin}
             className="flex items-center justify-center w-full py-3 border border-slate-300 rounded-lg bg-white text-slate-700 font-semibold shadow-sm hover:bg-slate-100 active:scale-[0.98] transition-all"
           >
-            <img src="https://upload.wikimedia.org/wikipedia/commons/4/4a/Logo_2013_Google.png" alt="Google" className="w-5 h-5 mr-2" /> Google
+            <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
+              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4" />
+              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
+              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
+              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
+            </svg> Google
           </button>
           <button className="flex items-center justify-center w-full py-3 border border-slate-300 rounded-lg bg-white text-slate-700 font-semibold shadow-sm hover:bg-slate-100 active:scale-[0.98] transition-all">
             <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm3.42 17.447c-.246.438-.658.68-1.1.68-.442 0-.853-.242-1.1-.68L11.527 15H8.72l-1.69 2.447c-.246.438-.657.68-1.1.68-.442 0-.853-.242-1.1-.68-.247-.437-.247-1.02 0-1.458l3.11-4.88-3.11-4.88c-.247-.437-.247-1.02 0-1.458.247-.437.658-.68 1.1-.68.442 0 .853-.242 1.1.68L8.72 9h2.807l1.693-2.447c.247-.437.658-.68 1.1-.68.442 0 .853-.242 1.1.68.247.437.247-1.02 0-1.458l-3.11 4.88 3.11 4.88c.247.438.247 1.02 0 1.458z"/>
+              <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm3.42 17.447c-.246.438-.658.68-1.1.68-.442 0-.853-.242-1.1-.68L11.527 15H8.72l-1.69 2.447c-.246.438-.657.68-1.1.68-.442 0-.853-.242-1.1-.68-.247-.437-.247-1.02 0-1.458l3.11-4.88-3.11-4.88c-.247-.437-.247-1.02 0-1.458.247-.437.658-.68 1.1-.68.442 0 .853-.242 1.1.68L8.72 9h2.807l1.693-2.447c.247-.437.658-.68 1.1-.68.442 0 .853-.242 1.1.68.247.437.247-1.02 0-1.458l-3.11 4.88 3.11 4.88c.247.438.247 1.02 0 1.458z" />
             </svg> Apple
           </button>
         </div>
         <p className="pt-4 text-sm text-center text-slate-600">
           {isLogin ? "Need to join?" : "Already a member?"}{' '}
-          <button 
-            onClick={() => setScreen(isLogin ? 'SIGNUP' : 'LOGIN')} 
+          <button
+            onClick={() => setScreen(isLogin ? 'SIGNUP' : 'LOGIN')}
             className="font-bold text-indigo-600 hover:text-indigo-800 transition-colors"
           >
             {isLogin ? 'Sign Up' : 'Log In'}
