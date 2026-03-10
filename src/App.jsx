@@ -40,6 +40,7 @@ import IncomingCallScreen from './features/calls/IncomingCallScreen';
 import CallReviewModal from './features/calls/CallReviewModal';
 import callsService from './services/callsService';
 import chatService from './services/chatService';
+import AdminPanel from './pages/AdminPanel';
 
 /**
  * ListenLink App - Modular Architecture
@@ -563,6 +564,16 @@ const App = () => {
       window.removeEventListener('error', handleError);
     };
   }, []);
+
+  // Render admin panel at /admin route (full-width, outside phone frame)
+  if (window.location.pathname === '/admin') {
+    return (
+      <ErrorBoundary>
+        <StyleInjector />
+        <AdminPanel />
+      </ErrorBoundary>
+    );
+  }
 
   return (
     <ErrorBoundary>
