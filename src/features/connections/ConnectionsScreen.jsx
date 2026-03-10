@@ -278,14 +278,12 @@ const FindConnectionScreen = () => {
 
     if (!trimmedQuery && !hasActiveFilters) {
       setResults([]);
-      // keep searchTerm so UI shows the query
       setSearchPerformed(false);
       return;
     }
 
     try {
       setIsLoading(true);
-      setSearchTerm(query);
       setSearchPerformed(true);
 
       // Create clean filters object (only non-empty values)
@@ -309,11 +307,18 @@ const FindConnectionScreen = () => {
   // Auto-run when redirected with global searchQuery
   useEffect(() => {
     if (searchQuery && searchQuery.trim()) {
+      setSearchTerm(searchQuery);
       handleSearch(searchQuery);
       // Clear global query after consuming
       setSearchQuery('');
     }
   }, [searchQuery]);
+
+  const handleInputChange = (e) => {
+    const value = e.target.value;
+    setSearchTerm(value);
+    handleSearch(value);
+  };
 
   return (
     <div className="flex flex-col w-full bg-slate-50 p-3 sm:p-4 pt-0">
@@ -327,7 +332,7 @@ const FindConnectionScreen = () => {
               type="text"
               placeholder="e.g., UX design, Startups..."
               value={searchTerm}
-              onChange={e => handleSearch(e.target.value)}
+              onChange={handleInputChange}
               className="w-full p-3 sm:p-4 pl-10 sm:pl-12 border border-slate-300 rounded-xl focus:ring-indigo-500 focus:border-indigo-500 text-sm sm:text-base shadow-sm touch-manipulation"
             />
           </div>
