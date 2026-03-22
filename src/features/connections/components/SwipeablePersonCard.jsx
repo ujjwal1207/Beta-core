@@ -18,6 +18,7 @@ const SwipeablePersonCard = ({ person, onAction, style, isTop }) => {
   };
 
   const isSuperLinker = (person?.connections || 0) > 200 && (person?.trustScore || 0) >= 3.0;
+  const isVerifiedAlumni = (person?.tags || []).map(tag => String(tag).toLowerCase()).includes('verified_alumni');
 
   return (
     <>
@@ -36,6 +37,11 @@ const SwipeablePersonCard = ({ person, onAction, style, isTop }) => {
               <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight inline active:underline">
                 {person.name}, {person.age}
               </h2>
+              {isVerifiedAlumni && (
+                <span className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/80 text-white text-[10px] font-bold uppercase align-middle">
+                  <CheckCircle className="w-3 h-3" /> Verified
+                </span>
+              )}
               <MoodDisplay moodIndex={person.mood} />
               <p className="text-xs sm:text-sm font-medium opacity-80">{person.role}</p>
             </button>

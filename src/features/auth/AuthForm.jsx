@@ -5,31 +5,39 @@ import { useAppContext } from '../../context/AppContext';
 import authService from '../../services/authService';
 
 export const AuthForm = ({ isLogin }) => {
-  const { setScreen, login, signup, isLoading, authError } = useAppContext();
+  const { setScreen, login, isLoading: contextIsLoading, authError } = useAppContext();
+
+  // Form Views: 'FORM' | 'SIGNUP_OTP' | 'FORGOT_EMAIL' | 'FORGOT_OTP'
+  const [view, setView] = useState('FORM');
+  const [localIsLoading, setLocalIsLoading] = useState(false);
+  const isLoading = contextIsLoading || localIsLoading;
 
   const [formData, setFormData] = useState({
     full_name: '',
     email: '',
     password: '',
+    otp_code: '',
+    new_password: ''
   });
+  
   const [showPassword, setShowPassword] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [error, setError] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-    setError(''); // Clear error on input change
+    setFormData(prev => ({ ...prev, [name]: value }));
+    setError('');
+    setSuccessMsg('');
   };
 
+  // ─── LOGIN / SIGNUP INITIATOR ──────────────────────────────────────────
   const handleAuth = async (e) => {
     e.preventDefault();
     setError('');
+    setSuccessMsg('');
 
-    // Validation
     if (!isLogin && !formData.full_name.trim()) {
       setError('Please enter your full name');
       return;
@@ -47,21 +55,104 @@ export const AuthForm = ({ isLogin }) => {
       return;
     }
 
-    try {
-      if (isLogin) {
-        await login({
-          email: formData.email,
-          password: formData.password,
-        });
-      } else {
-        await signup({
-          full_name: formData.full_name,
-          email: formData.email,
-          password: formData.password,
-        });
+    if (isLogin) {
+      // Standard Login
+      try {
+        await login({ email: formData.email, password: formData.password });
+      } catch (err) {
+        setError(err.message || 'Authentication failed. Please try again.');
       }
+    } else {
+      // Start Signup OTP Flow
+      setLocalIsLoading(true);
+      try {
+        await authService.requestSignupOtp({
+          email: formData.email,
+          password: formData.password,
+          full_name: formData.full_name
+        });
+        setSuccessMsg(`Verification code sent to ${formData.email}`);
+        setView('SIGNUP_OTP');
+      } catch (err) {
+        setError(err.response?.data?.detail || err.message || 'Failed to send verification code');
+      } finally {
+        setLocalIsLoading(false);
+      }
+    }
+  };
+
+  // ─── SIGNUP OTP VERIFICATION ───────────────────────────────────────────
+  const handleVerifySignupOtp = async (e) => {
+    e.preventDefault();
+    setError('');
+    
+    if (!formData.otp_code.trim()) {
+      setError('Please enter the verification code');
+      return;
+    }
+
+    setLocalIsLoading(true);
+    try {
+      const response = await authService.verifySignupOtp({
+        email: formData.email,
+        password: formData.password,
+        full_name: formData.full_name,
+        otp_code: formData.otp_code
+      });
+      // Force a full reload to let AppContext initialize properly with the new token
+      window.location.reload();
     } catch (err) {
-      setError(err.message || 'Authentication failed. Please try again.');
+      setError(err.response?.data?.detail || err.message || 'Invalid verification code');
+      setLocalIsLoading(false);
+    }
+  };
+
+  // ─── FORGOT PASSWORD FLOW ──────────────────────────────────────────────
+  const handleForgotPasswordRequest = async (e) => {
+    e.preventDefault();
+    setError('');
+    
+    if (!formData.email.trim()) {
+      setError('Please enter your email');
+      return;
+    }
+
+    setLocalIsLoading(true);
+    try {
+      await authService.forgotPassword(formData.email);
+      setSuccessMsg('Reset code sent! Check your email.');
+      setView('FORGOT_OTP');
+    } catch (err) {
+      setError(err.response?.data?.detail || err.message || 'Failed to send reset code');
+    } finally {
+      setLocalIsLoading(false);
+    }
+  };
+
+  const handleForgotPasswordReset = async (e) => {
+    e.preventDefault();
+    setError('');
+
+    if (!formData.otp_code.trim() || !formData.new_password.trim()) {
+      setError('Please enter the code and a new password');
+      return;
+    }
+
+    setLocalIsLoading(true);
+    try {
+      await authService.resetPassword({
+        email: formData.email,
+        otp_code: formData.otp_code,
+        new_password: formData.new_password
+      });
+      setSuccessMsg('Password reset successfully! You can now log in.');
+      // Reset state and go back to login form
+      setFormData(prev => ({ ...prev, password: '', new_password: '', otp_code: '' }));
+      setView('FORM');
+    } catch (err) {
+      setError(err.response?.data?.detail || err.message || 'Failed to reset password');
+    } finally {
+      setLocalIsLoading(false);
     }
   };
 
@@ -74,27 +165,104 @@ export const AuthForm = ({ isLogin }) => {
     }
   };
 
-  return (
-    <div className="flex flex-col h-full p-6 bg-slate-50">
-      <div className="flex items-center mb-6">
-        <button onClick={() => setScreen('WELCOME')} className="p-2 rounded-full hover:bg-slate-200">
-          <ArrowLeft className="w-6 h-6 text-slate-600" />
+  // Back button handler based on current view
+  const handleBack = () => {
+    if (view === 'FORM') setScreen('WELCOME');
+    else if (view === 'SIGNUP_OTP') setView('FORM');
+    else if (view === 'FORGOT_EMAIL') setView('FORM');
+    else if (view === 'FORGOT_OTP') setView('FORGOT_EMAIL');
+  };
+
+  // ─── RENDERERS ──────────────────────────────────────────────────────────
+
+  const renderSignupOtp = () => (
+    <form onSubmit={handleVerifySignupOtp} className="space-y-4 flex-grow">
+      <p className="text-sm text-slate-600 mb-4">
+        We've sent a 6-digit code to <strong>{formData.email}</strong>. Please enter it below to verify your account.
+      </p>
+      <input
+        className="w-full p-4 bg-white border border-slate-300 rounded-lg placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-base font-mono tracking-widest text-center"
+        type="text"
+        name="otp_code"
+        value={formData.otp_code}
+        onChange={handleInputChange}
+        placeholder="------"
+        maxLength={6}
+        required
+      />
+      <Button primary type="submit" disabled={isLoading} className="w-full mt-6">
+        {isLoading ? 'Verifying...' : 'Verify & Create Account'}
+      </Button>
+    </form>
+  );
+
+  const renderForgotEmail = () => (
+    <form onSubmit={handleForgotPasswordRequest} className="space-y-4 flex-grow">
+      <p className="text-sm text-slate-600 mb-4">
+        Enter your email address and we'll send you a code to reset your password.
+      </p>
+      <input
+        className="w-full p-4 bg-white border border-slate-300 rounded-lg placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-base"
+        type="email"
+        name="email"
+        value={formData.email}
+        onChange={handleInputChange}
+        placeholder="Registered Email"
+        required
+      />
+      <Button primary type="submit" disabled={isLoading} className="w-full mt-6">
+        {isLoading ? 'Sending...' : 'Send Reset Code'}
+      </Button>
+    </form>
+  );
+
+  const renderForgotOtp = () => (
+    <form onSubmit={handleForgotPasswordReset} className="space-y-4 flex-grow">
+      <p className="text-sm text-slate-600 mb-4">
+        Enter the 6-digit code sent to <strong>{formData.email}</strong> and your new password.
+      </p>
+      <input
+        className="w-full p-4 bg-white border border-slate-300 rounded-lg placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-base font-mono tracking-widest text-center"
+        type="text"
+        name="otp_code"
+        value={formData.otp_code}
+        onChange={handleInputChange}
+        placeholder="Enter 6-digit code"
+        maxLength={6}
+        required
+      />
+      
+      <div className="relative mt-4">
+        <input
+          className="w-full p-4 bg-white border border-slate-300 rounded-lg placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-base"
+          type={showPassword ? "text" : "password"}
+          name="new_password"
+          value={formData.new_password}
+          onChange={handleInputChange}
+          placeholder="New Password (min 8 chars)"
+          required
+        />
+        <button
+          type="button"
+          onClick={() => setShowPassword(!showPassword)}
+          className="absolute right-4 top-1/2 -translate-y-1/2"
+        >
+          {showPassword ? (
+            <EyeOff className="w-5 h-5 text-slate-400 cursor-pointer" />
+          ) : (
+            <Eye className="w-5 h-5 text-slate-400 cursor-pointer" />
+          )}
         </button>
       </div>
 
-      <h1 className="text-3xl font-extrabold text-slate-800 mb-2">
-        {isLogin ? 'Hello Again!' : 'Create your profile.'}
-      </h1>
-      <p className="text-slate-500 mb-8">
-        {isLogin ? 'Welcome back, we missed you.' : 'Join to start connecting with the community.'}
-      </p>
+      <Button primary type="submit" disabled={isLoading} className="w-full mt-6">
+        {isLoading ? 'Resetting...' : 'Reset Password'}
+      </Button>
+    </form>
+  );
 
-      {(error || authError) && (
-        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
-          {error || authError}
-        </div>
-      )}
-
+  const renderMainForm = () => (
+    <div className="flex flex-col h-full">
       <form onSubmit={handleAuth} className="space-y-4 flex-grow overflow-y-auto">
         {!isLogin && (
           <input
@@ -138,6 +306,34 @@ export const AuthForm = ({ isLogin }) => {
             )}
           </button>
         </div>
+        
+        {isLogin && (
+          <div className="flex justify-end pt-1">
+            <button
+              type="button"
+              onClick={() => {
+                setError('');
+                setSuccessMsg('');
+                setView('FORGOT_EMAIL');
+              }}
+              className="text-sm font-medium text-indigo-600 hover:text-indigo-800 transition-colors"
+            >
+              Forgot Password?
+            </button>
+          </div>
+        )}
+
+        {isLogin && (
+          <div className="pt-1 text-right">
+            <a
+              href="/admin"
+              className="text-sm font-medium text-teal-700 hover:text-teal-900 transition-colors"
+            >
+              University Admin Login
+            </a>
+          </div>
+        )}
+
         {!isLogin && (
           <div className="flex items-center text-sm pt-2">
             <input
@@ -154,7 +350,7 @@ export const AuthForm = ({ isLogin }) => {
         )}
       </form>
 
-      <div className="mt-8 w-full space-y-3">
+      <div className="mt-8 w-full space-y-3 pb-4">
         <Button primary onClick={handleAuth} disabled={isLoading}>
           {isLoading ? 'Please wait...' : (isLogin ? 'Come On In!' : 'Create Account')}
         </Button>
@@ -188,12 +384,58 @@ export const AuthForm = ({ isLogin }) => {
         <p className="pt-4 text-sm text-center text-slate-600">
           {isLogin ? "Need to join?" : "Already a member?"}{' '}
           <button
-            onClick={() => setScreen(isLogin ? 'SIGNUP' : 'LOGIN')}
+            onClick={() => {
+              setScreen(isLogin ? 'SIGNUP' : 'LOGIN');
+              setView('FORM');
+              setError('');
+              setSuccessMsg('');
+            }}
             className="font-bold text-indigo-600 hover:text-indigo-800 transition-colors"
           >
             {isLogin ? 'Sign Up' : 'Log In'}
           </button>
         </p>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="flex flex-col h-full p-6 bg-slate-50">
+      <div className="flex items-center mb-6">
+        <button onClick={handleBack} className="p-2 rounded-full hover:bg-slate-200" disabled={isLoading}>
+          <ArrowLeft className="w-6 h-6 text-slate-600" />
+        </button>
+      </div>
+
+      <h1 className="text-3xl font-extrabold text-slate-800 mb-2">
+        {view === 'FORM' && (isLogin ? 'Hello Again!' : 'Create your profile.')}
+        {view === 'SIGNUP_OTP' && 'Verify Email'}
+        {view === 'FORGOT_EMAIL' && 'Reset Password'}
+        {view === 'FORGOT_OTP' && 'Set New Password'}
+      </h1>
+      <p className="text-slate-500 mb-6">
+        {view === 'FORM' && (isLogin ? 'Welcome back, we missed you.' : 'Join to start connecting with the community.')}
+        {view === 'SIGNUP_OTP' && 'Just one more step to register.'}
+        {(view === 'FORGOT_EMAIL' || view === 'FORGOT_OTP') && 'Get back into your account securely.'}
+      </p>
+
+      {successMsg && (
+        <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">
+          {successMsg}
+        </div>
+      )}
+
+      {(error || authError) && (
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
+          {error || authError}
+        </div>
+      )}
+
+      <div className="flex-1 flex flex-col">
+        {view === 'FORM' && renderMainForm()}
+        {view === 'SIGNUP_OTP' && renderSignupOtp()}
+        {view === 'FORGOT_EMAIL' && renderForgotEmail()}
+        {view === 'FORGOT_OTP' && renderForgotOtp()}
       </div>
     </div>
   );

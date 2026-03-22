@@ -67,6 +67,14 @@ api.interceptors.response.use(
           break;
         case 403:
           console.error('Forbidden - insufficient permissions');
+          if (typeof errorMessage === 'string' && errorMessage.toLowerCase().includes('university verification required')) {
+            window.dispatchEvent(new CustomEvent('verificationRequired', {
+              detail: {
+                message: errorMessage,
+                path: error.config?.url || ''
+              }
+            }));
+          }
           break;
         case 404:
           console.error('Resource not found');

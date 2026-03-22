@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, Settings, User, Edit3, Plus, Loader, Users, Camera } from 'lucide-react';
+import { ArrowLeft, Settings, User, Edit3, Plus, Loader, Users, Camera, GraduationCap, BookOpen } from 'lucide-react';
 import { useAppContext } from '../../context/AppContext';
 import ProfileCompletionNudge from './components/ProfileCompletionNudge';
 import FeedJourneyCard from '../feed/components/FeedJourneyCard';
@@ -9,6 +9,114 @@ import PostCard from '../feed/components/PostCard';
 import feedService from '../../services/feedService';
 import userService from '../../services/userService';
 import { getAvatarUrlWithSize } from '../../lib/avatarUtils';
+
+// ── Searchable university combobox ─────────────────────────────────────────
+const UniversitySearchInput = ({ universities, selectedId, selectedName, onChange, disabled }) => {
+  const [query, setQuery] = useState('');
+  const [open, setOpen] = useState(false);
+  const wrapperRef = useRef(null);
+
+  // Close on outside click
+  useEffect(() => {
+    const handler = (e) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
+        setOpen(false);
+        setQuery('');
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const filtered = query.trim()
+    ? universities.filter(u => u.name.toLowerCase().includes(query.toLowerCase()))
+    : universities;
+
+  const handleSelect = (uni) => {
+    onChange(uni);
+    setQuery('');
+    setOpen(false);
+  };
+
+  const handleClear = (e) => {
+    e.stopPropagation();
+    onChange(null);
+    setQuery('');
+  };
+
+  const displayValue = selectedId ? (universities.find(u => String(u.id) === String(selectedId))?.name || selectedName || '') : '';
+
+  return (
+    <div ref={wrapperRef} className="relative">
+      {/* Trigger / search input */}
+      <div
+        className={`flex items-center w-full bg-white border rounded-lg shadow-sm transition-colors ${
+          open ? 'border-indigo-500 ring-2 ring-indigo-500' : 'border-slate-200 hover:border-slate-300'
+        } ${disabled ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}
+        onClick={() => { if (!disabled) { setOpen(true); } }}
+      >
+        {open ? (
+          <input
+            autoFocus
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            placeholder="Search university…"
+            className="flex-1 pl-3 pr-2 py-2.5 text-sm bg-transparent outline-none text-slate-800 placeholder-slate-400"
+            onClick={e => e.stopPropagation()}
+          />
+        ) : (
+          <span className={`flex-1 pl-3 py-2.5 text-sm font-medium ${displayValue ? 'text-slate-800' : 'text-slate-400'}`}>
+            {displayValue || 'Search university…'}
+          </span>
+        )}
+        <div className="flex items-center pr-2 gap-1">
+          {displayValue && !open && (
+            <button
+              type="button"
+              onClick={handleClear}
+              className="p-0.5 rounded text-slate-300 hover:text-slate-500 transition-colors"
+              aria-label="Clear"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
+          <svg className="w-4 h-4 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            {open
+              ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />}
+          </svg>
+        </div>
+      </div>
+
+      {/* Dropdown results */}
+      {open && (
+        <div className="absolute z-50 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg max-h-52 overflow-y-auto">
+          {filtered.length === 0 ? (
+            <p className="px-3 py-3 text-sm text-slate-400 text-center">No universities found</p>
+          ) : (
+            filtered.map(uni => (
+              <button
+                key={uni.id}
+                type="button"
+                onMouseDown={() => handleSelect(uni)}
+                className={`w-full text-left px-3 py-2.5 text-sm transition-colors ${
+                  String(uni.id) === String(selectedId)
+                    ? 'bg-indigo-50 text-indigo-700 font-semibold'
+                    : 'text-slate-700 hover:bg-slate-50'
+                }`}
+              >
+                {uni.name}
+              </button>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+// ───────────────────────────────────────────────────────────────────────────
 
 const UserProfileScreen = () => {
   const { setScreen, onboardingAnswers, setOnboardingAnswers, user, updateUserProfile, updateUserMood } = useAppContext();
@@ -50,9 +158,11 @@ const UserProfileScreen = () => {
 
   const [isAboutMeExpanded, setIsAboutMeExpanded] = useState(hasIncompleteProfile());
   const [education, setEducation] = useState([]);
+  const [universities, setUniversities] = useState([]);
+  const [universitiesLoading, setUniversitiesLoading] = useState(false);
   const [isAddingSchool, setIsAddingSchool] = useState(false);
   const [editingSchoolIndex, setEditingSchoolIndex] = useState(null);
-  const [newSchool, setNewSchool] = useState({ name: '', entry_year: '', passing_year: '' });
+  const [newSchool, setNewSchool] = useState({ university_id: '', name: '', entry_year: '', passing_year: '', enrollment_status: '' });
   const [isEditingSharerInsights, setIsEditingSharerInsights] = useState(false);
   const [editingSharerInsights, setEditingSharerInsights] = useState({
     youngerSelf: '',
@@ -84,6 +194,23 @@ const UserProfileScreen = () => {
     }
   }, [user?.id]); // Only when user ID changes (first load for this user)
 
+  useEffect(() => {
+    const fetchUniversities = async () => {
+      try {
+        setUniversitiesLoading(true);
+        const list = await userService.getUniversities();
+        setUniversities(list);
+      } catch (error) {
+        console.error('Failed to fetch universities:', error);
+        setUniversities([]);
+      } finally {
+        setUniversitiesLoading(false);
+      }
+    };
+
+    fetchUniversities();
+  }, []);
+
   // Load sharer insights separately
   useEffect(() => {
     if (user && user.sharer_insights) {
@@ -106,6 +233,13 @@ const UserProfileScreen = () => {
   useEffect(() => {
     const fetchUserPosts = async () => {
       if (!user?.id) return;
+      const isVerified = (user?.education || []).some(
+        (edu) => String(edu?.approval_status || '').toLowerCase() === 'approved'
+      );
+      if (!isVerified) {
+        setUserPosts([]);
+        return;
+      }
       setPostsLoading(true);
       try {
         const posts = await feedService.getUserPosts(user.id);
@@ -123,6 +257,13 @@ const UserProfileScreen = () => {
   useEffect(() => {
     const fetchSavedPosts = async () => {
       if (!user?.id) return;
+      const isVerified = (user?.education || []).some(
+        (edu) => String(edu?.approval_status || '').toLowerCase() === 'approved'
+      );
+      if (!isVerified) {
+        setSavedPosts([]);
+        return;
+      }
       setSavedLoading(true);
       try {
         const posts = await feedService.getSavedPosts();
@@ -146,6 +287,9 @@ const UserProfileScreen = () => {
     lifeLessons: onboardingAnswers['SHARER_TRACK_2'],
     societyChange: onboardingAnswers['SHARER_TRACK_3'],
   };
+  const isVerifiedUser = (user?.education || []).some(
+    (edu) => String(edu?.approval_status || '').toLowerCase() === 'approved'
+  );
   const hasSharerInsights = sharerInsights.youngerSelf || (sharerInsights.lifeLessons && sharerInsights.lifeLessons.length > 0) || sharerInsights.societyChange;
 
   const handleSave = async () => {
@@ -174,7 +318,7 @@ const UserProfileScreen = () => {
       // Update the state
       setOnboardingAnswers(updatedOnboardingAnswers);
 
-      const updateData = {
+      const fullUpdateData = {
         full_name: localName,
         role: localRole,
         company: localCompany,
@@ -185,6 +329,9 @@ const UserProfileScreen = () => {
         education: education,
         onboarding_answers: updatedOnboardingAnswers,
       };
+
+      // Unverified users can update education only.
+      const updateData = isVerifiedUser ? fullUpdateData : { education };
 
       // If there's a new profile photo, upload to S3 first
       if (profilePhoto) {
@@ -266,6 +413,43 @@ const UserProfileScreen = () => {
       <Plus className="w-5 h-5 mr-2" /> {text}
     </button>
   );
+
+  const getApprovalBadge = (status) => {
+    const normalized = String(status || '').trim().toLowerCase();
+
+    if (normalized === 'approved') {
+      return {
+        label: 'Approved',
+        className: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+      };
+    }
+
+    if (normalized === 'rejected') {
+      return {
+        label: 'Rejected',
+        className: 'bg-red-50 text-red-700 border-red-200',
+      };
+    }
+
+    if (normalized === 'not_verified') {
+      return {
+        label: 'Not Verified',
+        className: 'bg-slate-100 text-slate-700 border-slate-300',
+      };
+    }
+
+    if (normalized === 'pending') {
+      return {
+        label: 'Pending Approval',
+        className: 'bg-amber-50 text-amber-700 border-amber-200',
+      };
+    }
+
+    return {
+      label: 'Needs Update',
+      className: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+    };
+  };
 
   return (
     <div className="relative flex flex-col h-full bg-slate-50">
@@ -387,246 +571,374 @@ const UserProfileScreen = () => {
           />
 
           <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 w-full mb-6">
-            <div
-              className="flex items-center justify-between cursor-pointer"
-              onClick={() => setIsAboutMeExpanded(!isAboutMeExpanded)}
-            >
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <h3 className="text-base font-bold text-slate-800">About me</h3>
-                  {hasIncompleteProfile() && (
-                    <ProfileCompletionNudge
-                      onboardingAnswers={onboardingAnswers}
-                      setScreen={setScreen}
+            {/* Education Section */}
+            <div className="mb-4 pb-4 border-b border-slate-200">
+              <div className="flex items-center justify-between mb-3">
+                <label className="text-sm font-semibold text-slate-700">Education</label>
+                <button
+                  onClick={() => setIsAddingSchool(true)}
+                  disabled={universitiesLoading || universities.length === 0}
+                  className="flex items-center gap-1 text-indigo-600 hover:text-indigo-700 text-sm font-semibold transition-colors disabled:text-slate-400"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add School
+                </button>
+              </div>
+              {!universitiesLoading && universities.length === 0 && (
+                <p className="text-xs text-amber-700 mb-3">No universities available yet. Ask your university admin to create one in the admin panel.</p>
+              )}
+
+              {education.length > 0 && (
+                <div className="space-y-2 mb-3">
+                  {education.map((school, index) => (
+                    editingSchoolIndex === index ? (
+                      <div key={index} className="bg-white border-2 border-indigo-300 rounded-xl p-4 space-y-3 shadow-sm">
+                        <div>
+                          <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5 block">University</label>
+                          <UniversitySearchInput
+                            universities={universities}
+                            selectedId={school.university_id}
+                            selectedName={school.name}
+                            onChange={(selected) => {
+                              const updated = [...education];
+                              updated[index] = {
+                                ...updated[index],
+                                university_id: selected ? selected.id : null,
+                                name: selected ? selected.name : '',
+                              };
+                              setEducation(updated);
+                              setIsDirty(true);
+                            }}
+                          />
+                        </div>
+
+                        <div>
+                          <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5 block">Status</label>
+                          <div className="relative">
+                            <select
+                              value={school.enrollment_status || ''}
+                              onChange={(e) => {
+                                const updated = [...education];
+                                updated[index] = { ...updated[index], enrollment_status: e.target.value };
+                                setEducation(updated);
+                                setIsDirty(true);
+                              }}
+                              className="w-full appearance-none pl-3 pr-10 py-2.5 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm text-slate-800 font-medium shadow-sm cursor-pointer transition-colors hover:border-slate-300"
+                            >
+                              <option value="">Select status</option>
+                              <option value="currently_enrolled">Currently Enrolled</option>
+                              <option value="alumni">Alumni</option>
+                            </select>
+                            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-400">
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5 block">Entry Year</label>
+                            <input
+                              type="number"
+                              value={school.entry_year}
+                              onChange={(e) => {
+                                const updated = [...education];
+                                updated[index] = { ...updated[index], entry_year: e.target.value };
+                                setEducation(updated);
+                                setIsDirty(true);
+                              }}
+                              className="w-full pl-3 pr-2 py-2.5 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm font-medium shadow-sm"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5 block">Passing Year</label>
+                            <input
+                              type="number"
+                              value={school.passing_year}
+                              onChange={(e) => {
+                                const updated = [...education];
+                                updated[index] = { ...updated[index], passing_year: e.target.value };
+                                setEducation(updated);
+                                setIsDirty(true);
+                              }}
+                              className="w-full pl-3 pr-2 py-2.5 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm font-medium shadow-sm"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="flex gap-2 pt-1">
+                          <button
+                            onClick={() => {
+                              setEditingSchoolIndex(null);
+                              setIsDirty(true);
+                            }}
+                            className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 px-4 rounded-lg transition-colors text-sm shadow-sm"
+                          >
+                            Done
+                          </button>
+                          <button
+                            onClick={() => setEditingSchoolIndex(null)}
+                            className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold py-2.5 px-4 rounded-lg transition-colors text-sm"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div key={index} className="bg-white border border-slate-200 rounded-xl p-3.5 flex items-start justify-between hover:border-indigo-300 hover:shadow-sm transition-all">
+                        <div className="flex items-start gap-3 flex-1 min-w-0">
+                          <div className="w-9 h-9 rounded-lg bg-indigo-50 flex items-center justify-center flex-shrink-0 mt-0.5">
+                            <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" /></svg>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="mb-1.5 w-full">
+                              <p className="font-bold text-slate-800 text-sm truncate w-full pr-1 mb-1">{school.name}</p>
+                              <div className="flex flex-wrap items-center gap-2">
+                                {(() => {
+                                  const badge = getApprovalBadge(school.approval_status);
+                                  return (
+                                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold border flex-shrink-0 whitespace-nowrap ${badge.className}`}>
+                                      {badge.label}
+                                    </span>
+                                  );
+                                })()}
+                                {school.enrollment_status === 'alumni' ? (
+                                  <span className="inline-flex items-center whitespace-nowrap gap-1 text-[11px] font-bold text-violet-700 bg-violet-50 border border-violet-200 px-2 py-0.5 rounded-full">
+                                    <GraduationCap className="w-3.5 h-3.5 flex-shrink-0" />
+                                    Alumni
+                                  </span>
+                                ) : school.enrollment_status === 'currently_enrolled' ? (
+                                  <span className="inline-flex items-center whitespace-nowrap gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                                    <BookOpen className="w-3.5 h-3.5 flex-shrink-0" />
+                                    Currently Enrolled
+                                  </span>
+                                ) : null}
+                              </div>
+                            </div>
+                            
+                            <p className="text-xs text-slate-500 font-medium">
+                              {school.entry_year} – {school.passing_year || 'Present'}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex gap-1.5 ml-2 flex-shrink-0">
+                          <button
+                            onClick={() => setEditingSchoolIndex(index)}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all"
+                          >
+                            <Edit3 className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => {
+                              setEducation(education.filter((_, i) => i !== index));
+                              setIsDirty(true);
+                            }}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all"
+                          >
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  ))}
+                </div>
+              )}
+
+              {isAddingSchool && (
+                <div className="bg-white border-2 border-indigo-300 rounded-xl p-4 space-y-3 shadow-sm">
+                  <div>
+                    <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5 block">University</label>
+                    <UniversitySearchInput
+                      universities={universities}
+                      selectedId={newSchool.university_id}
+                      selectedName={newSchool.name}
+                      onChange={(selected) => {
+                        setNewSchool({
+                          ...newSchool,
+                          university_id: selected ? String(selected.id) : '',
+                          name: selected ? selected.name : '',
+                        });
+                      }}
+                      disabled={universitiesLoading}
                     />
-                  )}
-                </div>
-                <p className="text-sm text-slate-500">Completing your journey helps us find you the best connections.</p>
-              </div>
-              <div className={`transform transition-transform ${isAboutMeExpanded ? 'rotate-180' : ''}`}>
-                <svg className="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </div>
-            </div>
-            {isAboutMeExpanded && (
-              <div className="mt-4 space-y-4">
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm font-semibold text-slate-700 mb-1.5 block">Role</label>
-                    <input type="text" placeholder="e.g., Product Manager" value={localRole} onChange={(e) => { setLocalRole(e.target.value); setIsDirty(true); }} className="w-full p-3 bg-slate-50 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-base" />
                   </div>
-                  <div>
-                    <label className="text-sm font-semibold text-slate-700 mb-1.5 block">Company</label>
-                    <input type="text" placeholder="e.g., Acme Inc." value={localCompany} onChange={(e) => { setLocalCompany(e.target.value); setIsDirty(true); }} className="w-full p-3 bg-slate-50 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-base" />
-                  </div>
-                </div>
-                <div>
-                  <label className="text-sm font-semibold text-slate-700 mb-1.5 block">Bio</label>
-                  <input type="text" placeholder="e.g., 'Exploring new career paths'" value={localTagline} onChange={(e) => { setLocalTagline(e.target.value); setIsDirty(true); }} className="w-full p-3 bg-slate-50 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-base" />
-                </div>
 
-                <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-sm font-semibold text-slate-700 mb-1.5 block">Location</label>
-                    <input type="text" placeholder="e.g., Mumbai, India" value={localLocation} onChange={(e) => { setLocalLocation(e.target.value); setIsDirty(true); }} className="w-full p-3 bg-slate-50 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-base" />
+                    <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5 block">Status</label>
+                    <div className="relative">
+                      <select
+                        value={newSchool.enrollment_status}
+                        onChange={(e) => setNewSchool({ ...newSchool, enrollment_status: e.target.value })}
+                        className="w-full appearance-none pl-3 pr-10 py-2.5 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm text-slate-800 font-medium shadow-sm cursor-pointer transition-colors hover:border-slate-300"
+                      >
+                        <option value="">Select status</option>
+                        <option value="currently_enrolled">Currently Enrolled</option>
+                        <option value="alumni">Alumni</option>
+                      </select>
+                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-400">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <label className="text-sm font-semibold text-slate-700 mb-1.5 block">Industry</label>
-                    <input type="text" placeholder="e.g., Technology" value={localIndustry} onChange={(e) => { setLocalIndustry(e.target.value); setIsDirty(true); }} className="w-full p-3 bg-slate-50 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-base" />
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5 block">Entry Year</label>
+                      <input
+                        type="number"
+                        placeholder="2020"
+                        value={newSchool.entry_year}
+                        onChange={(e) => setNewSchool({ ...newSchool, entry_year: e.target.value })}
+                        className="w-full pl-3 pr-2 py-2.5 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm font-medium shadow-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5 block">Passing Year</label>
+                      <input
+                        type="number"
+                        placeholder="2024"
+                        value={newSchool.passing_year}
+                        onChange={(e) => setNewSchool({ ...newSchool, passing_year: e.target.value })}
+                        className="w-full pl-3 pr-2 py-2.5 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm font-medium shadow-sm"
+                      />
+                    </div>
                   </div>
-                </div>
 
-                <div>
-                  <label className="text-sm font-semibold text-slate-700 mb-1.5 block">My Expertise</label>
-                  <textarea
-                    className="w-full p-3 bg-slate-50 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-base"
-                    rows="3"
-                    placeholder="e.g., 'Product Management, front-end development (React), building design systems...'"
-                    value={localExpertise}
-                    onChange={(e) => { setLocalExpertise(e.target.value); setIsDirty(true); }}
-                  />
-                </div>
-
-                {/* Education Section */}
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <label className="text-sm font-semibold text-slate-700">Education</label>
+                  <div className="flex gap-2 pt-1">
                     <button
-                      onClick={() => setIsAddingSchool(true)}
-                      className="flex items-center gap-1 text-indigo-600 hover:text-indigo-700 text-sm font-semibold transition-colors"
+                      onClick={() => {
+                        if (newSchool.university_id && newSchool.name && newSchool.entry_year && newSchool.enrollment_status) {
+                          setEducation([
+                            ...education,
+                            {
+                              university_id: Number(newSchool.university_id),
+                              name: newSchool.name,
+                              entry_year: newSchool.entry_year,
+                              passing_year: newSchool.passing_year,
+                              enrollment_status: newSchool.enrollment_status,
+                            }
+                          ]);
+                          setNewSchool({ university_id: '', name: '', entry_year: '', passing_year: '', enrollment_status: '' });
+                          setIsAddingSchool(false);
+                          setIsDirty(true);
+                        }
+                      }}
+                      className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 px-4 rounded-lg transition-colors text-sm shadow-sm"
                     >
-                      <Plus className="w-4 h-4" />
                       Add School
                     </button>
+                    <button
+                      onClick={() => {
+                        setIsAddingSchool(false);
+                        setNewSchool({ university_id: '', name: '', entry_year: '', passing_year: '', enrollment_status: '' });
+                      }}
+                      className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold py-2.5 px-4 rounded-lg transition-colors text-sm"
+                    >
+                      Cancel
+                    </button>
                   </div>
+                </div>
+              )}
+            </div>
 
-                  {/* School List */}
-                  {education.length > 0 && (
-                    <div className="space-y-2 mb-3">
-                      {education.map((school, index) => (
-                        editingSchoolIndex === index ? (
-                          <div key={index} className="bg-white border-2 border-indigo-300 rounded-lg p-4 space-y-3">
-                            <div>
-                              <label className="text-xs font-semibold text-slate-600 mb-1 block">School Name</label>
-                              <input
-                                type="text"
-                                value={school.name}
-                                onChange={(e) => {
-                                  const updated = [...education];
-                                  updated[index] = { ...updated[index], name: e.target.value };
-                                  setEducation(updated);
-                                  setIsDirty(true);
-                                }}
-                                className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-                              />
-                            </div>
-                            <div className="grid grid-cols-2 gap-3">
-                              <div>
-                                <label className="text-xs font-semibold text-slate-600 mb-1 block">Entry Year</label>
-                                <input
-                                  type="number"
-                                  value={school.entry_year}
-                                  onChange={(e) => {
-                                    const updated = [...education];
-                                    updated[index] = { ...updated[index], entry_year: e.target.value };
-                                    setEducation(updated);
-                                    setIsDirty(true);
-                                  }}
-                                  className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-                                />
-                              </div>
-                              <div>
-                                <label className="text-xs font-semibold text-slate-600 mb-1 block">Passing Year</label>
-                                <input
-                                  type="number"
-                                  value={school.passing_year}
-                                  onChange={(e) => {
-                                    const updated = [...education];
-                                    updated[index] = { ...updated[index], passing_year: e.target.value };
-                                    setEducation(updated);
-                                    setIsDirty(true);
-                                  }}
-                                  className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-                                />
-                              </div>
-                            </div>
-                            <div className="flex gap-2">
-                              <button
-                                onClick={() => {
-                                  setEditingSchoolIndex(null);
-                                  setIsDirty(true);
-                                }}
-                                className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors text-sm"
-                              >
-                                Done
-                              </button>
-                              <button
-                                onClick={() => setEditingSchoolIndex(null)}
-                                className="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold py-2 px-4 rounded-lg transition-colors text-sm"
-                              >
-                                Cancel
-                              </button>
-                            </div>
-                          </div>
-                        ) : (
-                          <div key={index} className="bg-white border border-slate-200 rounded-lg p-3 flex items-start justify-between hover:border-indigo-300 transition-colors">
-                            <div className="flex-1">
-                              <p className="font-semibold text-slate-800">{school.name}</p>
-                              <p className="text-sm text-slate-500">
-                                {school.entry_year} - {school.passing_year || 'Present'}
-                              </p>
-                            </div>
-                            <div className="flex gap-2">
-                              <button
-                                onClick={() => setEditingSchoolIndex(index)}
-                                className="text-slate-400 hover:text-indigo-600 transition-all"
-                              >
-                                <Edit3 className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => {
-                                  setEducation(education.filter((_, i) => i !== index));
-                                  setIsDirty(true);
-                                }}
-                                className="text-slate-400 hover:text-red-500 transition-all"
-                              >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                              </button>
-                            </div>
-                          </div>
-                        )
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Add School Form */}
-                  {isAddingSchool && (
-                    <div className="bg-white border-2 border-indigo-300 rounded-lg p-4 space-y-3">
-                      <div>
-                        <label className="text-xs font-semibold text-slate-600 mb-1 block">School Name</label>
-                        <input
-                          type="text"
-                          placeholder="e.g., Harvard University"
-                          value={newSchool.name}
-                          onChange={(e) => setNewSchool({ ...newSchool, name: e.target.value })}
-                          className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-                        />
-                      </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <label className="text-xs font-semibold text-slate-600 mb-1 block">Entry Year</label>
-                          <input
-                            type="number"
-                            placeholder="2020"
-                            value={newSchool.entry_year}
-                            onChange={(e) => setNewSchool({ ...newSchool, entry_year: e.target.value })}
-                            className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-xs font-semibold text-slate-600 mb-1 block">Passing Year</label>
-                          <input
-                            type="number"
-                            placeholder="2024"
-                            value={newSchool.passing_year}
-                            onChange={(e) => setNewSchool({ ...newSchool, passing_year: e.target.value })}
-                            className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-                          />
-                        </div>
-                      </div>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => {
-                            if (newSchool.name && newSchool.entry_year) {
-                              setEducation([...education, newSchool]);
-                              setNewSchool({ name: '', entry_year: '', passing_year: '' });
-                              setIsAddingSchool(false);
-                              setIsDirty(true);
-                            }
-                          }}
-                          className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors text-sm"
-                        >
-                          Add
-                        </button>
-                        <button
-                          onClick={() => {
-                            setIsAddingSchool(false);
-                            setNewSchool({ name: '', entry_year: '', passing_year: '' });
-                          }}
-                          className="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold py-2 px-4 rounded-lg transition-colors text-sm"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
-                  )}
+            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 w-full mb-6">
+              <div
+                className="flex items-center justify-between cursor-pointer"
+                onClick={() => setIsAboutMeExpanded(!isAboutMeExpanded)}
+              >
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="text-base font-bold text-slate-800">About me</h3>
+                    {hasIncompleteProfile() && (
+                      <ProfileCompletionNudge
+                        onboardingAnswers={onboardingAnswers}
+                        setScreen={setScreen}
+                      />
+                    )}
+                  </div>
+                  <p className="text-sm text-slate-500">Completing your journey helps us find you the best connections.</p>
+                </div>
+                <div className={`transform transition-transform ${isAboutMeExpanded ? 'rotate-180' : ''}`}>
+                  <svg className="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
                 </div>
               </div>
-            )}
+
+              {isAboutMeExpanded && (
+                <div className="mt-4 space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm font-semibold text-slate-700 mb-1.5 block">Role</label>
+                      <input
+                        type="text"
+                        placeholder="e.g., Product Manager"
+                        value={localRole}
+                        onChange={(e) => { setLocalRole(e.target.value); setIsDirty(true); }}
+                        className="w-full p-3 bg-slate-50 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-base"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-semibold text-slate-700 mb-1.5 block">Company</label>
+                      <input
+                        type="text"
+                        placeholder="e.g., Acme Inc."
+                        value={localCompany}
+                        onChange={(e) => { setLocalCompany(e.target.value); setIsDirty(true); }}
+                        className="w-full p-3 bg-slate-50 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-base"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-semibold text-slate-700 mb-1.5 block">Bio</label>
+                    <input
+                      type="text"
+                      placeholder="e.g., Exploring new career paths"
+                      value={localTagline}
+                      onChange={(e) => { setLocalTagline(e.target.value); setIsDirty(true); }}
+                      className="w-full p-3 bg-slate-50 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-base"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm font-semibold text-slate-700 mb-1.5 block">Location</label>
+                      <input
+                        type="text"
+                        placeholder="e.g., Mumbai, India"
+                        value={localLocation}
+                        onChange={(e) => { setLocalLocation(e.target.value); setIsDirty(true); }}
+                        className="w-full p-3 bg-slate-50 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-base"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-semibold text-slate-700 mb-1.5 block">Industry</label>
+                      <input
+                        type="text"
+                        placeholder="e.g., Technology"
+                        value={localIndustry}
+                        onChange={(e) => { setLocalIndustry(e.target.value); setIsDirty(true); }}
+                        className="w-full p-3 bg-slate-50 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-base"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-semibold text-slate-700 mb-1.5 block">My Expertise</label>
+                    <textarea
+                      className="w-full p-3 bg-slate-50 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-base"
+                      rows="3"
+                      placeholder="e.g., Product management, frontend development, mentoring"
+                      value={localExpertise}
+                      onChange={(e) => { setLocalExpertise(e.target.value); setIsDirty(true); }}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 

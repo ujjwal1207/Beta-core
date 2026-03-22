@@ -12,6 +12,7 @@ const feedService = {
    * @param {string} postData.content - Post content
    * @param {string} postData.type - Post type ('moment' or 'reflection')
    * @param {number} postData.mood_at_time - Mood at time of posting
+   * @param {Array<string>} [postData.tags] - Optional tags for categorizing posts
    * @param {File} [postData.file] - Optional file to upload
    * @returns {Promise<Object>} Created post
    */
@@ -22,6 +23,11 @@ const feedService = {
       formData.append('content', postData.content);
       formData.append('type', postData.type);
       formData.append('mood_at_time', postData.mood_at_time);
+
+      // Add tags as comma-separated string
+      if (postData.tags && postData.tags.length > 0) {
+        formData.append('tags', postData.tags.join(','));
+      }
 
       // Add file if present
       if (postData.file) {
@@ -233,6 +239,26 @@ const feedService = {
   getPostById: async (postId) => {
     try {
       const response = await api.get(`/feed/${postId}`);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  /**
+   * Search posts by topic, tag, or content
+   * @param {string} query - Search query
+   * @param {string} [tag] - Filter by specific tag
+   * @param {number} [limit=50] - Maximum posts to return
+   * @returns {Promise<Array>} Array of matching posts
+   */
+  searchPostsByTopic: async (query, tag = null, limit = 50) => {
+    try {
+      const params = { limit };
+      if (query) params.q = query;
+      if (tag) params.tag = tag;
+
+      const response = await api.get('/feed/search/topics', { params });
       return response.data;
     } catch (error) {
       throw error;

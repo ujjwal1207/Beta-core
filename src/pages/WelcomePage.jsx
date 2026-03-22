@@ -21,6 +21,12 @@ export const WelcomePage = () => {
         <Button primary onClick={() => setScreen('SIGNUP')}>
           Let's Get Started <ChevronRight className="inline-block w-5 h-5 ml-1" />
         </Button>
+        <a
+          href="/admin"
+          className="mt-3 block w-full text-center py-2.5 rounded-xl border border-slate-300 text-sm font-semibold text-slate-600 hover:bg-slate-100 transition-colors"
+        >
+          University Admin Login
+        </a>
         <p className="mt-4 text-sm text-slate-600">
           Already here?{' '}
           <button 

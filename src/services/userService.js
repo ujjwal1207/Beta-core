@@ -62,6 +62,19 @@ const userService = {
   },
 
   /**
+   * Get all universities configured by university admins
+   * @returns {Promise<Array>} Universities list
+   */
+  getUniversities: async () => {
+    try {
+      const response = await api.get('/users/universities');
+      return response.data.universities || [];
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  /**
    * Set user as online
    * @returns {Promise<Object>} Status update response
    */

@@ -20,6 +20,7 @@ import BankDetailsScreen from './pages/BankDetailsScreen';
 import ReviewsScreen from './pages/ReviewsScreen';
 import NotificationsScreen from './pages/NotificationsScreen';
 import PostDetailScreen from './pages/PostDetailScreen';
+import VerificationRequiredScreen from './pages/VerificationRequiredScreen';
 import FeedScreen from './features/feed/FeedScreen';
 import ConnectionsScreen from './features/connections/ConnectionsScreen';
 import MyConnectionsScreen from './features/connections/MyConnectionsScreen';
@@ -41,6 +42,7 @@ import CallReviewModal from './features/calls/CallReviewModal';
 import callsService from './services/callsService';
 import chatService from './services/chatService';
 import AdminPanel from './pages/AdminPanel';
+import ModeratorPanel from './pages/ModeratorPanel';
 
 /**
  * ListenLink App - Modular Architecture
@@ -310,6 +312,7 @@ const AppContent = () => {
       PROFILE_DETAIL: <ProfileDetailScreen />,
       NOTIFICATIONS: <NotificationsScreen />,
       POST_DETAIL: <PostDetailScreen />,
+      VERIFICATION_REQUIRED: <VerificationRequiredScreen />,
     };
 
     return screens[screen] || <WelcomePage />;
@@ -575,6 +578,15 @@ const App = () => {
     );
   }
 
+  // Render moderator panel at /moderator route (full-width, outside phone frame)
+  if (window.location.pathname === '/moderator' || window.location.pathname.startsWith('/moderator/')) {
+    return (
+      <ErrorBoundary>
+        <StyleInjector />
+        <ModeratorPanel />
+      </ErrorBoundary>
+    );
+  }
   return (
     <ErrorBoundary>
       <StyleInjector />

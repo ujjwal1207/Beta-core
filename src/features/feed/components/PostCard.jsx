@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { MessageSquare, Send, Bookmark, Repeat, X, MoreVertical, User, EyeOff, UserX, Edit, Trash2, Play, Pause, Volume2, VolumeX } from 'lucide-react';
+import { MessageSquare, Send, Bookmark, Repeat, X, MoreVertical, User, EyeOff, UserX, Edit, Trash2, Play, Pause, Volume2, VolumeX, Tag } from 'lucide-react';
 import { useAppContext } from '../../../context/AppContext';
 import MoodDisplay from '../../../components/ui/MoodDisplay';
 import engagementService from '../../../services/engagementService';
@@ -484,6 +484,21 @@ const PostCard = ({ post, onUpdate, onHide, showNotInterested = true }) => {
       ) : (
         <>
           <p className="text-sm text-slate-700 mb-3">{post.content || post.text}</p>
+
+          {/* Tags Display */}
+          {(post.tags && post.tags.length > 0) && (
+            <div className="flex flex-wrap gap-2 mb-3">
+              {post.tags.map((tag, index) => (
+                <span
+                  key={index}
+                  className="inline-flex items-center px-2 py-1 text-xs font-medium bg-indigo-50 text-indigo-700 rounded-full border border-indigo-200"
+                >
+                  <Tag className="w-3 h-3 mr-1" />
+                  {tag}
+                </span>
+              ))}
+            </div>
+          )}
 
           {/* Original Post Reference for Reposts */}
           {isRepost && (post.original_post_user_name || post.originalPostUserName) && (

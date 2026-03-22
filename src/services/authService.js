@@ -9,14 +9,31 @@ const authService = {
   /**
    * Sign up a new user
    * @param {Object} userData - User registration data
-   * @param {string} userData.email - User email
-   * @param {string} userData.password - User password
-   * @param {string} userData.full_name - User full name
    * @returns {Promise<Object>} User data
    */
   signup: async (userData) => {
     const response = await api.post('/auth/signup', userData);
-    // Store token in localStorage for iPhone/Safari compatibility
+    if (response.data.access_token) {
+      localStorage.setItem('access_token', response.data.access_token);
+    }
+    return response.data;
+  },
+
+  /**
+   * Step 1 of OTP signup: request email verification code.
+   * @param {{ email, password, full_name }} userData
+   */
+  requestSignupOtp: async (userData) => {
+    const response = await api.post('/auth/request-signup-otp', userData);
+    return response.data;
+  },
+
+  /**
+   * Step 2 of OTP signup: verify code and create account.
+   * @param {{ email, otp_code, password, full_name }} data
+   */
+  verifySignupOtp: async (data) => {
+    const response = await api.post('/auth/verify-signup-otp', data);
     if (response.data.access_token) {
       localStorage.setItem('access_token', response.data.access_token);
     }
@@ -26,13 +43,10 @@ const authService = {
   /**
    * Login user
    * @param {Object} credentials - Login credentials
-   * @param {string} credentials.email - User email
-   * @param {string} credentials.password - User password
    * @returns {Promise<Object>} Login response with user data
    */
   login: async (credentials) => {
     const response = await api.post('/auth/login', credentials);
-    // Store token in localStorage for iPhone/Safari compatibility
     if (response.data.access_token) {
       localStorage.setItem('access_token', response.data.access_token);
     }
@@ -40,11 +54,27 @@ const authService = {
   },
 
   /**
+   * Step 1 of forgot password: send OTP to email.
+   * @param {string} email
+   */
+  forgotPassword: async (email) => {
+    const response = await api.post('/auth/forgot-password', { email });
+    return response.data;
+  },
+
+  /**
+   * Step 2 of forgot password: verify OTP and set new password.
+   * @param {{ email, otp_code, new_password }} data
+   */
+  resetPassword: async (data) => {
+    const response = await api.post('/auth/reset-password', data);
+    return response.data;
+  },
+
+  /**
    * Logout user (clears authentication cookie and localStorage)
-   * @returns {Promise<Object>} Logout response
    */
   logout: async () => {
-    // Clear localStorage token
     localStorage.removeItem('access_token');
     const response = await api.post('/auth/logout');
     return response.data;
@@ -52,8 +82,6 @@ const authService = {
 
   /**
    * Get current authenticated user
-   * Uses the /users/me endpoint
-   * @returns {Promise<Object>} Current user data
    */
   getCurrentUser: async () => {
     const response = await api.get('/users/me');
@@ -62,7 +90,6 @@ const authService = {
 
   /**
    * Get Google OAuth login URL
-   * @returns {Promise<Object>} Object containing Google OAuth URL
    */
   getGoogleLoginUrl: async () => {
     const response = await api.get('/auth/google/login');

@@ -283,6 +283,7 @@ const ProfileDetailScreen = () => {
   }
 
   const isSuperLinker = person?.is_super_linker || false;
+  const isVerifiedAlumni = (person?.tags || []).map(tag => String(tag).toLowerCase()).includes('verified_alumni');
 
   return (
     <>
@@ -389,6 +390,11 @@ const ProfileDetailScreen = () => {
           <div className="relative z-0 bg-white p-6 rounded-t-3xl shadow-xl -mt-16">
             <div className="flex items-center mb-1">
               <h1 className="text-3xl font-extrabold text-slate-800">{person.full_name}{person.age ? `, ${person.age}` : ''}</h1>
+              {isVerifiedAlumni && (
+                <span className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold uppercase">
+                  <CheckCircle className="w-3.5 h-3.5" /> Verified Alumni
+                </span>
+              )}
               {!person?.is_super_linker && <MoodDisplay moodIndex={person.mood} />}
             </div>
             {(person.role || person.company) && (

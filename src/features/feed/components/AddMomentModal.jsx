@@ -1,14 +1,32 @@
 import React, { useState, useRef } from 'react';
-import { X, ImageIcon, VideoIcon, Loader } from 'lucide-react';
+import { X, ImageIcon, VideoIcon, Loader, Tag } from 'lucide-react';
 import Button from '../../../components/ui/Button';
 import feedService from '../../../services/feedService';
 import { useAppContext } from '../../../context/AppContext';
 import { MOOD_LABELS, MOOD_COLORS } from '../../../config/theme';
 
+// Available tags for posts
+const AVAILABLE_TAGS = [
+  'career confusion',
+  'startup',
+  'consulting',
+  'studying abroad',
+  'job search',
+  'career transition',
+  'work-life balance',
+  'salary negotiation',
+  'networking',
+  'entrepreneurship',
+  'freelancing',
+  'remote work'
+];
+
 const AddMomentModal = ({ isOpen, onClose, onPostCreated }) => {
   const { user } = useAppContext();
   const [momentText, setMomentText] = useState('');
   const [selectedFile, setSelectedFile] = useState(null);
+  const [selectedTags, setSelectedTags] = useState([]);
+  const [showTagSelector, setShowTagSelector] = useState(false);
   const [isPosting, setIsPosting] = useState(false);
   const [error, setError] = useState('');
   const fileInputRef = useRef(null);
@@ -25,11 +43,12 @@ const AddMomentModal = ({ isOpen, onClose, onPostCreated }) => {
     try {
       const currentMood = user?.mood ?? 1;
       console.log('[AddMomentModal] Creating post with mood:', currentMood, 'User mood:', user?.mood);
-      
+
       const postData = {
         content: momentText,
         type: 'moment',
         mood_at_time: currentMood, // Use user's current mood (0-3), default to 1 (Just... okay)
+        tags: selectedTags, // Include selected tags
       };
 
       // Add file if present (send actual file, not base64)
@@ -39,12 +58,14 @@ const AddMomentModal = ({ isOpen, onClose, onPostCreated }) => {
       }
 
       await feedService.createPost(postData);
-      
+
       // Close modal and reset
       onClose();
       setMomentText('');
       setSelectedFile(null);
-      
+      setSelectedTags([]);
+      setShowTagSelector(false);
+
       // Notify parent to refresh feed
       if (onPostCreated) {
         onPostCreated();
@@ -77,6 +98,12 @@ const AddMomentModal = ({ isOpen, onClose, onPostCreated }) => {
       fileInputRef.current.accept = accept;
       fileInputRef.current.click();
     }
+  };
+
+  const toggleTag = (tag) => {
+    setSelectedTags(prev =>
+      prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
+    );
   };
 
   if (!isOpen) return null;
@@ -112,21 +139,74 @@ const AddMomentModal = ({ isOpen, onClose, onPostCreated }) => {
             disabled={isPosting}
           />
           <div className="mt-4 flex space-x-3">
-            <button 
+            <button
               onClick={() => triggerFileInput('image/*')}
-              className="flex items-center justify-center w-full py-2.5 px-4 rounded-lg bg-slate-100 text-slate-700 font-semibold text-sm hover:bg-slate-200 transition-all"
+              className="flex items-center justify-center flex-1 py-2.5 px-4 rounded-lg bg-slate-100 text-slate-700 font-semibold text-sm hover:bg-slate-200 transition-all"
             >
               <ImageIcon className="w-5 h-5 mr-2 text-blue-500" />
-              Add Photo
+              Photo
             </button>
-            <button 
+            <button
               onClick={() => triggerFileInput('video/*')}
-              className="flex items-center justify-center w-full py-2.5 px-4 rounded-lg bg-slate-100 text-slate-700 font-semibold text-sm hover:bg-slate-200 transition-all"
+              className="flex items-center justify-center flex-1 py-2.5 px-4 rounded-lg bg-slate-100 text-slate-700 font-semibold text-sm hover:bg-slate-200 transition-all"
             >
               <VideoIcon className="w-5 h-5 mr-2 text-rose-500" />
-              Add Video
+              Video
+            </button>
+            <button
+              onClick={() => setShowTagSelector(!showTagSelector)}
+              className={`flex items-center justify-center flex-1 py-2.5 px-4 rounded-lg font-semibold text-sm transition-all ${
+                showTagSelector || selectedTags.length > 0
+                  ? 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              }`}
+            >
+              <Tag className="w-5 h-5 mr-2" />
+              Tags
             </button>
           </div>
+
+          {/* Tag Selector */}
+          {showTagSelector && (
+            <div className="mt-4 p-4 bg-slate-50 rounded-lg border border-slate-200">
+              <h4 className="text-sm font-semibold text-slate-700 mb-2">Select Tags (optional)</h4>
+              <div className="flex flex-wrap gap-2">
+                {AVAILABLE_TAGS.map(tag => (
+                  <button
+                    key={tag}
+                    onClick={() => toggleTag(tag)}
+                    className={`px-3 py-1.5 text-sm rounded-full transition-all ${
+                      selectedTags.includes(tag)
+                        ? 'bg-indigo-600 text-white'
+                        : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-100'
+                    }`}
+                  >
+                    {tag}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Selected Tags Display */}
+          {selectedTags.length > 0 && !showTagSelector && (
+            <div className="mt-4 flex flex-wrap gap-2">
+              {selectedTags.map(tag => (
+                <span
+                  key={tag}
+                  className="px-3 py-1 text-sm bg-indigo-100 text-indigo-700 rounded-full border border-indigo-200 flex items-center"
+                >
+                  {tag}
+                  <button
+                    onClick={() => toggleTag(tag)}
+                    className="ml-2 hover:bg-indigo-200 rounded-full p-0.5"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
           <input 
             type="file" 
             ref={fileInputRef} 

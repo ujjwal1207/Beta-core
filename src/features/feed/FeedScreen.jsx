@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, User, Loader } from 'lucide-react';
+import { Search, User, Loader, X } from 'lucide-react';
 import { useAppContext } from '../../context/AppContext';
 import TopTabBar from '../../components/layout/TopTabBar';
 import PostCard from './components/PostCard';
@@ -33,6 +33,9 @@ const FeedScreen = () => {
   const [isLoadingPosts, setIsLoadingPosts] = useState(true);
   const [error, setError] = useState(null);
   const [hiddenPostIds, setHiddenPostIds] = useState(new Set());
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchResults, setSearchResults] = useState([]);
+  const [hasSearchedTopics, setHasSearchedTopics] = useState(false);
 
   // Pagination state
   const [skip, setSkip] = useState(0);
@@ -138,6 +141,36 @@ const FeedScreen = () => {
     setHiddenPostIds(prev => new Set([...prev, postId]));
   };
 
+  // Handle topic search
+  const handleTopicSearch = async (query) => {
+    if (!query.trim()) {
+      setSearchResults([]);
+      setIsSearching(false);
+      setHasSearchedTopics(false);
+      return;
+    }
+
+    try {
+      setIsSearching(true);
+      setHasSearchedTopics(true);
+      const results = await feedService.searchPostsByTopic(query.trim());
+      setSearchResults(results);
+    } catch (err) {
+      console.error('Error searching topics:', err);
+      setSearchResults([]);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  // Clear search
+  const clearSearch = () => {
+    setSearchValue("");
+    setSearchResults([]);
+    setIsSearching(false);
+    setHasSearchedTopics(false);
+  };
+
   // Helper: check if onboarding quiz is complete (100%)
   const isJourneyComplete = (() => {
     // Replicate FeedJourneyCard logic for completion
@@ -219,19 +252,30 @@ const FeedScreen = () => {
             <form onSubmit={e => {
               e.preventDefault();
               if (searchValue.trim()) {
-                setSearchQuery(searchValue.trim());
-                setConnectionsMode('SEARCH');
-                setScreen('CONNECTIONS_DASHBOARD');
+                handleTopicSearch(searchValue.trim());
               }
             }}>
               <input
                 type="text"
-                placeholder="Find people, stories, or support"
+                placeholder="Search posts by topic or tag..."
                 className="w-full p-3 pl-12 border border-slate-300 rounded-xl focus:ring-indigo-500 focus:border-indigo-500 text-base shadow-sm"
                 value={searchValue}
-                onChange={e => setSearchValue(e.target.value)}
+                onChange={e => {
+                  setSearchValue(e.target.value);
+                  if (!e.target.value.trim()) {
+                    clearSearch();
+                  }
+                }}
               />
             </form>
+            {searchValue && (
+              <button
+                onClick={clearSearch}
+                className="absolute right-4 top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-slate-100"
+              >
+                <X className="w-4 h-4 text-slate-400" />
+              </button>
+            )}
           </div>
 
           <div className="bg-white p-3 rounded-xl shadow-sm border border-slate-100 w-full flex items-center gap-3 my-4">
@@ -258,10 +302,55 @@ const FeedScreen = () => {
           />
 
           <div className="flex justify-between items-center mb-3">
-            <h2 className="text-xl font-bold text-slate-800">Recent Posts</h2>
+            <h2 className="text-xl font-bold text-slate-800">
+              {hasSearchedTopics
+                ? `Search Results (${searchResults.length})`
+                : 'Recent Posts'}
+            </h2>
           </div>
 
-          {isLoadingPosts ? (
+          {isSearching ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader className="w-8 h-8 text-indigo-500 animate-spin" />
+            </div>
+          ) : hasSearchedTopics ? (
+            searchResults.length > 0 ? (
+            searchResults.map((post) => (
+              <PostCard
+                key={post.id}
+                post={{
+                  id: post.id,
+                  user_id: post.user_id,
+                  name: post.user_name,
+                  role: post.user_role,
+                  trustScore: post.user_trust_score,
+                  image: getAvatarUrlWithSize({ profile_photo: post.user_profile_photo, full_name: post.user_name }, 150),
+                  content: post.content,
+                  likes: post.likes_count,
+                  comments: post.comments_count,
+                  mood: post.mood_at_time,
+                  timestamp: new Date(post.created_at * 1000).toLocaleDateString(),
+                  imageUrl: post.image_url,
+                  videoUrl: post.video_url,
+                  type: post.type,
+                  isLiked: post.is_liked,
+                  tags: post.tags,
+                  is_repost: post.is_repost,
+                  original_post_id: post.original_post_id,
+                  original_post_user_name: post.original_post_user_name,
+                  original_post_user_id: post.original_post_user_id,
+                  original_post_content: post.original_post_content,
+                }}
+                onUpdate={() => handleTopicSearch(searchValue)}
+                onHide={hidePost}
+              />
+            ))
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-slate-500">No posts found for this topic or tag.</p>
+              </div>
+            )
+          ) : isLoadingPosts ? (
             <div className="flex items-center justify-center py-12">
               <Loader className="w-8 h-8 text-indigo-500 animate-spin" />
             </div>
@@ -301,6 +390,7 @@ const FeedScreen = () => {
                     videoUrl: post.video_url,
                     type: post.type,
                     isLiked: post.is_liked,
+                    tags: post.tags,
                     // Repost fields
                     is_repost: post.is_repost,
                     original_post_id: post.original_post_id,

@@ -169,6 +169,7 @@ const PersonResultCard = ({ person }) => {
   };
 
   const isSuperLinker = person.is_super_linker || false;
+  const isVerifiedAlumni = (person.tags || []).map(tag => String(tag).toLowerCase()).includes('verified_alumni');
 
   return (
     <>
@@ -204,6 +205,11 @@ const PersonResultCard = ({ person }) => {
           <button onClick={handleNameClick} className="text-left w-full">
             <div className='flex items-center gap-1'>
               <p className="font-semibold text-sm sm:text-base text-slate-800 truncate active:underline">{person.full_name}{person.age ? `, ${person.age}` : ''}</p>
+              {isVerifiedAlumni && (
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-bold uppercase">
+                  <CheckCircle className="w-3 h-3" /> Verified
+                </span>
+              )}
               <MoodDisplay moodIndex={person.mood} />
             </div>
             <p className="text-xs text-slate-500 truncate">{person.role || 'No role specified'}</p>
