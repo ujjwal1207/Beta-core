@@ -213,6 +213,16 @@ export const AuthForm = ({ isLogin }) => {
       <Button primary type="submit" disabled={isLoading} className="w-full mt-6">
         {isLoading ? 'Sending...' : 'Send Reset Code'}
       </Button>
+
+      {error.toLowerCase().includes('google') && (
+        <button
+          type="button"
+          onClick={handleGoogleLogin}
+          className="w-full mt-2 py-3 border border-slate-300 rounded-lg bg-white text-slate-700 font-semibold shadow-sm hover:bg-slate-100 active:scale-[0.98] transition-all"
+        >
+          Continue with Google
+        </button>
+      )}
     </form>
   );
 
