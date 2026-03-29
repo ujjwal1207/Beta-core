@@ -17,3 +17,16 @@ export const formatRatingCount = (count) => {
   const base = Math.floor(count / 100) * 100;
   return `${base}+`;
 };
+
+export const isUserVerified = (userLike) => {
+  const tags = Array.isArray(userLike?.tags) ? userLike.tags : [];
+  const hasVerifiedTag = tags.some((tag) => String(tag || '').toLowerCase() === 'verified_alumni');
+  if (hasVerifiedTag) {
+    return true;
+  }
+
+  const education = Array.isArray(userLike?.education) ? userLike.education : [];
+  return education.some(
+    (edu) => edu && String(edu.approval_status || '').toLowerCase() === 'approved'
+  );
+};

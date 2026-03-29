@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { Shield, Loader, Users, Activity, CreditCard, LogOut, RefreshCw, CheckCircle, XCircle, Search, UserMinus, Key, DollarSign, Calendar, EyeOff, Building2, MoreHorizontal, AlertTriangle, Trash2, Eye, MessageSquareText, FileText, ArrowLeft, Phone } from 'lucide-react';
+import { UserCog, Loader, Users, Activity, CreditCard, LogOut, RefreshCw, CheckCircle, XCircle, Search, UserMinus, Key, DollarSign, Calendar, EyeOff, Building2, MoreHorizontal, AlertTriangle, Trash2, Eye, MessageSquareText, FileText, ArrowLeft, Phone } from 'lucide-react';
 import adminService from '../services/adminService';
 import authService from '../services/authService';
 
-const BRAND = '#01383f';
+const BRAND = '#4f46e5';
 
 const getModeratorUserIdFromPath = () => {
   const match = window.location.pathname.match(/^\/moderator\/user\/(\d+)$/);
@@ -63,13 +63,13 @@ const ModeratorLogin = ({ onLoginSuccess }) => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-slate-200 flex items-center justify-center px-4 relative overflow-hidden">
       {/* Decorative blobs – same as AdminLogin */}
-      <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-teal-500/10 rounded-full blur-3xl mix-blend-multiply" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl mix-blend-multiply" />
+      <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl mix-blend-multiply" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-violet-500/10 rounded-full blur-3xl mix-blend-multiply" />
 
       <div className="w-full max-w-md bg-white/80 backdrop-blur-xl rounded-[2rem] shadow-2xl border border-white/50 p-8 relative z-10">
         <div className="flex items-center justify-center flex-col text-center mb-8">
-          <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4 shadow-lg shadow-teal-900/10" style={{ background: BRAND }}>
-            <Shield className="w-8 h-8 text-white" />
+          <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4 shadow-lg shadow-indigo-900/10" style={{ background: BRAND }}>
+            <UserCog className="w-8 h-8 text-white" />
           </div>
           <h1 className="text-2xl font-extrabold text-slate-800 tracking-tight mb-1">Moderator Console</h1>
           <p className="text-sm font-medium text-slate-500">Sign in to moderate the platform</p>
@@ -77,16 +77,16 @@ const ModeratorLogin = ({ onLoginSuccess }) => {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <input type="email" value={username} onChange={(e) => setUsername(e.target.value)} placeholder="Moderator Email"
-            className="w-full p-4 rounded-2xl border border-slate-200 bg-white/50 focus:bg-white focus:ring-2 focus:ring-teal-600/20 focus:border-teal-600 outline-none transition-all" />
+            className="w-full p-4 rounded-2xl border border-slate-200 bg-white/50 focus:bg-white focus:ring-2 focus:ring-indigo-600/20 focus:border-indigo-600 outline-none transition-all" />
           <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password"
-            className="w-full p-4 rounded-2xl border border-slate-200 bg-white/50 focus:bg-white focus:ring-2 focus:ring-teal-600/20 focus:border-teal-600 outline-none transition-all" />
+            className="w-full p-4 rounded-2xl border border-slate-200 bg-white/50 focus:bg-white focus:ring-2 focus:ring-indigo-600/20 focus:border-indigo-600 outline-none transition-all" />
 
           {error && (
             <div className="p-3 rounded-xl bg-red-50 border border-red-100 text-sm font-medium text-red-600 text-center">{error}</div>
           )}
 
           <button type="submit" disabled={loading}
-            className="w-full py-4 mt-2 rounded-2xl font-bold text-white shadow-lg shadow-teal-900/20 disabled:opacity-70 hover:opacity-90 active:scale-[0.98] transition-all"
+            className="w-full py-4 mt-2 rounded-2xl font-bold text-white shadow-lg shadow-indigo-900/20 disabled:opacity-70 hover:opacity-90 active:scale-[0.98] transition-all"
             style={{ background: BRAND }}>
             {loading ? 'Authenticating...' : 'Sign In'}
           </button>
@@ -270,8 +270,8 @@ const ModeratorPanel = () => {
       <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-xl border-b border-slate-200/60 shadow-[0_4px_30px_rgba(0,0,0,0.03)]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg shadow-teal-900/10" style={{ background: BRAND }}>
-              <Shield className="w-6 h-6 text-white" />
+            <div className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-900/10" style={{ background: BRAND }}>
+              <UserCog className="w-6 h-6 text-white" />
             </div>
             <div>
               <h1 className="text-xl font-extrabold text-slate-800 tracking-tight">Moderator Console</h1>
@@ -308,7 +308,7 @@ const ModeratorPanel = () => {
                   ? 'bg-white text-slate-800 shadow-sm scale-100'
                   : 'text-slate-500 hover:text-slate-700 hover:bg-white/40 scale-[0.98]'
               }`}>
-              <tab.icon className={`inline w-4 h-4 mr-2 ${activeTab === tab.key ? 'text-teal-700' : ''}`} /> {tab.label}
+              <tab.icon className={`inline w-4 h-4 mr-2 ${activeTab === tab.key ? 'text-indigo-600' : ''}`} /> {tab.label}
             </button>
           ))}
         </div>
@@ -327,7 +327,7 @@ const ModeratorPanel = () => {
             {/* Stats */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <StatCard label="Total Users" value={users.length} icon={Users} color={BRAND} />
-              <StatCard label="Moderators" value={moderatorsCount} icon={Shield} color="#6366f1" />
+              <StatCard label="Moderators" value={moderatorsCount} icon={UserCog} color="#6366f1" />
               <StatCard label="Super Listeners" value={superListenersCount} icon={Key} color="#f59e0b" />
             </div>
 
@@ -341,7 +341,7 @@ const ModeratorPanel = () => {
                 <div className="relative w-full sm:w-72">
                   <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                   <input type="text" value={userSearch} onChange={(e) => setUserSearch(e.target.value)} placeholder="Search name, email, role…"
-                    className="w-full pl-11 pr-4 p-3 rounded-xl border border-slate-200 bg-white/50 focus:bg-white focus:ring-2 focus:ring-teal-600/20 focus:border-teal-600 outline-none text-sm transition-all" />
+                    className="w-full pl-11 pr-4 p-3 rounded-xl border border-slate-200 bg-white/50 focus:bg-white focus:ring-2 focus:ring-indigo-600/20 focus:border-indigo-600 outline-none text-sm transition-all" />
                 </div>
               </div>
 
@@ -373,7 +373,7 @@ const ModeratorPanel = () => {
                         </td>
                         <td className="px-4 py-4">
                           <select value={user.role || 'user'} onChange={(e) => handleRoleChange(user.id, e.target.value)} disabled={actionLoading === `role-${user.id}`}
-                            className="bg-slate-50/80 border border-slate-200 text-slate-700 text-xs rounded-xl py-2 pl-3 pr-7 font-medium focus:ring-2 focus:ring-teal-600/20 focus:border-teal-600 outline-none cursor-pointer disabled:opacity-40 transition-all">
+                            className="bg-slate-50/80 border border-slate-200 text-slate-700 text-xs rounded-xl py-2 pl-3 pr-7 font-medium focus:ring-2 focus:ring-indigo-600/20 focus:border-indigo-600 outline-none cursor-pointer disabled:opacity-40 transition-all">
                             <option value="user">User</option>
                             <option value="university_admin">Univ. Admin</option>
                             <option value="moderator">Moderator</option>
@@ -393,7 +393,7 @@ const ModeratorPanel = () => {
                         <td className="px-4 py-4 text-right">
                           <div className="flex items-center justify-end gap-1">
                             <button onClick={() => handleViewUserDetails(user.id)} disabled={actionLoading === `view-${user.id}`}
-                              className="p-2 rounded-xl text-slate-400 hover:text-teal-700 hover:bg-teal-50 transition-all disabled:opacity-40" title="View Details">
+                              className="p-2 rounded-xl text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all disabled:opacity-40" title="View Details">
                               {actionLoading === `view-${user.id}` ? <Loader className="w-4 h-4 animate-spin" /> : <Eye className="w-4 h-4" />}
                             </button>
                             <button onClick={() => handleDeleteUser(user.id)} disabled={actionLoading === `delete-${user.id}`}
@@ -431,16 +431,16 @@ const ModeratorPanel = () => {
               <>
                 {/* Profile Header */}
                 <div className="bg-white/90 backdrop-blur-md rounded-3xl border border-slate-200/60 shadow-lg p-6 relative overflow-hidden">
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-teal-500/5 rounded-bl-[80px] -z-10" />
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-bl-[80px] -z-10" />
                   <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-                    <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-white text-2xl font-extrabold shadow-lg shadow-teal-900/10 shrink-0" style={{ background: BRAND }}>
+                    <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-white text-2xl font-extrabold shadow-lg shadow-indigo-900/10 shrink-0" style={{ background: BRAND }}>
                       {selectedUserProfile.full_name?.charAt(0)?.toUpperCase() || 'U'}
                     </div>
                     <div className="flex-1 min-w-0">
                       <h2 className="text-2xl font-black text-slate-800 tracking-tight">{selectedUserProfile.full_name || 'Unnamed'}</h2>
                       <p className="text-sm font-medium text-slate-500 mt-1">{selectedUserProfile.email}</p>
                       <div className="flex flex-wrap items-center gap-2 mt-3">
-                        <span className="text-xs font-bold uppercase tracking-wide px-3 py-1 rounded-xl border bg-teal-50 text-teal-700 border-teal-200">
+                        <span className="text-xs font-bold uppercase tracking-wide px-3 py-1 rounded-xl border bg-indigo-50 text-indigo-700 border-indigo-200">
                           {selectedUserProfile.role || 'user'}
                         </span>
                         {selectedUserProfile.is_super_linker && (
@@ -635,7 +635,7 @@ const ModeratorPanel = () => {
             <div className="space-y-4">
               {transactions.map(txn => (
                 <div key={txn.id} className="bg-white/90 backdrop-blur-md rounded-3xl border border-slate-200/60 shadow-sm overflow-hidden relative">
-                  <div className="absolute top-0 right-0 w-24 h-24 bg-teal-500/5 rounded-bl-[60px] -z-10" />
+                  <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/5 rounded-bl-[60px] -z-10" />
 
                   {/* Header */}
                   <div className="px-5 sm:px-6 py-4 flex flex-wrap items-center justify-between gap-3 border-b border-slate-100">

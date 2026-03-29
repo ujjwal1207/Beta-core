@@ -4,6 +4,8 @@ import { useAppContext } from '../context/AppContext';
 import TopTabBar from '../components/layout/TopTabBar';
 import chatService from '../services/chatService';
 import { getAvatarUrlWithSize } from '../lib/avatarUtils';
+import { isUserVerified } from '../lib/utils';
+import VerifiedName from '../components/ui/VerifiedName';
 
 const ChatHistoryScreen = () => {
   const {
@@ -147,7 +149,13 @@ const ChatHistoryScreen = () => {
                   />
                 </div>
                 <div className="flex-1 min-w-0 overflow-hidden">
-                  <p className="font-semibold text-sm sm:text-base text-slate-800 truncate">{conversation.other_user.full_name}</p>
+                  <p className="font-semibold text-sm sm:text-base text-slate-800 truncate flex items-center gap-1">
+                    <VerifiedName
+                      name={conversation.other_user.full_name}
+                      isVerified={isUserVerified(conversation.other_user)}
+                      className="font-semibold text-sm sm:text-base text-slate-800 truncate"
+                    />
+                  </p>
                   <p className="text-xs sm:text-sm text-slate-500 truncate">
                     {conversation.last_message || 'No messages yet'}
                   </p>

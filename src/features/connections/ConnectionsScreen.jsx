@@ -9,7 +9,8 @@ import MoodDisplay from '../../components/ui/MoodDisplay';
 import { POPULAR_TOPICS } from '../../data/mockData';
 import connectionsService from '../../services/connectionsService';
 import { getAvatarUrlWithSize } from '../../lib/avatarUtils';
-import { formatRatingCount } from '../../lib/utils';
+import { formatRatingCount, isUserVerified } from '../../lib/utils';
+import VerifiedName from '../../components/ui/VerifiedName';
 
 // Swipeable People Screen
 const SwipeablePeopleScreen = () => {
@@ -169,7 +170,7 @@ const PersonResultCard = ({ person }) => {
   };
 
   const isSuperLinker = person.is_super_linker || false;
-  const isVerifiedAlumni = (person.tags || []).map(tag => String(tag).toLowerCase()).includes('verified_alumni');
+  const isVerifiedUser = isUserVerified(person);
 
   return (
     <>
@@ -204,12 +205,11 @@ const PersonResultCard = ({ person }) => {
         <div className="flex-grow min-w-0">
           <button onClick={handleNameClick} className="text-left w-full">
             <div className='flex items-center gap-1'>
-              <p className="font-semibold text-sm sm:text-base text-slate-800 truncate active:underline">{person.full_name}{person.age ? `, ${person.age}` : ''}</p>
-              {isVerifiedAlumni && (
-                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-bold uppercase">
-                  <CheckCircle className="w-3 h-3" /> Verified
-                </span>
-              )}
+              <VerifiedName
+                name={`${person.full_name}${person.age ? `, ${person.age}` : ''}`}
+                isVerified={isVerifiedUser}
+                className="font-semibold text-sm sm:text-base text-slate-800 truncate active:underline"
+              />
               <MoodDisplay moodIndex={person.mood} />
             </div>
             <p className="text-xs text-slate-500 truncate">{person.role || 'No role specified'}</p>
@@ -500,6 +500,8 @@ const SuperListenLinkerScreen = () => {
   }, []);
 
   const SuperPersonCard = ({ person }) => {
+      const isVerifiedUser = isUserVerified(person);
+
     const { setScreen, setSelectedPerson, setPreviousScreen } = useAppContext();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isRequested, setIsRequested] = useState(false);
@@ -519,8 +521,12 @@ const SuperListenLinkerScreen = () => {
           ></div>
           <div className="flex-grow min-w-0">
             <button onClick={handleNameClick} className="text-left">
-              <div className='flex items-center'>
-                <p className="font-semibold text-base text-slate-800 truncate hover:underline">{person.full_name}{person.age ? `, ${person.age}` : ''}</p>
+              <div className='flex items-center gap-1'>
+                <VerifiedName
+                  name={`${person.full_name}${person.age ? `, ${person.age}` : ''}`}
+                  isVerified={isVerifiedUser}
+                  className="font-semibold text-base text-slate-800 truncate hover:underline"
+                />
               </div>
               <p className="text-sm text-slate-500 truncate">{person.role || 'No role specified'}</p>
             </button>
@@ -641,6 +647,8 @@ const AlumniScreen = () => {
 
     const commonSchools = getCommonSchools();
 
+    const isVerifiedUser = isUserVerified(person);
+
     return (
       <div
         onClick={handleClick}
@@ -657,7 +665,13 @@ const AlumniScreen = () => {
           />
         </div>
         <div className="flex-1 min-w-0">
-          <h3 className="text-base font-bold text-slate-800 truncate">{person.full_name}</h3>
+          <div className="flex items-center gap-1">
+            <VerifiedName
+              name={person.full_name}
+              isVerified={isVerifiedUser}
+              className="text-base font-bold text-slate-800 truncate"
+            />
+          </div>
           <p className="text-sm text-slate-600 truncate">{person.role || 'No role specified'}</p>
           {commonSchools.length > 0 && (
             <div className="flex items-center gap-1 mt-1">

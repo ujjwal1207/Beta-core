@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Search, MessageCircle, ArrowLeft, Loader, UserX } from 'lucide-react';
+import { Search, MessageCircle, ArrowLeft, Loader, UserX, BadgeCheck } from 'lucide-react';
 import { useAppContext } from '../../context/AppContext';
 import connectionsService from '../../services/connectionsService';
 import chatService from '../../services/chatService';
 import { getAvatarUrlWithSize } from '../../lib/avatarUtils';
+import { isUserVerified } from '../../lib/utils';
 
 const MyConnectionsScreen = () => {
   const { setScreen, setPreviousScreen, setSelectedPerson, setSelectedConversation } = useAppContext();
@@ -112,7 +113,10 @@ const MyConnectionsScreen = () => {
                 />
               </div>
               <div className="flex-1 min-w-0">
-                <h3 className="font-bold text-slate-800 truncate">{person.full_name}</h3>
+                <h3 className="font-bold text-slate-800 truncate flex items-center gap-1">
+                  <span>{person.full_name}</span>
+                  {isUserVerified(person) && <BadgeCheck className="w-4 h-4 text-white fill-blue-500" />}
+                </h3>
                 <p className="text-sm text-slate-500 truncate">{person.role || 'No role'}</p>
               </div>
               <button 

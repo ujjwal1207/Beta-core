@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { useAppContext } from '../../../context/AppContext';
-import { UserPlus, Calendar, CheckCircle } from 'lucide-react';
+import { UserPlus, Calendar, BadgeCheck } from 'lucide-react';
 import MoodDisplay from '../../../components/ui/MoodDisplay';
 import StarBadge from '../../../components/ui/StarBadge';
 import Button from '../../../components/ui/Button';
 import ScheduleCallModal from './ScheduleCallModal';
+import { isUserVerified } from '../../../lib/utils';
 
 const SwipeablePersonCard = ({ person, onAction, style, isTop }) => {
   const { setScreen, setSelectedPerson, setPreviousScreen } = useAppContext();
@@ -18,7 +19,7 @@ const SwipeablePersonCard = ({ person, onAction, style, isTop }) => {
   };
 
   const isSuperLinker = (person?.connections || 0) > 200 && (person?.trustScore || 0) >= 3.0;
-  const isVerifiedAlumni = (person?.tags || []).map(tag => String(tag).toLowerCase()).includes('verified_alumni');
+  const isVerifiedUser = isUserVerified(person);
 
   return (
     <>
@@ -37,10 +38,8 @@ const SwipeablePersonCard = ({ person, onAction, style, isTop }) => {
               <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight inline active:underline">
                 {person.name}, {person.age}
               </h2>
-              {isVerifiedAlumni && (
-                <span className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/80 text-white text-[10px] font-bold uppercase align-middle">
-                  <CheckCircle className="w-3 h-3" /> Verified
-                </span>
+              {isVerifiedUser && (
+                <BadgeCheck className="w-5 h-5 ml-2 inline text-white fill-blue-500 align-middle" />
               )}
               <MoodDisplay moodIndex={person.mood} />
               <p className="text-xs sm:text-sm font-medium opacity-80">{person.role}</p>

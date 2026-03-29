@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Shield, Loader, CheckCircle, Trash2, Users, GraduationCap, UserCheck, RefreshCw, LogOut, Building2, PencilLine, AlertTriangle, Settings } from 'lucide-react';
+import { Loader, CheckCircle, Trash2, Users, GraduationCap, UserCheck, RefreshCw, LogOut, Building2, PencilLine, AlertTriangle, Settings } from 'lucide-react';
 import adminService from '../services/adminService';
 import authService from '../services/authService';
 
-const BRAND = '#01383f';
+const BRAND = '#4f46e5';
 
 const getErrorStatus = (err) => err?.status ?? err?.response?.status;
 const getErrorMessage = (err, fallback) => err?.response?.data?.detail || err?.message || fallback;
@@ -69,13 +69,13 @@ const AdminLogin = ({ onLoginSuccess }) => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-slate-200 flex items-center justify-center px-4 relative overflow-hidden">
       {/* Decorative background blobs */}
-      <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-teal-500/10 rounded-full blur-3xl mix-blend-multiply" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl mix-blend-multiply" />
+      <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl mix-blend-multiply" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-violet-500/10 rounded-full blur-3xl mix-blend-multiply" />
 
       <div className="w-full max-w-md bg-white/80 backdrop-blur-xl rounded-[2rem] shadow-2xl border border-white/50 p-8 relative z-10">
         <div className="flex items-center justify-center flex-col text-center mb-8">
-          <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4 shadow-lg shadow-teal-900/10" style={{ background: BRAND }}>
-            <Shield className="w-8 h-8 text-white" />
+          <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4 shadow-lg shadow-indigo-900/10 overflow-hidden bg-white">
+            <img src="/listenlinklogo.png" alt="ListenLink" className="w-12 h-12 object-contain" />
           </div>
           <div>
             <h1 className="text-2xl font-extrabold text-slate-800 tracking-tight mb-1">Admin Portal</h1>
@@ -90,7 +90,7 @@ const AdminLogin = ({ onLoginSuccess }) => {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               placeholder="Admin Email"
-              className="w-full p-4 rounded-2xl border border-slate-200 bg-white/50 focus:bg-white focus:ring-2 focus:ring-teal-600/20 focus:border-teal-600 outline-none transition-all"
+              className="w-full p-4 rounded-2xl border border-slate-200 bg-white/50 focus:bg-white focus:ring-2 focus:ring-indigo-600/20 focus:border-indigo-600 outline-none transition-all"
             />
           </div>
           <div>
@@ -99,7 +99,7 @@ const AdminLogin = ({ onLoginSuccess }) => {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Password"
-              className="w-full p-4 rounded-2xl border border-slate-200 bg-white/50 focus:bg-white focus:ring-2 focus:ring-teal-600/20 focus:border-teal-600 outline-none transition-all"
+              className="w-full p-4 rounded-2xl border border-slate-200 bg-white/50 focus:bg-white focus:ring-2 focus:ring-indigo-600/20 focus:border-indigo-600 outline-none transition-all"
             />
           </div>
 
@@ -112,7 +112,7 @@ const AdminLogin = ({ onLoginSuccess }) => {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-4 mt-2 rounded-2xl font-bold text-white shadow-lg shadow-teal-900/20 disabled:opacity-70 hover:opacity-90 active:scale-[0.98] transition-all"
+            className="w-full py-4 mt-2 rounded-2xl font-bold text-white shadow-lg shadow-indigo-900/20 disabled:opacity-70 hover:opacity-90 active:scale-[0.98] transition-all"
             style={{ background: BRAND }}
           >
             {loading ? 'Authenticating...' : 'Sign In'}
@@ -304,8 +304,8 @@ const AdminPanel = () => {
       <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-xl border-b border-slate-200/60 shadow-[0_4px_30px_rgba(0,0,0,0.03)]">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg shadow-teal-900/10" style={{ background: BRAND }}>
-              <Shield className="w-6 h-6 text-white" />
+            <div className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-900/10 overflow-hidden bg-white">
+              <img src="/listenlinklogo.png" alt="ListenLink" className="w-9 h-9 object-contain" />
             </div>
             <div>
               <h1 className="text-xl font-extrabold text-slate-800 tracking-tight">University Admin Panel</h1>
@@ -345,7 +345,7 @@ const AdminPanel = () => {
                   : 'text-slate-500 hover:text-slate-700 hover:bg-white/40 scale-[0.98]'
               }`}
             >
-              <tab.icon className={`inline w-4 h-4 mr-2 ${activeTab === tab.key ? 'text-teal-700' : ''}`} /> {tab.label}
+              <tab.icon className={`inline w-4 h-4 mr-2 ${activeTab === tab.key ? 'text-indigo-600' : ''}`} /> {tab.label}
             </button>
           ))}
         </div>
@@ -354,10 +354,10 @@ const AdminPanel = () => {
           <div className="space-y-6">
             {dashboard?.institution && (
               <div className="bg-white/90 backdrop-blur-md rounded-3xl border border-slate-200/60 shadow-lg p-6 relative overflow-hidden flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-teal-500/5 rounded-bl-[80px] -z-10" />
+                <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-bl-[80px] -z-10" />
                 <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 rounded-2xl bg-teal-50 flex items-center justify-center border border-teal-100/50">
-                    <Building2 className="w-7 h-7 text-teal-600" />
+                  <div className="w-14 h-14 rounded-2xl bg-indigo-50 flex items-center justify-center border border-indigo-100/50">
+                    <Building2 className="w-7 h-7 text-indigo-600" />
                   </div>
                   <div>
                     <h2 className="text-2xl font-black text-slate-800 tracking-tight">{dashboard.institution.name}</h2>
@@ -377,7 +377,7 @@ const AdminPanel = () => {
                 week={dashboard.alumni?.growth?.last_week}
                 month={dashboard.alumni?.growth?.last_month}
                 icon={GraduationCap}
-                color="#0f766e"
+                color="#4f46e5"
               />
               <StatCard
                 label="Students Registered"
@@ -394,9 +394,9 @@ const AdminPanel = () => {
 
                 {activeTab === 'pending' && (
           <div className="bg-white/90 backdrop-blur-md rounded-3xl border border-slate-200/60 shadow-lg overflow-hidden relative">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-teal-500/5 rounded-bl-[100px] -z-10" />
+            <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/5 rounded-bl-[100px] -z-10" />
             <div className="p-6 border-b border-slate-100 bg-white/50">
-                <h2 className="text-xl font-bold text-slate-800 flex items-center mb-1"><UserCheck className="w-6 h-6 mr-2 text-teal-600" /> Pending Validations</h2>
+                <h2 className="text-xl font-bold text-slate-800 flex items-center mb-1"><UserCheck className="w-6 h-6 mr-2 text-indigo-600" /> Pending Validations</h2>
                 <p className="text-sm font-medium text-slate-500">Approve students and alumni who claimed to study here</p>
             </div>
             <div className="overflow-x-auto">
@@ -581,9 +581,9 @@ const AdminPanel = () => {
         {activeTab === 'settings' && dashboard && (
           <div className="space-y-4">
             <div className="bg-white/90 backdrop-blur-md rounded-3xl border border-slate-200/60 shadow-lg p-6 relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-48 h-48 bg-teal-500/5 rounded-bl-[80px] -z-10" />
+              <div className="absolute top-0 right-0 w-48 h-48 bg-indigo-500/5 rounded-bl-[80px] -z-10" />
               <div className="flex items-center gap-2 mb-1">
-                <Building2 className="w-6 h-6 text-teal-600" />
+                <Building2 className="w-6 h-6 text-indigo-600" />
                 <h2 className="text-xl font-bold text-slate-800">Linked University</h2>
               </div>
               <p className="text-sm font-medium text-slate-500 mb-6">One admin account manages one institution</p>
@@ -595,12 +595,12 @@ const AdminPanel = () => {
                     value={institutionNameInput}
                     onChange={(e) => setInstitutionNameInput(e.target.value)}
                     placeholder="Enter university name"
-                    className="flex-1 p-4 rounded-2xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-teal-600/20 focus:border-teal-600 outline-none transition-all shadow-inner"
+                    className="flex-1 p-4 rounded-2xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-indigo-600/20 focus:border-indigo-600 outline-none transition-all shadow-inner"
                   />
                   <button
                     type="submit"
                     disabled={actionLoading === 'save-institution'}
-                    className="px-6 py-4 rounded-2xl text-white font-bold shadow-lg shadow-teal-900/20 disabled:opacity-70 hover:opacity-90 active:scale-[0.98] transition-all"
+                    className="px-6 py-4 rounded-2xl text-white font-bold shadow-lg shadow-indigo-900/20 disabled:opacity-70 hover:opacity-90 active:scale-[0.98] transition-all"
                     style={{ background: BRAND }}
                   >
                     {actionLoading === 'save-institution' ? 'Saving...' : 'Create University'}
@@ -613,7 +613,7 @@ const AdminPanel = () => {
                   <p className="text-xs uppercase font-extrabold text-slate-400 tracking-wider mb-2">Active institution</p>
                   <p className="text-2xl font-black text-slate-800 tracking-tight">{dashboard.institution.name}</p>
                   <p className="text-xs font-semibold text-slate-500 mt-3 inline-flex items-center bg-white px-3 py-1.5 rounded-lg border border-slate-200">
-                    <Shield className="w-3 h-3 justify-center mr-1" /> Locked by default
+                    🔒 Locked by default
                   </p>
                   <button
                     type="button"
@@ -633,13 +633,13 @@ const AdminPanel = () => {
                     value={institutionNameInput}
                     onChange={(e) => setInstitutionNameInput(e.target.value)}
                     placeholder="Enter updated university name"
-                    className="w-full p-4 rounded-2xl border border-slate-200 bg-white/80 focus:bg-white focus:ring-2 focus:ring-teal-600/20 focus:border-teal-600 outline-none transition-all shadow-inner"
+                    className="w-full p-4 rounded-2xl border border-slate-200 bg-white/80 focus:bg-white focus:ring-2 focus:ring-indigo-600/20 focus:border-indigo-600 outline-none transition-all shadow-inner"
                   />
                   <div className="flex gap-3">
                     <button
                       type="submit"
                       disabled={actionLoading === 'save-institution'}
-                      className="flex-1 sm:flex-none px-6 py-3.5 rounded-xl text-white font-bold shadow-md shadow-teal-900/10 disabled:opacity-70 hover:opacity-90 active:scale-[0.98] transition-all"
+                      className="flex-1 sm:flex-none px-6 py-3.5 rounded-xl text-white font-bold shadow-md shadow-indigo-900/10 disabled:opacity-70 hover:opacity-90 active:scale-[0.98] transition-all"
                       style={{ background: BRAND }}
                     >
                       {actionLoading === 'save-institution' ? 'Saving...' : 'Confirm Change'}

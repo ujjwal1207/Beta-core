@@ -233,13 +233,6 @@ const UserProfileScreen = () => {
   useEffect(() => {
     const fetchUserPosts = async () => {
       if (!user?.id) return;
-      const isVerified = (user?.education || []).some(
-        (edu) => String(edu?.approval_status || '').toLowerCase() === 'approved'
-      );
-      if (!isVerified) {
-        setUserPosts([]);
-        return;
-      }
       setPostsLoading(true);
       try {
         const posts = await feedService.getUserPosts(user.id);
@@ -257,13 +250,6 @@ const UserProfileScreen = () => {
   useEffect(() => {
     const fetchSavedPosts = async () => {
       if (!user?.id) return;
-      const isVerified = (user?.education || []).some(
-        (edu) => String(edu?.approval_status || '').toLowerCase() === 'approved'
-      );
-      if (!isVerified) {
-        setSavedPosts([]);
-        return;
-      }
       setSavedLoading(true);
       try {
         const posts = await feedService.getSavedPosts();
@@ -287,9 +273,6 @@ const UserProfileScreen = () => {
     lifeLessons: onboardingAnswers['SHARER_TRACK_2'],
     societyChange: onboardingAnswers['SHARER_TRACK_3'],
   };
-  const isVerifiedUser = (user?.education || []).some(
-    (edu) => String(edu?.approval_status || '').toLowerCase() === 'approved'
-  );
   const hasSharerInsights = sharerInsights.youngerSelf || (sharerInsights.lifeLessons && sharerInsights.lifeLessons.length > 0) || sharerInsights.societyChange;
 
   const handleSave = async () => {
@@ -330,8 +313,7 @@ const UserProfileScreen = () => {
         onboarding_answers: updatedOnboardingAnswers,
       };
 
-      // Unverified users can update education only.
-      const updateData = isVerifiedUser ? fullUpdateData : { education };
+      const updateData = fullUpdateData;
 
       // If there's a new profile photo, upload to S3 first
       if (profilePhoto) {

@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Loader, UserPlus, UserCheck, X, Clock } from 'lucide-react';
+import { ArrowLeft, Loader, UserPlus, UserCheck, X, Clock, BadgeCheck } from 'lucide-react';
 import { useAppContext } from '../../context/AppContext';
 import connectionsService from '../../services/connectionsService';
 import { getAvatarUrlWithSize } from '../../lib/avatarUtils';
+import { isUserVerified } from '../../lib/utils';
 
 const ConnectionRequestsScreen = () => {
   const { setScreen, setSelectedPerson, setPreviousScreen, setPendingRequestsCount } = useAppContext();
@@ -162,7 +163,10 @@ const ConnectionRequestsScreen = () => {
                         className="flex-grow min-w-0 cursor-pointer hover:bg-slate-50 -m-2 p-2 rounded-lg transition-colors"
                       >
                         <p className="font-semibold text-base text-slate-800 truncate">
-                          {sender.full_name || 'Unknown User'}
+                          <span className="inline-flex items-center gap-1">
+                            <span>{sender.full_name || 'Unknown User'}</span>
+                            {isUserVerified(sender) && <BadgeCheck className="w-4 h-4 text-white fill-blue-500" />}
+                          </span>
                         </p>
                         <p className="text-sm text-slate-500 truncate">
                           {sender.role || 'No role specified'}
@@ -233,7 +237,10 @@ const ConnectionRequestsScreen = () => {
                         className="flex-grow min-w-0 cursor-pointer hover:bg-slate-50 -m-2 p-2 rounded-lg transition-colors"
                       >
                         <p className="font-semibold text-base text-slate-800 truncate">
-                          {receiver.full_name || 'Unknown User'}
+                          <span className="inline-flex items-center gap-1">
+                            <span>{receiver.full_name || 'Unknown User'}</span>
+                            {isUserVerified(receiver) && <BadgeCheck className="w-4 h-4 text-white fill-blue-500" />}
+                          </span>
                         </p>
                         <p className="text-sm text-slate-500 truncate">
                           {receiver.role || 'No role specified'}

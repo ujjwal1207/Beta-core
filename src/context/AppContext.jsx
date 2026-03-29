@@ -17,27 +17,7 @@ export const useAppContext = () => {
 };
 
 export const AppProvider = ({ children }) => {
-  const isUniversityVerified = (userObj) => {
-    const education = userObj?.education || [];
-    return education.some((edu) =>
-      edu &&
-      typeof edu === 'object' &&
-      String(edu.approval_status || '').toLowerCase() === 'approved'
-    );
-  };
-
-  const is403VerificationError = (error) => {
-    const status = error?.response?.status || error?.status;
-    const message = String(error?.response?.data?.detail || error?.message || '').toLowerCase();
-    return status === 403 && message.includes('university verification required');
-  };
-
-  const getVerificationMessage = (userObj) => {
-    if (userObj?.education && userObj.education.length > 0) {
-      return "Your education info is pending admin verification. You'll be notified via email once approved and will be able to access all app features.";
-    }
-    return 'Complete your education info first. University must verify your profile before you can use app features.';
-  };
+  const getVerificationMessage = () => 'Verification badge appears after admin approval.';
 
   const [screen, setScreen] = useState('WELCOME');
   const [previousScreen, setPreviousScreen] = useState('FEED');
@@ -121,7 +101,6 @@ export const AppProvider = ({ children }) => {
   });
 
   const [onboardingAnswers, setOnboardingAnswers] = useState({});
-  const isVerifiedUser = isUniversityVerified(user);
 
   // Check authentication status on mount
   useEffect(() => {
@@ -143,13 +122,10 @@ export const AppProvider = ({ children }) => {
         setIsAuthenticated(true);
         setVerificationMessage(getVerificationMessage(userData));
 
-        if (isUniversityVerified(userData)) {
-          // Set user as online only after verification.
-          try {
-            await userService.setOnline();
-          } catch (error) {
-            console.error('Failed to set online status:', error);
-          }
+        try {
+          await userService.setOnline();
+        } catch (error) {
+          console.error('Failed to set online status:', error);
         }
 
         // Load onboarding answers from backend
@@ -174,12 +150,7 @@ export const AppProvider = ({ children }) => {
 
         // Only auto-navigate if not already on WELCOME or auth screens
         if (screen === 'WELCOME' || screen === 'LOGIN' || screen === 'SIGNUP') {
-          if (isUniversityVerified(userData)) {
-            setScreen('FEED');
-          } else {
-            setVerificationMessage(getVerificationMessage(userData));
-            setScreen('VERIFICATION_REQUIRED');
-          }
+          setScreen('FEED');
         }
       } catch (error) {
         // User not authenticated - redirect to login
@@ -197,41 +168,9 @@ export const AppProvider = ({ children }) => {
     checkAuth();
   }, []);
 
-  // Global route guard for unverified users
-  useEffect(() => {
-    if (isLoading || !isAuthenticated || !user) return;
-
-    // Allowed screens for unverified users
-    const unverifiedAllowedScreens = ['WELCOME', 'LOGIN', 'SIGNUP', 'VERIFICATION_REQUIRED', 'USER_PROFILE'];
-    
-    // Moderators and Admins bypass this check entirely
-    const isExemptRole = ['moderator', 'university_admin', 'admin'].includes(user.role);
-
-    if (!isVerifiedUser && !isExemptRole && !unverifiedAllowedScreens.includes(screen)) {
-      console.log('Route guard: redirecting unverified user to VERIFICATION_REQUIRED from', screen);
-      setVerificationMessage(getVerificationMessage(user));
-      setPreviousScreen(screen);
-      setScreen('VERIFICATION_REQUIRED');
-    }
-  }, [screen, isAuthenticated, isVerifiedUser, user, isLoading]);
-
-  useEffect(() => {
-    const onVerificationRequired = (event) => {
-      const message = event?.detail?.message || getVerificationMessage(user);
-      setVerificationMessage(message);
-      if (screen !== 'VERIFICATION_REQUIRED') {
-        setPreviousScreen(screen);
-        setScreen('VERIFICATION_REQUIRED');
-      }
-    };
-
-    window.addEventListener('verificationRequired', onVerificationRequired);
-    return () => window.removeEventListener('verificationRequired', onVerificationRequired);
-  }, [screen, user]);
-
   // Ping online status periodically
   useEffect(() => {
-    if (!isAuthenticated || !user || !isVerifiedUser) return;
+    if (!isAuthenticated || !user) return;
 
     const pingOnlineStatus = async () => {
       // Skip if page is hidden
@@ -240,9 +179,7 @@ export const AppProvider = ({ children }) => {
       try {
         await userService.setOnline();
       } catch (error) {
-        if (!is403VerificationError(error)) {
-          console.error('Failed to ping online status:', error);
-        }
+        console.error('Failed to ping online status:', error);
       }
     };
 
@@ -262,9 +199,9 @@ export const AppProvider = ({ children }) => {
       clearInterval(interval);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [isAuthenticated, user, isVerifiedUser]);
+  }, [isAuthenticated, user]);
   useEffect(() => {
-    if (!isAuthenticated || !user || !isVerifiedUser) return;
+    if (!isAuthenticated || !user) return;
 
     let interval = null;
 
@@ -305,9 +242,7 @@ export const AppProvider = ({ children }) => {
           setIncomingScheduledCall(prev => prev ? null : prev);
         }
       } catch (error) {
-        if (!is403VerificationError(error)) {
-          console.error('Failed to poll invitations:', error);
-        }
+        console.error('Failed to poll invitations:', error);
       }
     };
 
@@ -331,7 +266,7 @@ export const AppProvider = ({ children }) => {
       clearInterval(interval);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [isAuthenticated, user, notificationPreferences.callNotifications, isVerifiedUser]);
+  }, [isAuthenticated, user, notificationPreferences.callNotifications]);
 
   // Clear incoming calls when call notifications are disabled
   useEffect(() => {
@@ -420,21 +355,13 @@ export const AppProvider = ({ children }) => {
       setUser(response.user);
       setIsAuthenticated(true);
 
-      if (isUniversityVerified(response.user)) {
-        // Set user as online only after verification.
-        try {
-          await userService.setOnline();
-        } catch (error) {
-          console.error('Failed to set online status:', error);
-        }
+      try {
+        await userService.setOnline();
+      } catch (error) {
+        console.error('Failed to set online status:', error);
       }
 
-      if (isUniversityVerified(response.user)) {
-        setScreen('FEED');
-      } else {
-        setVerificationMessage(getVerificationMessage(response.user));
-        setScreen('VERIFICATION_REQUIRED');
-      }
+      setScreen('FEED');
       return response;
     } catch (error) {
       setAuthError(error.message || 'Login failed');
@@ -453,21 +380,13 @@ export const AppProvider = ({ children }) => {
       setUser(newUser);
       setIsAuthenticated(true);
 
-      if (isUniversityVerified(newUser)) {
-        // Set user as online only after verification.
-        try {
-          await userService.setOnline();
-        } catch (error) {
-          console.error('Failed to set online status:', error);
-        }
+      try {
+        await userService.setOnline();
+      } catch (error) {
+        console.error('Failed to set online status:', error);
       }
 
-      if (isUniversityVerified(newUser)) {
-        setScreen('FEED');
-      } else {
-        setVerificationMessage(getVerificationMessage(newUser));
-        setScreen('VERIFICATION_REQUIRED');
-      }
+      setScreen('FEED');
       return newUser;
     } catch (error) {
       setAuthError(error.message || 'Signup failed');
@@ -511,16 +430,7 @@ export const AppProvider = ({ children }) => {
   // Update user profile
   const updateUserProfile = async (profileUpdates) => {
     try {
-      const isUnverified = user && !isUniversityVerified(user);
-      if (isUnverified && !Object.prototype.hasOwnProperty.call(profileUpdates || {}, 'education')) {
-        return user;
-      }
-
-      const payload = isUnverified
-        ? { education: profileUpdates.education || user?.education || [] }
-        : profileUpdates;
-
-      const updatedUser = await userService.updateProfile(payload);
+      const updatedUser = await userService.updateProfile(profileUpdates);
       setUser(updatedUser);
       return updatedUser;
     } catch (error) {
@@ -532,7 +442,7 @@ export const AppProvider = ({ children }) => {
   // Sync sharer insights to backend
   const syncSharerInsights = async () => {
     try {
-      if (!isAuthenticated || !user || !isVerifiedUser) {
+      if (!isAuthenticated || !user) {
         return;
       }
 
@@ -557,7 +467,7 @@ export const AppProvider = ({ children }) => {
   // Sync all onboarding answers to backend whenever they change
   const syncOnboardingAnswers = async () => {
     try {
-      if (!isAuthenticated || !user || !isVerifiedUser) {
+      if (!isAuthenticated || !user) {
         return;
       }
 
@@ -574,7 +484,7 @@ export const AppProvider = ({ children }) => {
 
   // Sync onboarding answers when they change
   useEffect(() => {
-    if (isAuthenticated && user && isVerifiedUser && Object.keys(onboardingAnswers).length > 0) {
+    if (isAuthenticated && user && Object.keys(onboardingAnswers).length > 0) {
       // Debounce the sync to avoid too many API calls
       const timeoutId = setTimeout(() => {
         syncOnboardingAnswers();
@@ -582,11 +492,11 @@ export const AppProvider = ({ children }) => {
 
       return () => clearTimeout(timeoutId);
     }
-  }, [onboardingAnswers, isAuthenticated, user, isVerifiedUser]);
+  }, [onboardingAnswers, isAuthenticated, user]);
 
   // Sync wisdom data when onboarding answers change (legacy support)
   useEffect(() => {
-    if (isAuthenticated && user && isVerifiedUser) {
+    if (isAuthenticated && user) {
       // Check if any wisdom-related answers exist
       const hasWisdomData = onboardingAnswers['SHARER_TRACK_1'] ||
         onboardingAnswers['SHARER_TRACK_2'] ||
@@ -596,23 +506,17 @@ export const AppProvider = ({ children }) => {
         syncSharerInsights();
       }
     }
-  }, [onboardingAnswers['SHARER_TRACK_1'], onboardingAnswers['SHARER_TRACK_2'], onboardingAnswers['SHARER_TRACK_3'], isAuthenticated, user, isVerifiedUser]);
+  }, [onboardingAnswers['SHARER_TRACK_1'], onboardingAnswers['SHARER_TRACK_2'], onboardingAnswers['SHARER_TRACK_3'], isAuthenticated, user]);
 
   // Fetch pending connection requests count
   useEffect(() => {
     const fetchPendingRequests = async () => {
       if (isAuthenticated) {
-        if (!isVerifiedUser) {
-          setPendingRequestsCount(0);
-          return;
-        }
         try {
           const requests = await connectionsService.getReceivedRequests();
           setPendingRequestsCount(requests.length);
         } catch (error) {
-          if (!is403VerificationError(error)) {
-            console.error('Failed to fetch pending requests:', error);
-          }
+          console.error('Failed to fetch pending requests:', error);
         }
       }
     };
@@ -622,24 +526,18 @@ export const AppProvider = ({ children }) => {
     const interval = setInterval(fetchPendingRequests, 3000);
 
     return () => clearInterval(interval);
-  }, [isAuthenticated, isVerifiedUser]);
+  }, [isAuthenticated]);
 
   // Fetch unread messages count
   useEffect(() => {
     const fetchUnreadMessagesCount = async () => {
       if (isAuthenticated) {
-        if (!isVerifiedUser) {
-          setUnreadMessagesCount(0);
-          return;
-        }
         try {
           const conversations = await chatService.getConversations();
           const totalUnread = conversations.reduce((sum, conv) => sum + (conv.unread_count || 0), 0);
           setUnreadMessagesCount(totalUnread);
         } catch (error) {
-          if (!is403VerificationError(error)) {
-            console.error('Failed to fetch unread messages count:', error);
-          }
+          console.error('Failed to fetch unread messages count:', error);
         }
       }
     };
@@ -649,23 +547,17 @@ export const AppProvider = ({ children }) => {
     const interval = setInterval(fetchUnreadMessagesCount, 2000);
 
     return () => clearInterval(interval);
-  }, [isAuthenticated, isVerifiedUser]);
+  }, [isAuthenticated]);
 
   // Fetch unread notifications count
   useEffect(() => {
     const fetchUnreadNotificationsCount = async () => {
       if (isAuthenticated) {
-        if (!isVerifiedUser) {
-          setUnreadNotificationsCount(0);
-          return;
-        }
         try {
           const result = await notificationService.getUnreadCount();
           setUnreadNotificationsCount(result.count || 0);
         } catch (error) {
-          if (!is403VerificationError(error)) {
-            console.error('Failed to fetch unread notifications count:', error);
-          }
+          console.error('Failed to fetch unread notifications count:', error);
         }
       }
     };
@@ -675,16 +567,12 @@ export const AppProvider = ({ children }) => {
     const interval = setInterval(fetchUnreadNotificationsCount, 3000);
 
     return () => clearInterval(interval);
-  }, [isAuthenticated, isVerifiedUser]);
+  }, [isAuthenticated]);
 
   // Fetch pending call booking requests count
   useEffect(() => {
     const fetchPendingCallRequests = async () => {
       if (isAuthenticated) {
-        if (!isVerifiedUser) {
-          setPendingCallRequestsCount(0);
-          return;
-        }
         try {
           const [callRequests, rescheduleRequests] = await Promise.all([
             callsService.getCallBookingRequests().catch(() => []),
@@ -692,9 +580,7 @@ export const AppProvider = ({ children }) => {
           ]);
           setPendingCallRequestsCount(callRequests.length + rescheduleRequests.length);
         } catch (error) {
-          if (!is403VerificationError(error)) {
-            console.error('Failed to fetch pending call requests:', error);
-          }
+          console.error('Failed to fetch pending call requests:', error);
         }
       }
     };
@@ -704,25 +590,19 @@ export const AppProvider = ({ children }) => {
     const interval = setInterval(fetchPendingCallRequests, 2000);
 
     return () => clearInterval(interval);
-  }, [isAuthenticated, isVerifiedUser]);
+  }, [isAuthenticated]);
 
   // Fetch upcoming live scheduled calls (to power the green notification badge)
   // Get all scheduled calls that are starting soon or currently active
   useEffect(() => {
     const fetchUpcomingCalls = async () => {
       if (isAuthenticated) {
-        if (!isVerifiedUser) {
-          setHasLiveCall(false);
-          return;
-        }
         try {
           const upcoming = await callsService.getUpcomingScheduledCalls();
           // Set to true if there is at least 1 upcoming call
           setHasLiveCall(upcoming && upcoming.length > 0);
         } catch (error) {
-          if (!is403VerificationError(error)) {
-            console.error('Failed to fetch upcoming calls:', error);
-          }
+          console.error('Failed to fetch upcoming calls:', error);
           setHasLiveCall(false);
         }
       }
@@ -733,7 +613,7 @@ export const AppProvider = ({ children }) => {
     const interval = setInterval(fetchUpcomingCalls, 5000);
 
     return () => clearInterval(interval);
-  }, [isAuthenticated, isVerifiedUser]);
+  }, [isAuthenticated]);
 
   // Toast notification function
   const showToast = (message, type = 'success') => {

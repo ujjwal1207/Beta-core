@@ -15,7 +15,7 @@ const VerificationRequiredScreen = () => {
         </div>
 
         <h1 className="text-2xl font-extrabold text-slate-800 mb-2">
-          {isPending ? 'Approval Pending' : 'University Verification Required'}
+          {isPending ? 'Verification In Review' : 'Get Verified Badge'}
         </h1>
         <p className="text-slate-600 mb-5">{verificationMessage}</p>
 
@@ -23,7 +23,7 @@ const VerificationRequiredScreen = () => {
           <div className="rounded-2xl border border-teal-200 bg-teal-50 p-4 mb-6">
             <h2 className="text-sm font-bold text-teal-800 mb-2 uppercase tracking-wide">Status: Pending Review</h2>
             <p className="text-sm text-teal-700">
-              Your profile has been submitted and is currently in the queue for admin approval. You will receive an email once it is verified.
+              Your profile is in review. You can continue using the platform while your verification badge request is processed.
             </p>
           </div>
         ) : (
@@ -31,8 +31,8 @@ const VerificationRequiredScreen = () => {
             <h2 className="text-sm font-bold text-slate-700 mb-2 uppercase tracking-wide">What you can do now</h2>
             <ul className="text-sm text-slate-600 space-y-1">
               <li>1. Open your profile and complete education details.</li>
-              <li>2. Save your profile and wait for university admin approval.</li>
-              <li>3. After approval, all app features unlock automatically.</li>
+              <li>2. Save your profile to request a verification badge from your university admin.</li>
+              <li>3. Keep using all platform features while verification is pending.</li>
             </ul>
           </div>
         )}

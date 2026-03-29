@@ -1,10 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { MessageSquare, Send, Bookmark, Repeat, X, MoreVertical, User, EyeOff, UserX, Edit, Trash2, Play, Pause, Volume2, VolumeX, Tag } from 'lucide-react';
+import { MessageSquare, Send, Bookmark, Repeat, X, MoreVertical, User, EyeOff, UserX, Edit, Trash2, Play, Pause, Volume2, VolumeX, Tag, CheckCircle } from 'lucide-react';
 import { useAppContext } from '../../../context/AppContext';
 import MoodDisplay from '../../../components/ui/MoodDisplay';
 import engagementService from '../../../services/engagementService';
 import feedService from '../../../services/feedService';
 import { getUserInitials } from '../../../lib/avatarUtils';
+import { isUserVerified } from '../../../lib/utils';
+import VerifiedName from '../../../components/ui/VerifiedName';
 
 const PostCard = ({ post, onUpdate, onHide, showNotInterested = true }) => {
   const { setScreen, setSelectedPerson, setPreviousScreen, user, setSharePayload, showToast } = useAppContext();
@@ -47,6 +49,10 @@ const PostCard = ({ post, onUpdate, onHide, showNotInterested = true }) => {
 
   const isOwnPost = user && (post.user_id === user.id || post.userId === user.id);
   const isRepost = post.is_repost || post.isRepost;
+  const isVerifiedAuthor = isUserVerified({
+    tags: post.user_tags,
+    education: post.user_education,
+  });
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -71,7 +77,9 @@ const PostCard = ({ post, onUpdate, onHide, showNotInterested = true }) => {
       full_name: post.user_name || post.userName || post.name,
       role: post.user_role || post.userRole || post.role,
       trust_score: post.user_trust_score || post.userTrustScore || post.trustScore,
-      profile_photo: post.user_profile_photo || post.userProfilePhoto || post.profilePhoto
+      profile_photo: post.user_profile_photo || post.userProfilePhoto || post.profilePhoto,
+      tags: post.user_tags || [],
+      education: post.user_education || [],
     };
     setSelectedPerson(userObject);
     setScreen('PROFILE_DETAIL');
@@ -391,7 +399,11 @@ const PostCard = ({ post, onUpdate, onHide, showNotInterested = true }) => {
         </div>
         <div className='flex-grow'>
           <button onClick={handleNameClick} className="flex items-center text-left">
-            <p className="font-semibold text-base text-slate-800 hover:underline">{post.name || post.user_name}</p>
+            <VerifiedName
+              name={post.name || post.user_name}
+              isVerified={isVerifiedAuthor}
+              className="font-semibold text-base text-slate-800 hover:underline"
+            />
             <MoodDisplay moodIndex={post.mood ?? post.mood_at_time} />
           </button>
           <p className="text-xs text-slate-500">{post.role || post.user_role}</p>
@@ -702,6 +714,7 @@ const PostCard = ({ post, onUpdate, onHide, showNotInterested = true }) => {
                   comments.map((comment) => {
                     const isOwnComment = user && comment.user_id === user.id;
                     const isEditing = editingCommentId === comment.id;
+                    const isVerifiedCommenter = isUserVerified(comment);
 
                     return (
                       <div key={comment.id} className="flex space-x-2">
@@ -724,7 +737,11 @@ const PostCard = ({ post, onUpdate, onHide, showNotInterested = true }) => {
                               onClick={() => handleCommenterClick(comment)}
                               className="text-xs font-semibold text-slate-800 hover:text-indigo-600 hover:underline transition-colors"
                             >
-                              {comment.user_name}
+                              <VerifiedName
+                                name={comment.user_name}
+                                isVerified={isVerifiedCommenter}
+                                className="text-xs font-semibold text-slate-800"
+                              />
                             </button>
                             {isOwnComment && !isEditing && (
                               <div className="flex space-x-1">

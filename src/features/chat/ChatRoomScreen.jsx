@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, Calendar, Send, Paperclip, Loader, Download, FileText, X, Eye, PhoneMissed, VideoOff, MoreVertical, Trash2, Pin, MessageCircle, Video, Phone } from 'lucide-react';
+import { ArrowLeft, Calendar, Send, Paperclip, Loader, Download, FileText, X, Eye, PhoneMissed, VideoOff, MoreVertical, Trash2, Pin, MessageCircle, Video, Phone, CheckCircle } from 'lucide-react';
 import { useAppContext } from '../../context/AppContext';
 import ScheduleCallModal from '../connections/components/ScheduleCallModal';
 import chatService from '../../services/chatService';
@@ -9,6 +9,8 @@ import userService from '../../services/userService';
 import feedService from '../../services/feedService';
 import PostCard from '../feed/components/PostCard';
 import { getAvatarUrlWithSize } from '../../lib/avatarUtils';
+import { isUserVerified } from '../../lib/utils';
+import VerifiedName from '../../components/ui/VerifiedName';
 
 const ChatRoomScreen = () => {
   const {
@@ -307,6 +309,8 @@ const ChatRoomScreen = () => {
 
   if (!selectedPerson) return <div className="p-4">No chat selected</div>;
 
+  const isVerifiedPerson = isUserVerified(selectedPerson);
+
   return (
     <div className="flex flex-col h-full bg-slate-50 overflow-x-hidden">
       {/* Chat Header */}
@@ -333,7 +337,13 @@ const ChatRoomScreen = () => {
               />
             </div>
             <div className="text-left min-w-0">
-              <h2 className="font-bold text-slate-800 text-sm truncate max-w-[150px] sm:max-w-none">{selectedPerson.full_name || selectedPerson.name}</h2>
+              <h2 className="font-bold text-slate-800 text-sm truncate max-w-[150px] sm:max-w-none flex items-center gap-1">
+                <VerifiedName
+                  name={selectedPerson.full_name || selectedPerson.name}
+                  isVerified={isVerifiedPerson}
+                  className="font-bold text-slate-800 text-sm truncate"
+                />
+              </h2>
               <p className={`text-xs flex items-center gap-1 ${isPersonOnline ? 'text-green-600' : 'text-slate-500'}`}>
                 <span className={`w-1.5 h-1.5 rounded-full ${isPersonOnline ? 'bg-green-500 animate-pulse' : 'bg-slate-400'}`}></span>
                 {isPersonOnline ? 'Online' : 'Offline'}

@@ -10,7 +10,8 @@ import connectionsService from '../../services/connectionsService';
 import feedService from '../../services/feedService';
 import chatService from '../../services/chatService';
 import { getAvatarUrlWithSize } from '../../lib/avatarUtils';
-import { formatRatingCount } from '../../lib/utils';
+import { formatRatingCount, isUserVerified } from '../../lib/utils';
+import VerifiedName from '../../components/ui/VerifiedName';
 
 const ProfileDetailScreen = () => {
   const { setScreen, selectedPerson, previousScreen, setSelectedPerson, setSelectedConversation, setPreviousScreen, showToast } = useAppContext();
@@ -283,7 +284,7 @@ const ProfileDetailScreen = () => {
   }
 
   const isSuperLinker = person?.is_super_linker || false;
-  const isVerifiedAlumni = (person?.tags || []).map(tag => String(tag).toLowerCase()).includes('verified_alumni');
+  const isVerifiedUser = isUserVerified(person);
 
   return (
     <>
@@ -389,12 +390,13 @@ const ProfileDetailScreen = () => {
 
           <div className="relative z-0 bg-white p-6 rounded-t-3xl shadow-xl -mt-16">
             <div className="flex items-center mb-1">
-              <h1 className="text-3xl font-extrabold text-slate-800">{person.full_name}{person.age ? `, ${person.age}` : ''}</h1>
-              {isVerifiedAlumni && (
-                <span className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold uppercase">
-                  <CheckCircle className="w-3.5 h-3.5" /> Verified Alumni
-                </span>
-              )}
+              <VerifiedName
+                name={`${person.full_name}${person.age ? `, ${person.age}` : ''}`}
+                isVerified={isVerifiedUser}
+                className="text-3xl font-extrabold text-slate-800"
+                wrapperClassName="inline-flex items-center gap-2"
+                badgeClassName="w-5 h-5 text-white fill-blue-500"
+              />
               {!person?.is_super_linker && <MoodDisplay moodIndex={person.mood} />}
             </div>
             {(person.role || person.company) && (

@@ -337,7 +337,7 @@ export const AuthForm = ({ isLogin }) => {
           <div className="pt-1 text-right">
             <a
               href="/admin"
-              className="text-sm font-medium text-teal-700 hover:text-teal-900 transition-colors"
+              className="text-sm font-medium text-indigo-600 hover:text-indigo-800 transition-colors"
             >
               University Admin Login
             </a>
