@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Search, User, Loader, X } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Search, User, Loader, X, ChevronRight } from 'lucide-react';
 import { useAppContext } from '../../context/AppContext';
 import TopTabBar from '../../components/layout/TopTabBar';
 import PostCard from './components/PostCard';
@@ -7,8 +7,8 @@ import QuickPostStories from './components/QuickPostStories';
 import FeedJourneyCard from './components/FeedJourneyCard';
 import ProfileProgress from './components/ProfileProgress';
 import feedService from '../../services/feedService';
+import connectionsService from '../../services/connectionsService';
 import { getAvatarUrlWithSize } from '../../lib/avatarUtils';
-import { quizFlow, TRACK_Q1_KEYS, TRACK_Q2_KEYS } from '../../data/quizFlow';
 
 const FeedScreen = () => {
   const {
@@ -21,6 +21,9 @@ const FeedScreen = () => {
     isAuthenticated,
     setSearchQuery,
     setConnectionsMode,
+    setSelectedPerson,
+    setPreviousScreen,
+    showToast,
   } = useAppContext();
 
   const [showNudge, setShowNudge] = useState(() => {
@@ -33,9 +36,14 @@ const FeedScreen = () => {
   const [isLoadingPosts, setIsLoadingPosts] = useState(true);
   const [error, setError] = useState(null);
   const [hiddenPostIds, setHiddenPostIds] = useState(new Set());
-  const [isSearching, setIsSearching] = useState(false);
-  const [searchResults, setSearchResults] = useState([]);
-  const [hasSearchedTopics, setHasSearchedTopics] = useState(false);
+
+  // Smart people search in feed
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const [peopleResults, setPeopleResults] = useState([]);
+  const [isPeopleSearching, setIsPeopleSearching] = useState(false);
+  const [suggestedPeople, setSuggestedPeople] = useState([]);
+  const [requestedSmartMatchIds, setRequestedSmartMatchIds] = useState(new Set());
+  const [connectingSmartMatchId, setConnectingSmartMatchId] = useState(null);
 
   // Pagination state
   const [skip, setSkip] = useState(0);
@@ -115,8 +123,55 @@ const FeedScreen = () => {
   }, [observerTarget.current, hasMore, isLoadingPosts, isLoadingMore, skip]);
 
   useEffect(() => {
-    fetchPosts();
+    const loadSentRequests = async () => {
+      if (!isAuthenticated) return;
+      try {
+        const sentRequests = await connectionsService.getSentRequests();
+        const sentIds = new Set(
+          (Array.isArray(sentRequests) ? sentRequests : [])
+            .map((req) => req?.receiver?.id)
+            .filter(Boolean)
+        );
+        setRequestedSmartMatchIds(sentIds);
+      } catch (err) {
+        console.error('Failed to load sent requests for smart matches:', err);
+      }
+    };
+
+    loadSentRequests();
   }, [isAuthenticated]);
+
+  const openSmartMatchProfile = (person) => {
+    setPreviousScreen('FEED');
+    setSelectedPerson(person);
+    setScreen('PROFILE_DETAIL');
+  };
+
+  const handleSmartMatchConnect = async (event, person) => {
+    event.stopPropagation();
+
+    if (!person?.id || requestedSmartMatchIds.has(person.id) || connectingSmartMatchId === person.id) {
+      return;
+    }
+
+    try {
+      setConnectingSmartMatchId(person.id);
+      await connectionsService.sendRequest(person.id);
+      setRequestedSmartMatchIds((prev) => new Set([...prev, person.id]));
+      showToast('Connection request sent successfully.', 'success');
+    } catch (error) {
+      console.error('Failed to send smart match connection request:', error);
+      showToast('Failed to send connection request. Please try again.', 'error');
+    } finally {
+      setConnectingSmartMatchId(null);
+    }
+  };
+
+  useEffect(() => {
+    fetchPosts();
+    // Clear local hidden-post filters when mood changes so fresh vibe results are visible.
+    setHiddenPostIds(new Set());
+  }, [isAuthenticated, user?.id, user?.mood]);
 
   // Listen for post creation events
   useEffect(() => {
@@ -141,90 +196,131 @@ const FeedScreen = () => {
     setHiddenPostIds(prev => new Set([...prev, postId]));
   };
 
-  // Handle topic search
-  const handleTopicSearch = async (query) => {
-    if (!query.trim()) {
-      setSearchResults([]);
-      setIsSearching(false);
-      setHasSearchedTopics(false);
+  // Clear search
+  const clearSearch = () => {
+    setSearchValue('');
+    setPeopleResults([]);
+    setIsPeopleSearching(false);
+  };
+
+  const extractUserKeywords = useMemo(() => {
+    const sources = [];
+
+    if (user?.role) sources.push(user.role);
+    if (user?.industry) sources.push(user.industry);
+    if (user?.expertise) sources.push(user.expertise);
+
+    const onboardingValues = Object.values(onboardingAnswers || {});
+    onboardingValues.forEach((value) => {
+      if (Array.isArray(value)) {
+        value.forEach((item) => {
+          if (typeof item === 'string') sources.push(item);
+          if (item && typeof item === 'object') {
+            Object.values(item).forEach((inner) => {
+              if (typeof inner === 'string') sources.push(inner);
+            });
+          }
+        });
+      } else if (typeof value === 'string') {
+        sources.push(value);
+      }
+    });
+
+    return [...new Set(
+      sources
+        .join(' ')
+        .toLowerCase()
+        .split(/[^a-z0-9]+/)
+        .filter((kw) => kw.length > 2)
+    )];
+  }, [onboardingAnswers, user]);
+
+  useEffect(() => {
+    const fetchSuggestedPeople = async () => {
+      try {
+        const data = await connectionsService.discover(12);
+        const scored = (data || []).map((person) => {
+          const tags = Array.isArray(person.tags) ? person.tags : [];
+          const fields = [
+            ...tags,
+            person.role || '',
+            person.industry || '',
+            person.expertise || ''
+          ].join(' ').toLowerCase();
+
+          let score = 0;
+          let bestMatchTag = 'Community Pick';
+          extractUserKeywords.forEach((keyword) => {
+            if (fields.includes(keyword)) {
+              score += 1;
+              if (bestMatchTag === 'Community Pick') {
+                bestMatchTag = keyword;
+              }
+            }
+          });
+
+          return { ...person, score, bestMatchTag };
+        });
+
+        scored.sort((a, b) => b.score - a.score);
+        setSuggestedPeople(scored.slice(0, 5));
+      } catch (err) {
+        console.error('Failed to fetch suggested connections:', err);
+        setSuggestedPeople([]);
+      }
+    };
+
+    if (isAuthenticated) {
+      fetchSuggestedPeople();
+    }
+  }, [extractUserKeywords, isAuthenticated]);
+
+  useEffect(() => {
+    if (!searchValue.trim()) {
+      setPeopleResults([]);
       return;
     }
 
-    try {
-      setIsSearching(true);
-      setHasSearchedTopics(true);
-      const results = await feedService.searchPostsByTopic(query.trim());
-      setSearchResults(results);
-    } catch (err) {
-      console.error('Error searching topics:', err);
-      setSearchResults([]);
-    } finally {
-      setIsSearching(false);
-    }
-  };
+    const timeoutId = setTimeout(async () => {
+      try {
+        setIsPeopleSearching(true);
+        const results = await connectionsService.search(searchValue.trim(), 5);
 
-  // Clear search
-  const clearSearch = () => {
-    setSearchValue("");
-    setSearchResults([]);
-    setIsSearching(false);
-    setHasSearchedTopics(false);
-  };
+        const mapped = (results || []).map((person) => {
+          const tags = Array.isArray(person.tags) ? person.tags : [];
+          const search = searchValue.trim().toLowerCase();
+          const matchedTags = tags.filter((tag) => String(tag).toLowerCase().includes(search));
+          return { ...person, matchedTags };
+        });
 
-  // Helper: check if onboarding quiz is complete (100%)
-  const isJourneyComplete = (() => {
-    // Replicate FeedJourneyCard logic for completion
-    // If onboardingAnswers is empty, treat as 0% complete
-    if (!onboardingAnswers || Object.keys(onboardingAnswers).length === 0) {
-      return false;
-    }
-    const hasAnswer = (key) => {
-      const answer = onboardingAnswers[key];
-      if (Array.isArray(answer)) return answer.length > 0;
-      if (typeof answer === 'string') return answer.trim().length > 0;
-      if (typeof answer === 'object' && answer !== null && !Array.isArray(answer)) return Object.keys(answer).length > 0;
-      return false;
-    };
-
-    const vibeAnswers = onboardingAnswers['VIBE_QUIZ'] || [];
-    let completedSteps = 0;
-    let totalSteps = 4; // Base steps: VIBE_QUIZ + TRACK_Q1 + TRACK_Q2 + NEW_GENERATION
-
-    // Check if user goes to GIVE_ADVICE_QUIZ
-    const goesToAdviceQuiz = quizFlow['NEW_GENERATION'].nextStepLogic(onboardingAnswers['NEW_GENERATION'], onboardingAnswers) === 'GIVE_ADVICE_QUIZ';
-    if (goesToAdviceQuiz) {
-      totalSteps = 5; // Add GIVE_ADVICE_QUIZ step
-    }
-
-    // Step 1: VIBE_QUIZ
-    if (hasAnswer('VIBE_QUIZ')) completedSteps++;
-
-    // Step 2: TRACK_Q1 step
-    const nextTrackStep1Key = quizFlow['VIBE_QUIZ'].nextStepLogic(vibeAnswers, onboardingAnswers);
-    if (nextTrackStep1Key && TRACK_Q1_KEYS.includes(nextTrackStep1Key) && hasAnswer(nextTrackStep1Key)) {
-      completedSteps++;
-    }
-
-    // Step 3: TRACK_Q2 step
-    if (nextTrackStep1Key && hasAnswer(nextTrackStep1Key)) {
-      const nextTrackStep2Key = quizFlow[nextTrackStep1Key]?.nextStepLogic(onboardingAnswers[nextTrackStep1Key], onboardingAnswers);
-      if (nextTrackStep2Key && TRACK_Q2_KEYS.includes(nextTrackStep2Key) && hasAnswer(nextTrackStep2Key)) {
-        completedSteps++;
+        setPeopleResults(mapped);
+      } catch (err) {
+        console.error('Error searching people:', err);
+        setPeopleResults([]);
+      } finally {
+        setIsPeopleSearching(false);
       }
-    }
+    }, 200);
 
-    // Step 4: NEW_GENERATION
-    if (hasAnswer('NEW_GENERATION')) completedSteps++;
+    return () => clearTimeout(timeoutId);
+  }, [searchValue]);
 
-    // Step 5: GIVE_ADVICE_QUIZ (only if user goes this path)
-    if (goesToAdviceQuiz && hasAnswer('GIVE_ADVICE_QUIZ')) {
-      completedSteps++;
-    }
+  const goToConnectionsSearch = () => {
+    if (!searchValue.trim()) return;
+    setSearchQuery(searchValue.trim());
+    setConnectionsMode('SEARCH');
+    setScreen('CONNECTIONS_DASHBOARD');
+  };
 
-    // Note: SHARER_TRACK steps are separate from the main quiz
+  // Helper: check if profile journey is complete (Education + Focus + Looking For)
+  const isJourneyComplete = (() => {
+    const hasText = (value) => String(value || '').trim().length > 0;
+    const educationList = Array.isArray(user?.education) ? user.education : [];
+    const hasEducation = educationList.some((item) => hasText(item?.name));
+    const hasFocus = hasText(user?.industry);
+    const hasLookingFor = hasText(user?.exploring || onboardingAnswers?.LOOKING_FOR);
 
-    const percentage = Math.round((completedSteps / totalSteps) * 100);
-    return percentage >= 100;
+    return hasEducation && hasFocus && hasLookingFor;
   })();
 
   return (
@@ -247,27 +343,23 @@ const FeedScreen = () => {
             />
           )}
 
-          <div className="relative mb-4">
+          <div className="relative mb-4 z-20">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-            <form onSubmit={e => {
-              e.preventDefault();
-              if (searchValue.trim()) {
-                handleTopicSearch(searchValue.trim());
-              }
-            }}>
-              <input
-                type="text"
-                placeholder="Search posts by topic or tag..."
-                className="w-full p-3 pl-12 border border-slate-300 rounded-xl focus:ring-indigo-500 focus:border-indigo-500 text-base shadow-sm"
-                value={searchValue}
-                onChange={e => {
-                  setSearchValue(e.target.value);
-                  if (!e.target.value.trim()) {
-                    clearSearch();
-                  }
-                }}
-              />
-            </form>
+            <input
+              type="text"
+              placeholder="Search network (Press Enter for full search)..."
+              className="w-full p-3 pl-12 border border-slate-300 rounded-xl focus:ring-indigo-500 focus:border-indigo-500 text-base shadow-sm"
+              value={searchValue}
+              onChange={(e) => setSearchValue(e.target.value)}
+              onFocus={() => setIsSearchFocused(true)}
+              onBlur={() => setTimeout(() => setIsSearchFocused(false), 150)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  goToConnectionsSearch();
+                }
+              }}
+            />
             {searchValue && (
               <button
                 onClick={clearSearch}
@@ -275,6 +367,57 @@ const FeedScreen = () => {
               >
                 <X className="w-4 h-4 text-slate-400" />
               </button>
+            )}
+
+            {isSearchFocused && searchValue.trim() && (
+              <div className="absolute top-full left-0 w-full mt-2 bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden z-50">
+                {isPeopleSearching ? (
+                  <div className="p-4 flex items-center justify-center">
+                    <Loader className="w-5 h-5 text-indigo-500 animate-spin" />
+                  </div>
+                ) : peopleResults.length > 0 ? (
+                  <>
+                    {peopleResults.map((person) => (
+                      <button
+                        key={person.id}
+                        onClick={() => {
+                          setPreviousScreen('FEED');
+                          setSelectedPerson(person);
+                          setScreen('PROFILE_DETAIL');
+                        }}
+                        className="w-full text-left p-3 hover:bg-slate-50 border-b border-slate-100 last:border-0 flex items-start transition-colors"
+                      >
+                        <img
+                          src={getAvatarUrlWithSize(person, 100)}
+                          alt={person.full_name || 'Profile'}
+                          className="w-10 h-10 rounded-full mr-3 shrink-0 object-cover"
+                        />
+                        <div className="grow min-w-0">
+                          <p className="font-bold text-sm text-slate-800 truncate">{person.full_name}</p>
+                          <p className="text-xs text-slate-500 truncate">{person.role || 'ListenLink member'}</p>
+                          {person.matchedTags?.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-1.5">
+                              {person.matchedTags.slice(0, 2).map((tag) => (
+                                <span key={tag} className="px-1.5 py-0.5 bg-indigo-50 text-indigo-700 text-[10px] font-bold rounded-full border border-indigo-100 whitespace-nowrap">
+                                  {tag}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </button>
+                    ))}
+                    <button
+                      onClick={goToConnectionsSearch}
+                      className="w-full p-3 text-center text-xs font-bold text-indigo-600 hover:bg-indigo-50 bg-slate-50 border-t border-indigo-100"
+                    >
+                      See all results for "{searchValue}"
+                    </button>
+                  </>
+                ) : (
+                  <div className="p-4 text-center text-sm text-slate-500">No people found. Try another search.</div>
+                )}
+              </div>
             )}
           </div>
 
@@ -301,56 +444,58 @@ const FeedScreen = () => {
             setViewingStory={setViewingStory}
           />
 
+          {suggestedPeople.length > 0 && (
+            <div className="mb-6">
+              <div className="flex justify-between items-center mb-3">
+                <h2 className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">Smart Matches For You</h2>
+              </div>
+              <div className="flex overflow-x-auto hide-scrollbar space-x-3 pb-2 -mx-4 px-4">
+                {suggestedPeople.map((person) => (
+                  <div
+                    key={person.id}
+                    onClick={() => openSmartMatchProfile(person)}
+                    className="min-w-35 max-w-35 bg-white border border-slate-100 rounded-xl p-3 shadow-sm flex flex-col items-center text-center shrink-0 hover:shadow-md transition-shadow cursor-pointer"
+                  >
+                    <img
+                      src={getAvatarUrlWithSize(person, 100)}
+                      alt={person.full_name || 'Profile'}
+                      className="w-12 h-12 rounded-full mb-2 object-cover"
+                    />
+                    <p className="font-bold text-sm text-slate-800 truncate w-full">{person.full_name?.split(' ')[0]}</p>
+                    <p className="text-[10px] text-slate-500 truncate w-full mb-2">{person.role || 'ListenLink member'}</p>
+                    <div className="mt-auto w-full">
+                      <span className="inline-block px-2 py-0.5 bg-indigo-50 text-indigo-700 text-[9px] font-bold rounded-full mb-2 truncate w-full border border-indigo-100">
+                        {person.bestMatchTag === 'Community Pick' ? 'Community Pick' : `Match: ${person.bestMatchTag}`}
+                      </span>
+                      <button
+                        onClick={(e) => handleSmartMatchConnect(e, person)}
+                        disabled={requestedSmartMatchIds.has(person.id) || connectingSmartMatchId === person.id}
+                        className="w-full py-1.5 bg-slate-50 hover:bg-slate-100 text-indigo-600 border border-slate-200 text-xs font-bold rounded-lg transition-colors active:scale-95"
+                      >
+                        {connectingSmartMatchId === person.id
+                          ? 'Connecting...'
+                          : requestedSmartMatchIds.has(person.id)
+                            ? 'Requested'
+                            : (
+                              <>
+                                Connect <ChevronRight className="w-3 h-3 inline" />
+                              </>
+                            )}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="flex justify-between items-center mb-3">
             <h2 className="text-xl font-bold text-slate-800">
-              {hasSearchedTopics
-                ? `Search Results (${searchResults.length})`
-                : 'Recent Posts'}
+              Recent Posts
             </h2>
           </div>
 
-          {isSearching ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader className="w-8 h-8 text-indigo-500 animate-spin" />
-            </div>
-          ) : hasSearchedTopics ? (
-            searchResults.length > 0 ? (
-            searchResults.map((post) => (
-              <PostCard
-                key={post.id}
-                post={{
-                  id: post.id,
-                  user_id: post.user_id,
-                  name: post.user_name,
-                  role: post.user_role,
-                  trustScore: post.user_trust_score,
-                  image: getAvatarUrlWithSize({ profile_photo: post.user_profile_photo, full_name: post.user_name }, 150),
-                  content: post.content,
-                  likes: post.likes_count,
-                  comments: post.comments_count,
-                  mood: post.mood_at_time,
-                  timestamp: new Date(post.created_at * 1000).toLocaleDateString(),
-                  imageUrl: post.image_url,
-                  videoUrl: post.video_url,
-                  type: post.type,
-                  isLiked: post.is_liked,
-                  tags: post.tags,
-                  is_repost: post.is_repost,
-                  original_post_id: post.original_post_id,
-                  original_post_user_name: post.original_post_user_name,
-                  original_post_user_id: post.original_post_user_id,
-                  original_post_content: post.original_post_content,
-                }}
-                onUpdate={() => handleTopicSearch(searchValue)}
-                onHide={hidePost}
-              />
-            ))
-            ) : (
-              <div className="text-center py-8">
-                <p className="text-slate-500">No posts found for this topic or tag.</p>
-              </div>
-            )
-          ) : isLoadingPosts ? (
+          {isLoadingPosts ? (
             <div className="flex items-center justify-center py-12">
               <Loader className="w-8 h-8 text-indigo-500 animate-spin" />
             </div>

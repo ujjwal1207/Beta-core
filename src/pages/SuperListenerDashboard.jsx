@@ -117,7 +117,7 @@ const SuperListenerDashboard = () => {
               <div className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center mx-auto mb-2">
                 <Clock className="w-4 h-4 text-amber-600" />
               </div>
-              <p className="text-lg font-bold text-slate-900">{stats.pendingBookings}</p>
+              <p className="text-lg font-bold text-slate-900">{stats.pendingBookings > 0 ? stats.pendingBookings : ''}</p>
               <p className="text-[11px] text-slate-500">Pending</p>
             </div>
             <div className="bg-white rounded-xl p-3 border border-slate-200 text-center">

@@ -60,6 +60,18 @@ const ModeratorLogin = ({ onLoginSuccess }) => {
     finally { setLoading(false); }
   };
 
+  const handleGoogleLogin = async () => {
+    setError('');
+    try {
+      const response = await authService.getGoogleLoginUrl('/moderator');
+      if (response?.url) {
+        window.location.href = response.url;
+      }
+    } catch (err) {
+      setError('Google sign in failed. Please try again.');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-slate-200 flex items-center justify-center px-4 relative overflow-hidden">
       {/* Decorative blobs – same as AdminLogin */}
@@ -89,6 +101,15 @@ const ModeratorLogin = ({ onLoginSuccess }) => {
             className="w-full py-4 mt-2 rounded-2xl font-bold text-white shadow-lg shadow-indigo-900/20 disabled:opacity-70 hover:opacity-90 active:scale-[0.98] transition-all"
             style={{ background: BRAND }}>
             {loading ? 'Authenticating...' : 'Sign In'}
+          </button>
+
+          <button
+            type="button"
+            onClick={handleGoogleLogin}
+            disabled={loading}
+            className="w-full py-3.5 rounded-2xl border border-slate-300 bg-white text-slate-700 font-semibold hover:bg-slate-50 transition-colors disabled:opacity-70"
+          >
+            Continue with Google
           </button>
 
           <a href="/" className="block text-center mt-6 text-sm font-semibold text-slate-400 hover:text-slate-600 transition-colors">

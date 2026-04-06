@@ -93,6 +93,11 @@ const AddMomentModal = ({ isOpen, onClose, onPostCreated }) => {
     }
   };
 
+  const handleSmartPrompt = () => {
+    const focus = user?.industry || user?.role || 'your career';
+    setMomentText(`As someone focused on ${focus}, the most surprising thing I learned this week was...`);
+  };
+
   const triggerFileInput = (accept) => {
     if (fileInputRef.current) {
       fileInputRef.current.accept = accept;
@@ -124,12 +129,20 @@ const AddMomentModal = ({ isOpen, onClose, onPostCreated }) => {
             </span>
           </div>
         </div>
-        <div className="p-6 pt-3 overflow-y-auto flex-grow">
+        <div className="p-6 pt-3 overflow-y-auto grow">
           {error && (
             <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
               {error}
             </div>
           )}
+          <div className="flex justify-end mb-2">
+            <button
+              onClick={handleSmartPrompt}
+              className="text-[10px] bg-indigo-50 text-indigo-700 font-bold px-2 py-1 rounded border border-indigo-200 hover:bg-indigo-100 transition-colors"
+            >
+              AI Prompt Idea
+            </button>
+          </div>
           <textarea
             className="w-full p-4 bg-slate-50 border border-slate-300 rounded-lg placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-base"
             rows="6"
@@ -216,7 +229,7 @@ const AddMomentModal = ({ isOpen, onClose, onPostCreated }) => {
           {selectedFile && (
             <div className="mt-4 p-3 bg-indigo-50 rounded-lg text-sm font-medium text-indigo-700 border border-indigo-200 flex justify-between items-center">
               <span className="truncate pr-2">{selectedFile.name}</span>
-              <button onClick={() => setSelectedFile(null)} className="p-1 rounded-full hover:bg-indigo-100 flex-shrink-0">
+              <button onClick={() => setSelectedFile(null)} className="p-1 rounded-full hover:bg-indigo-100 shrink-0">
                 <X className="w-4 h-4 text-indigo-500" />
               </button>
             </div>

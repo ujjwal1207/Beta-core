@@ -121,6 +121,11 @@ const AddReflectionModal = ({ isOpen, onClose, onPostCreated }) => {
     }
   };
 
+  const handleSmartPrompt = () => {
+    const role = user?.role || 'professional';
+    setReflectionText(`Thinking back to when I first started as a ${role}, I wish I had known that...`);
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -139,15 +144,24 @@ const AddReflectionModal = ({ isOpen, onClose, onPostCreated }) => {
             </span>
           </div>
         </div>
-        <div className="p-6 pt-3 overflow-y-auto flex-grow">
+        <div className="p-6 pt-3 overflow-y-auto grow">
           {error && (
             <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
               {error}
             </div>
           )}
+
+          <div className="flex justify-end mb-2">
+            <button
+              onClick={handleSmartPrompt}
+              className="text-[10px] bg-indigo-50 text-indigo-700 font-bold px-2 py-1 rounded border border-indigo-200 hover:bg-indigo-100 transition-colors"
+            >
+              AI Prompt Idea
+            </button>
+          </div>
           
           {/* Preview Card */}
-          <div className={`${backgroundColor} ${textColor} ${textStyle} p-6 rounded-2xl mb-4 min-h-[120px] flex items-center justify-center text-center shadow-lg transition-all duration-300`}>
+          <div className={`${backgroundColor} ${textColor} ${textStyle} p-6 rounded-2xl mb-4 min-h-30 flex items-center justify-center text-center shadow-lg transition-all duration-300`}>
             <p className="text-lg leading-relaxed">
               {reflectionText || 'Your reflection will appear here...'}
             </p>
@@ -252,7 +266,7 @@ const AddReflectionModal = ({ isOpen, onClose, onPostCreated }) => {
           {selectedFile && (
             <div className="mt-4 p-3 bg-indigo-50 rounded-lg text-sm font-medium text-indigo-700 border border-indigo-200 flex justify-between items-center">
               <span className="truncate pr-2">{selectedFile.name}</span>
-              <button onClick={() => setSelectedFile(null)} className="p-1 rounded-full hover:bg-indigo-100 flex-shrink-0">
+              <button onClick={() => setSelectedFile(null)} className="p-1 rounded-full hover:bg-indigo-100 shrink-0">
                 <X className="w-4 h-4 text-indigo-500" />
               </button>
             </div>

@@ -41,6 +41,7 @@ const CallHistoryScreen = () => {
   const [callToReschedule, setCallToReschedule] = useState(null);
   const [mode, setMode] = useState('SCHEDULED'); // SCHEDULED, HISTORY
   const [scheduledViewMode, setScheduledViewMode] = useState('LIST'); // LIST, CALENDAR
+  const [thankYouDraft, setThankYouDraft] = useState(null);
 
   // Payment States
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -272,6 +273,11 @@ const CallHistoryScreen = () => {
       name = `User ${request.booker_id}`;
     }
 
+    const normalized = String(name || '').trim();
+    if (!normalized || normalized === '0' || normalized.toLowerCase() === 'user 0' || normalized.toLowerCase() === 'user undefined') {
+      return 'Anonymous';
+    }
+
     // Format name to camel case and make it more appealing
     if (name.startsWith('User ')) {
       return name; // Keep "User X" format as is
@@ -311,6 +317,11 @@ const CallHistoryScreen = () => {
   const handleUserProfileClick = (userId) => {
     setSelectedPerson({ id: userId });
     setScreen('PROFILE_DETAIL');
+  };
+
+  const handleSendThankYou = (name) => {
+    setThankYouDraft(`Hi ${name}, thank you so much for the chat! Your advice was incredibly helpful.`);
+    setTimeout(() => setThankYouDraft(null), 4000);
   };
 
   // --- Handlers ---
@@ -550,9 +561,9 @@ const CallHistoryScreen = () => {
                                 <div className="flex-1 min-w-0">
                                   <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mb-2">
                                     <p className="font-semibold text-slate-800 text-sm sm:text-base">Call Request</p>
-                                    {request.price && request.price > 0 && request.payment_status === 'paid' && (
+                                    {Number(request.price || 0) > 0 && request.payment_status === 'paid' && (
                                       <span className="px-2 py-1 text-xs font-medium rounded-full bg-indigo-100 text-indigo-700 border border-indigo-200">
-                                        ₹{request.price} • {request.duration_minutes || 30}min
+                                        ₹{Number(request.price).toFixed(0)} • {request.duration_minutes || 30}min
                                       </span>
                                     )}
                                   </div>
@@ -852,6 +863,15 @@ const CallHistoryScreen = () => {
                       <Phone className="w-5 h-5 text-slate-600" />
                       <h2 className="text-xl font-bold text-slate-700">Call History</h2>
                     </div>
+                    {thankYouDraft && (
+                      <div className="mb-3 p-3 bg-green-50 border border-green-200 rounded-xl flex items-start shadow-sm">
+                        <Check className="w-4 h-4 text-green-600 mr-2 mt-0.5" />
+                        <div>
+                          <p className="text-sm font-bold text-green-800">Note Sent</p>
+                          <p className="text-xs text-green-700 mt-1 italic">"{thankYouDraft}"</p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                   {calls.length === 0 ? (
                     <div className="text-center py-12 text-slate-400">
@@ -877,6 +897,17 @@ const CallHistoryScreen = () => {
                               {call.status === 'missed' && <p className="text-xs text-red-400">Missed</p>}
                               {call.status === 'rejected' && <p className="text-xs text-red-400">Declined</p>}
                               {(call.status === 'completed' || call.status === 'ended' || call.status === 'accepted') && <p className="text-xs text-emerald-600">Completed</p>}
+                              {(call.status === 'completed' || call.status === 'ended' || call.status === 'accepted') && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleSendThankYou(getOtherPartyName(call));
+                                  }}
+                                  className="mt-1 text-[10px] bg-indigo-50 text-indigo-700 font-bold px-2 py-0.5 rounded border border-indigo-200 hover:bg-indigo-100 transition-colors"
+                                >
+                                  Send Thanks
+                                </button>
+                              )}
                             </div>
                           </div>
                         );

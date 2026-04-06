@@ -1,6 +1,6 @@
 import React from 'react';
 
-const Button = ({ children, primary, onClick, disabled, skip, className = '', size, variant }) => {
+const Button = ({ children, primary, onClick, disabled, skip, className = '', size, variant, type = 'button' }) => {
   let sizeClasses = 'py-3 px-6';
   if (size === 'lg') sizeClasses = 'py-4 px-8';
   if (size === 'sm') sizeClasses = 'py-2 px-4';
@@ -15,6 +15,7 @@ const Button = ({ children, primary, onClick, disabled, skip, className = '', si
   
   return (
     <button
+      type={type}
       className={`w-full ${sizeClasses} rounded-xl font-bold transition-all duration-200 text-center active:scale-[0.98] text-base ${variantClasses} ${className}`}
       onClick={onClick}
       disabled={disabled}

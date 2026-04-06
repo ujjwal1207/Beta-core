@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { ArrowLeft, Calendar, Send, Paperclip, Loader, Download, FileText, X, Eye, PhoneMissed, VideoOff, MoreVertical, Trash2, Pin, MessageCircle, Video, Phone, CheckCircle } from 'lucide-react';
 import { useAppContext } from '../../context/AppContext';
 import ScheduleCallModal from '../connections/components/ScheduleCallModal';
@@ -309,6 +309,20 @@ const ChatRoomScreen = () => {
 
   if (!selectedPerson) return <div className="p-4">No chat selected</div>;
 
+  const latestIncomingMessage = useMemo(() => {
+    const incoming = [...messages].reverse().find((msg) => msg.sender === 'them' && msg.text);
+    return incoming?.text?.toLowerCase() || '';
+  }, [messages]);
+
+  const shouldSuggestAutoSchedule =
+    latestIncomingMessage.includes('tomorrow') ||
+    latestIncomingMessage.includes('tuesday') ||
+    latestIncomingMessage.includes('wednesday') ||
+    latestIncomingMessage.includes('thursday') ||
+    latestIncomingMessage.includes('friday') ||
+    latestIncomingMessage.includes(' am') ||
+    latestIncomingMessage.includes(' pm');
+
   const isVerifiedPerson = isUserVerified(selectedPerson);
 
   return (
@@ -600,6 +614,16 @@ const ChatRoomScreen = () => {
 
       {/* Input Area */}
       <div className="bg-white p-3 border-t border-slate-200">
+        {shouldSuggestAutoSchedule && (
+          <div className="mb-2 flex justify-center">
+            <button
+              onClick={() => setIsScheduleCallModalOpen(true)}
+              className="bg-indigo-50 border border-indigo-200 text-indigo-700 px-4 py-2 rounded-full text-xs font-bold hover:bg-indigo-100 transition-colors"
+            >
+              Auto-Schedule for Suggested Time
+            </button>
+          </div>
+        )}
         {selectedFile && (
           <div className="mb-2 px-3 py-2 bg-indigo-50 rounded-lg flex items-center gap-3">
             {selectedFile.type.startsWith('image/') ? (

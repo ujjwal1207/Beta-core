@@ -352,7 +352,14 @@ export const AppProvider = ({ children }) => {
     setIsLoading(true);
     try {
       const response = await authService.login(credentials);
-      setUser(response.user);
+      // Auth response can be partial; fetch full profile to avoid dropping fields like bio.
+      let hydratedUser = response.user;
+      try {
+        hydratedUser = await userService.getProfile();
+      } catch (profileError) {
+        console.error('Failed to hydrate full user profile after login:', profileError);
+      }
+      setUser(hydratedUser);
       setIsAuthenticated(true);
 
       try {
@@ -377,7 +384,14 @@ export const AppProvider = ({ children }) => {
     setIsLoading(true);
     try {
       const newUser = await authService.signup(userData);
-      setUser(newUser);
+      // Signup response can be partial; fetch full profile to avoid dropping fields like bio.
+      let hydratedUser = newUser;
+      try {
+        hydratedUser = await userService.getProfile();
+      } catch (profileError) {
+        console.error('Failed to hydrate full user profile after signup:', profileError);
+      }
+      setUser(hydratedUser);
       setIsAuthenticated(true);
 
       try {
@@ -387,7 +401,7 @@ export const AppProvider = ({ children }) => {
       }
 
       setScreen('FEED');
-      return newUser;
+      return hydratedUser;
     } catch (error) {
       setAuthError(error.message || 'Signup failed');
       throw error;
@@ -417,11 +431,20 @@ export const AppProvider = ({ children }) => {
 
   // Update user mood
   const updateUserMood = async (mood) => {
+    const nextMood = Number(mood);
+    const prevMood = user?.mood;
+
+    // Optimistic UI update so slider feels responsive immediately.
+    setUser(prev => (prev ? { ...prev, mood: nextMood } : prev));
+
     try {
-      const response = await userService.updateMood(mood);
-      setUser(prev => ({ ...prev, mood: response.mood }));
+      const response = await userService.updateMood(nextMood);
+      const confirmedMood = Number(response?.mood);
+      setUser(prev => (prev ? { ...prev, mood: Number.isFinite(confirmedMood) ? confirmedMood : nextMood } : prev));
       return response;
     } catch (error) {
+      // Roll back optimistic change on failure.
+      setUser(prev => (prev ? { ...prev, mood: prevMood ?? prev.mood } : prev));
       console.error('Update mood error:', error);
       throw error;
     }
@@ -446,7 +469,10 @@ export const AppProvider = ({ children }) => {
         return;
       }
 
+      const existingSharerInsights = user?.sharer_insights || {};
+
       const sharerInsights = {
+        ...existingSharerInsights,
         youngerSelf: onboardingAnswers['SHARER_TRACK_1'] || '',
         lifeLessons: onboardingAnswers['SHARER_TRACK_2'] || [],
         societyChange: onboardingAnswers['SHARER_TRACK_3'] || '',

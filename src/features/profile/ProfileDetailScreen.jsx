@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, Star, Users, ThumbsUp, Clock, Briefcase, Calendar, MessageSquare, Loader, UserPlus, Image as ImageIcon, MoreVertical, UserMinus, Ban, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Star, Users, ThumbsUp, Briefcase, Calendar, MessageSquare, Loader, UserPlus, Image as ImageIcon, MoreVertical, UserMinus, Ban, CheckCircle, XCircle, AlertCircle, Zap, Smile } from 'lucide-react';
 import { useAppContext } from '../../context/AppContext';
 import MoodDisplay from '../../components/ui/MoodDisplay';
 import ScheduleCallModal from '../connections/components/ScheduleCallModal';
@@ -285,6 +285,41 @@ const ProfileDetailScreen = () => {
 
   const isSuperLinker = person?.is_super_linker || false;
   const isVerifiedUser = isUserVerified(person);
+  const sharedWisdom = person?.sharer_insights || {};
+  const selectedCommunityGratitude = Array.isArray(sharedWisdom?.communityGratitude)
+    ? sharedWisdom.communityGratitude.filter((item) => String(item?.text || '').trim()).slice(0, 3)
+    : (Array.isArray(person?.gratitude)
+      ? person.gratitude.filter((item) => String(item?.text || '').trim()).slice(0, 3)
+      : []);
+  const hasSharedWisdom = !!(
+    sharedWisdom?.youngerSelf ||
+    (Array.isArray(sharedWisdom?.lifeLessons) && sharedWisdom.lifeLessons.length > 0) ||
+    sharedWisdom?.societyChange ||
+    selectedCommunityGratitude.length > 0
+  );
+
+  const curiosityHookText = (sharedWisdom?.youngerSelf || '').trim();
+  const experiencesSharedItems = Array.isArray(sharedWisdom?.lifeLessons)
+    ? sharedWisdom.lifeLessons
+        .map((item) => String(item?.lesson || '').trim())
+        .filter(Boolean)
+    : [];
+  const conversationVibeText = (sharedWisdom?.societyChange || '').trim();
+  const educationList = Array.isArray(person?.education) ? person.education : [];
+  const primaryEducation = educationList.length > 0 ? educationList[0] : null;
+  const educationDisplay = primaryEducation?.name
+    ? `${primaryEducation.name}${primaryEducation.passing_year ? ` '${String(primaryEducation.passing_year).slice(-2)}` : ''}`
+    : '';
+  const roleBadgeText = primaryEducation?.enrollment_status === 'currently_enrolled'
+    ? 'Student'
+    : primaryEducation?.enrollment_status === 'alumni'
+      ? 'Alumni'
+      : (person?.role || '').toLowerCase().includes('student')
+        ? 'Student'
+        : '';
+  const focusDisplay = person?.industry || person?.focus || '';
+  const lookingForDisplay = person?.exploring || person?.connection_goal || person?.onboarding_answers?.LOOKING_FOR || '';
+  const headlineStatusText = roleBadgeText || ((person?.role || '').toLowerCase().includes('alumni') ? 'Alumni' : '');
 
   return (
     <>
@@ -335,9 +370,9 @@ const ProfileDetailScreen = () => {
       )}
 
       <div className="flex flex-col h-full bg-slate-100">
-        <div className="flex-grow overflow-y-auto pb-28">
+        <div className="grow overflow-y-auto pb-28">
           <div className="relative w-full h-64 bg-cover bg-center" style={{ backgroundImage: `url(${getAvatarUrlWithSize(person, 400)})` }}>
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent"></div>
+            <div className="absolute inset-0 bg-linear-to-t from-black/80 to-transparent"></div>
             <button onClick={handleGoBack} className="absolute top-4 left-4 p-2 bg-black/30 backdrop-blur-sm rounded-full text-white hover:bg-black/50 transition-colors z-10">
               <ArrowLeft className="w-6 h-6" />
             </button>
@@ -381,7 +416,7 @@ const ProfileDetailScreen = () => {
             </div>
 
             {isSuperLinker && (
-              <div className="absolute top-16 right-4 flex items-center px-3 py-1.5 bg-gradient-to-r from-amber-400 to-yellow-500 rounded-full shadow-lg text-white font-bold text-sm">
+              <div className="absolute top-16 right-4 flex items-center px-3 py-1.5 bg-linear-to-r from-amber-400 to-yellow-500 rounded-full shadow-lg text-white font-bold text-sm">
                 <Star className="w-5 h-5 mr-1.5 fill-white" />
                 Super ListenLinker
               </div>
@@ -399,35 +434,13 @@ const ProfileDetailScreen = () => {
               />
               {!person?.is_super_linker && <MoodDisplay moodIndex={person.mood} />}
             </div>
-            {(person.role || person.company) && (
-              <p className="text-base font-semibold text-indigo-600 mb-4">
-                {person.role && person.company ? `${person.role} at ${person.company}` : person.role || person.company}
+            {(focusDisplay || headlineStatusText) && (
+              <p className="mb-4 text-sm font-semibold text-indigo-600">
+                {focusDisplay || ''}
+                {focusDisplay && headlineStatusText ? ' • ' : ''}
+                {headlineStatusText || ''}
               </p>
             )}
-            {!person.role && !person.company && <p className="text-base font-semibold text-slate-500 mb-4">No role or company specified</p>}
-
-            {/* Education Section */}
-            {person.education && person.education.length > 0 && (
-              <div className="mb-6 bg-slate-50 p-4 rounded-xl border border-slate-200">
-                <div className="flex items-center gap-2 mb-3">
-                  <Briefcase className="w-5 h-5 text-indigo-600" />
-                  <h3 className="text-sm font-bold text-slate-800 uppercase">Education</h3>
-                </div>
-                <div className="space-y-3">
-                  {person.education.map((school, index) => (
-                    <div key={index} className="flex items-start">
-                      <div className="flex-1">
-                        <p className="font-semibold text-slate-800">{school.name}</p>
-                        <p className="text-sm text-slate-500">
-                          {school.entry_year} - {school.passing_year || 'Present'}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
             {isSuperLinker && (
               <div className="flex items-center space-x-4 mb-6 p-4 bg-slate-50 rounded-xl border border-slate-200">
                 <div className="flex-1 flex items-center">
@@ -450,19 +463,6 @@ const ProfileDetailScreen = () => {
 
             <p className="text-base text-slate-700 leading-relaxed mb-6">{person.bio || 'No bio available'}</p>
 
-            {person.expertise && (
-              <div className="mb-6">
-                <p className="text-xs font-bold text-indigo-600 uppercase mb-2">Expert In</p>
-                <div className="flex flex-wrap gap-2">
-                  {person.expertise.split(',').map((tag, index) => (
-                    <span key={index} className="px-3 py-1.5 text-sm font-semibold bg-indigo-100 text-indigo-700 rounded-full border border-indigo-300">
-                      {tag.trim()}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-
             {person.tags && person.tags.length > 0 && (
               <div className="flex flex-wrap gap-2 mb-6">
                 {person.tags.map(tag => (
@@ -470,6 +470,45 @@ const ProfileDetailScreen = () => {
                     {tag}
                   </span>
                 ))}
+              </div>
+            )}
+
+            {(educationDisplay || focusDisplay || lookingForDisplay) && (
+              <div className="mb-6 bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-4">
+                {educationDisplay && (
+                  <div className="flex items-start gap-3">
+                    <Briefcase className="w-5 h-5 text-indigo-400 mt-0.5 shrink-0" />
+                    <div>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Education</p>
+                      <p className="font-semibold text-slate-800 flex items-center gap-2 flex-wrap">
+                        <span>{educationDisplay}</span>
+                        {roleBadgeText && (
+                          <span className="px-2 py-0.5 text-[10px] font-bold rounded uppercase tracking-wider bg-indigo-100 text-indigo-700">{roleBadgeText}</span>
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {focusDisplay && (
+                  <div className="flex items-start gap-3">
+                    <Zap className="w-5 h-5 text-amber-500 mt-0.5 shrink-0" />
+                    <div>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Current Focus / Industry</p>
+                      <p className="font-semibold text-slate-800">{focusDisplay}</p>
+                    </div>
+                  </div>
+                )}
+
+                {lookingForDisplay && (
+                  <div className="flex items-start gap-3">
+                    <Users className="w-5 h-5 text-rose-400 mt-0.5 shrink-0" />
+                    <div>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Looking For</p>
+                      <p className="font-semibold text-slate-800">{lookingForDisplay}</p>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -501,16 +540,16 @@ const ProfileDetailScreen = () => {
           {/* Bio Tab Content */}
           {activeTab === 'bio' && (
             <>
-              {person.gratitude && person.gratitude.length > 0 && (
+              {isSuperLinker && selectedCommunityGratitude.length > 0 && (
                 <div className="bg-white p-6 mt-4 shadow-lg mx-0">
                   <div className="flex items-center mb-6">
-                    <div className="flex-shrink-0 w-12 h-12 flex items-center justify-center bg-gradient-to-br from-green-500 to-emerald-600 text-white rounded-xl shadow-lg mr-4">
+                    <div className="shrink-0 w-12 h-12 flex items-center justify-center bg-linear-to-br from-green-500 to-emerald-600 text-white rounded-xl shadow-lg mr-4">
                       <ThumbsUp className="w-6 h-6" />
                     </div>
                     <h3 className="text-xl font-extrabold text-slate-800">Community Gratitude</h3>
                   </div>
                   <div className="space-y-4">
-                    {person.gratitude.map((item, index) => (
+                    {selectedCommunityGratitude.map((item, index) => (
                       <div key={index} className="p-4 rounded-xl border border-slate-200 bg-slate-50">
                         <blockquote className="text-base text-slate-700 italic mb-2">
                           "{item.text}"
@@ -524,68 +563,54 @@ const ProfileDetailScreen = () => {
                 </div>
               )}
 
-              {person.sharer_insights && Object.keys(person.sharer_insights).length > 0 && (
-                person.sharer_insights.youngerSelf ||
-                person.sharer_insights.lifeLessons?.length > 0 ||
-                person.sharer_insights.societyChange
-              ) && (
+              {hasSharedWisdom && (
                   <div className="bg-white p-6 mt-4 shadow-lg mx-0">
                     <div className="flex items-center mb-6">
-                      <div className="flex-shrink-0 w-12 h-12 flex items-center justify-center bg-gradient-to-br from-indigo-500 to-purple-600 text-white rounded-xl shadow-lg mr-4">
+                      <div className="shrink-0 w-12 h-12 flex items-center justify-center bg-linear-to-br from-indigo-500 to-purple-600 text-white rounded-xl shadow-lg mr-4">
                         <ThumbsUp className="w-6 h-6" />
                       </div>
                       <h3 className="text-xl font-extrabold text-slate-800">My Shared Wisdom</h3>
                     </div>
 
-                    {person.sharer_insights.youngerSelf && (
+                    {curiosityHookText && (
                       <div className="mb-6">
                         <div className="flex items-center text-sm font-bold text-slate-600 mb-2">
-                          <Clock className="w-4 h-4 mr-2 text-slate-400" />
-                          ADVICE TO MY YOUNGER SELF
+                          <Zap className="w-4 h-4 mr-2 text-amber-500" />
+                          CURIOSITY HOOK
                         </div>
                         <blockquote className="text-base text-slate-700 italic border-l-4 border-indigo-200 pl-4 py-2 bg-slate-50 rounded-r-lg">
-                          "{person.sharer_insights.youngerSelf}"
+                          "{curiosityHookText}"
                         </blockquote>
                       </div>
                     )}
 
-                    {person.sharer_insights.lifeLessons && Array.isArray(person.sharer_insights.lifeLessons) && person.sharer_insights.lifeLessons.length > 0 && (
+                    {experiencesSharedItems.length > 0 && (
                       <div className="mb-6">
                         <div className="flex items-center text-sm font-bold text-slate-600 mb-3">
                           <Briefcase className="w-4 h-4 mr-2 text-slate-400" />
-                          KEY LIFE LESSONS
+                          EXPERIENCES SHARED
                         </div>
-                        <div className="space-y-4">
-                          {person.sharer_insights.lifeLessons.map((exp, index) => (
-                            <div key={index} className="p-4 rounded-xl border border-slate-200 bg-white shadow-sm">
-                              <p className="text-base font-semibold text-slate-800 italic mb-3">"{exp.lesson}"</p>
-                              <div className="text-sm font-medium text-slate-500 space-y-1">
-                                <div className="flex items-center">
-                                  <Briefcase className="w-4 h-4 mr-2 text-indigo-500 flex-shrink-0" />
-                                  <span>Learned at: <span className="font-semibold text-slate-600">{exp.where}</span></span>
-                                </div>
-                                {exp.when && (
-                                  <div className="flex items-center">
-                                    <Calendar className="w-4 h-4 mr-2 text-indigo-500 flex-shrink-0" />
-                                    <span>When: <span className="font-semibold text-slate-600">{exp.when}</span></span>
-                                  </div>
-                                )}
-                              </div>
+                        <div className="space-y-3">
+                          {experiencesSharedItems.map((lesson, index) => (
+                            <div key={index} className="p-3 rounded-xl border border-slate-200 bg-white shadow-sm flex items-start">
+                              <CheckCircle className="w-5 h-5 text-green-500 mr-2.5 shrink-0" />
+                              <span className="text-sm font-semibold text-slate-800">{lesson}</span>
                             </div>
                           ))}
                         </div>
                       </div>
                     )}
 
-                    {person.sharer_insights.societyChange && (
+                    {conversationVibeText && (
                       <div>
                         <div className="flex items-center text-sm font-bold text-slate-600 mb-2">
                           <Users className="w-4 h-4 mr-2 text-slate-400" />
-                          CHANGE I WANT TO SEE
+                          CONVERSATION VIBE
                         </div>
-                        <blockquote className="text-base text-slate-700 italic border-l-4 border-indigo-200 pl-4 py-2 bg-slate-50 rounded-r-lg">
-                          "{person.sharer_insights.societyChange}"
-                        </blockquote>
+                        <div className="p-3 rounded-xl border border-slate-200 bg-white shadow-sm flex items-start">
+                          <Smile className="w-5 h-5 text-indigo-500 mr-2.5 shrink-0" />
+                          <span className="text-sm font-semibold text-slate-800">{conversationVibeText}</span>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -656,7 +681,7 @@ const ProfileDetailScreen = () => {
           <div className="flex space-x-3">
             {person?.is_super_linker ? (
               // Super Listeners: Only show Schedule Consultation button
-              <Button onClick={() => setIsModalOpen(true)} className="flex-1 !bg-rose-500">
+              <Button onClick={() => setIsModalOpen(true)} className="flex-1 bg-rose-500!">
                 <Calendar className="w-5 h-5 inline mr-2" /> Schedule Consultation
               </Button>
             ) : (
@@ -667,7 +692,7 @@ const ProfileDetailScreen = () => {
                     onClick={handleStartChat}
                     disabled={isSendingRequest}
                     primary
-                    className="flex-1 !bg-indigo-600 !text-white"
+                    className="flex-1 bg-indigo-600! text-white!"
                   >
                     {isSendingRequest ? (
                       <>
@@ -680,7 +705,7 @@ const ProfileDetailScreen = () => {
                     )}
                   </Button>
                 ) : requestSent ? (
-                  <Button disabled className="flex-1 !bg-green-50 !text-green-600">
+                  <Button disabled className="flex-1 bg-green-50! text-green-600!">
                     <UserPlus className="w-5 h-5 inline mr-2" /> Request Sent
                   </Button>
                 ) : (
@@ -688,7 +713,7 @@ const ProfileDetailScreen = () => {
                     onClick={handleSendRequest}
                     disabled={isSendingRequest}
                     primary
-                    className="flex-1 !bg-indigo-100 !text-indigo-700"
+                    className="flex-1 bg-indigo-100! text-indigo-700!"
                   >
                     {isSendingRequest ? (
                       <>
@@ -701,7 +726,7 @@ const ProfileDetailScreen = () => {
                     )}
                   </Button>
                 )}
-                <Button onClick={() => setIsModalOpen(true)} className="flex-1 !bg-rose-500">
+                <Button onClick={() => setIsModalOpen(true)} className="flex-1 bg-rose-500!">
                   <Calendar className="w-5 h-5 inline mr-2" /> Schedule Call
                 </Button>
               </>

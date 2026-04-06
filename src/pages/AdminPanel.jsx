@@ -66,6 +66,18 @@ const AdminLogin = ({ onLoginSuccess }) => {
     }
   };
 
+  const handleGoogleLogin = async () => {
+    setError('');
+    try {
+      const response = await authService.getGoogleLoginUrl('/admin');
+      if (response?.url) {
+        window.location.href = response.url;
+      }
+    } catch (err) {
+      setError('Google sign in failed. Please try again.');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-slate-200 flex items-center justify-center px-4 relative overflow-hidden">
       {/* Decorative background blobs */}
@@ -116,6 +128,15 @@ const AdminLogin = ({ onLoginSuccess }) => {
             style={{ background: BRAND }}
           >
             {loading ? 'Authenticating...' : 'Sign In'}
+          </button>
+
+          <button
+            type="button"
+            onClick={handleGoogleLogin}
+            disabled={loading}
+            className="w-full py-3.5 rounded-2xl border border-slate-300 bg-white text-slate-700 font-semibold hover:bg-slate-50 transition-colors disabled:opacity-70"
+          >
+            Continue with Google
           </button>
 
           <a href="/" className="block text-center mt-6 text-sm font-semibold text-slate-400 hover:text-slate-600 transition-colors">

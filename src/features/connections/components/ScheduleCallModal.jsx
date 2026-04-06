@@ -28,6 +28,12 @@ const ScheduleCallModal = ({ isOpen, onClose, person, onSuccess }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [successData, setSuccessData] = useState(null); // Will store booking response including calendar_url
 
+  const handleDraftIntro = () => {
+    const focus = person?.tags?.[0] || person?.industry || 'your work';
+    const name = person?.name || person?.full_name || 'there';
+    setMessage(`Hi ${name}, your experience in ${focus} stood out to me. I would love to chat and learn from your journey.`);
+  };
+
   const isSuperLinker = person?.is_super_linker || ((person?.connections || 0) > 200 && (person?.trustScore || 0) >= 3.0);
   const payRatePerMin = person?.pay_rate_per_min || 0;
   const callPrice = isSuperLinker ? selectedDuration * payRatePerMin : 0;
@@ -276,7 +282,15 @@ const ScheduleCallModal = ({ isOpen, onClose, person, onSuccess }) => {
             </div>
           )}
           
-          <h3 className="text-base font-bold text-slate-800 mb-3">Write a Note (Optional)</h3>
+          <div className="flex justify-between items-center mb-3">
+            <h3 className="text-base font-bold text-slate-800">Write a Note (Optional)</h3>
+            <button
+              onClick={handleDraftIntro}
+              className="text-[10px] bg-indigo-50 text-indigo-700 font-bold px-2 py-1 rounded border border-indigo-200 hover:bg-indigo-100 transition-colors"
+            >
+              Draft Intro
+            </button>
+          </div>
           <textarea 
             className="w-full p-3 border border-slate-300 rounded-xl resize-none focus:ring-indigo-500 focus:border-indigo-500 text-sm" 
             rows="3" 

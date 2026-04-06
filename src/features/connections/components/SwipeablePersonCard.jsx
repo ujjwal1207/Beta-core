@@ -31,7 +31,7 @@ const SwipeablePersonCard = ({ person, onAction, style, isTop }) => {
       >
         <StarBadge isSuper={isSuperLinker} />
         
-        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent"></div>
+        <div className="absolute inset-0 bg-linear-to-t from-black/90 via-black/60 to-transparent"></div>
         <div className="relative w-full text-white p-4 sm:p-6">
           <div className="flex items-center mb-2">
             <button onClick={handleNameClick} className="text-left touch-manipulation">
@@ -55,8 +55,8 @@ const SwipeablePersonCard = ({ person, onAction, style, isTop }) => {
           </div>
           <div className="flex gap-2 sm:gap-3 pt-2">
             {isRequested ? (
-              <Button disabled className="flex-1 !bg-green-500 !text-white !text-sm sm:!text-base !py-2.5 sm:!py-3 touch-manipulation">
-                <CheckCircle className="w-4 h-4 inline mr-1 sm:mr-2 text-white"/> Sent
+              <Button disabled className="flex-1 bg-green-500! text-white! text-xs! sm:text-sm! py-2! sm:py-2.5! whitespace-nowrap touch-manipulation">
+                <CheckCircle className="w-3.5 h-3.5 inline mr-1 sm:mr-2 text-white"/> Sent
               </Button>
             ) : (
               <Button 
@@ -69,13 +69,13 @@ const SwipeablePersonCard = ({ person, onAction, style, isTop }) => {
                   }
                 }} 
                 primary 
-                className="flex-1 !bg-white !text-slate-800 !text-sm sm:!text-base !py-2.5 sm:!py-3 touch-manipulation"
+                className="flex-1 bg-white! text-slate-800! text-xs! sm:text-sm! py-2! sm:py-2.5! whitespace-nowrap touch-manipulation"
               >
-                <UserPlus className="w-4 h-4 inline mr-1 sm:mr-2 text-indigo-500"/> Connect
+                <UserPlus className="w-3.5 h-3.5 inline mr-1 sm:mr-2 text-indigo-500"/> Connect
               </Button>
             )}
-            <Button onClick={() => setIsModalOpen(true)} className="flex-1 !text-sm sm:!text-base !py-2.5 sm:!py-3 touch-manipulation">
-              <Calendar className="w-4 h-4 inline mr-1 sm:mr-2"/> Schedule Call
+            <Button onClick={() => setIsModalOpen(true)} className="flex-1 text-xs! sm:text-sm! py-2! sm:py-2.5! whitespace-nowrap touch-manipulation">
+              <Calendar className="w-3.5 h-3.5 inline mr-1 sm:mr-2"/> Schedule Call
             </Button>
           </div>
         </div>

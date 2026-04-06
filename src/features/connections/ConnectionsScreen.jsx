@@ -98,7 +98,7 @@ const SwipeablePeopleScreen = () => {
                 </h2>
                 {section.people.map(person => (
                   <div key={person.id} className="w-full max-w-sm mx-auto flex-shrink-0">
-                    <div className="relative w-full" style={{ height: '45vh', minHeight: '300px', maxHeight: '500px' }}>
+                    <div className="relative w-full" style={{ height: '56vh', minHeight: '420px', maxHeight: '680px' }}>
                       <SwipeablePersonCard
                         person={{
                           id: person.id,
@@ -213,6 +213,15 @@ const PersonResultCard = ({ person }) => {
               <MoodDisplay moodIndex={person.mood} />
             </div>
             <p className="text-xs text-slate-500 truncate">{person.role || 'No role specified'}</p>
+            {person.matchedTags && person.matchedTags.length > 0 && (
+              <div className="flex flex-wrap gap-1 mt-1.5">
+                {person.matchedTags.map((tag) => (
+                  <span key={tag} className="px-2 py-0.5 bg-indigo-50 text-indigo-700 text-[10px] font-bold rounded-full border border-indigo-100">
+                    Smart Match: {tag}
+                  </span>
+                ))}
+              </div>
+            )}
           </button>
         </div>
         <div className="flex gap-2 ml-2 sm:ml-3 flex-shrink-0">
@@ -301,7 +310,26 @@ const FindConnectionScreen = () => {
       });
 
       const data = await connectionsService.search(trimmedQuery, 20, activeFilters);
-      setResults(data);
+      const mapped = (data || []).map((person) => {
+        const searchable = [
+          ...(Array.isArray(person.tags) ? person.tags : []),
+          person.role || '',
+          person.industry || '',
+          person.expertise || ''
+        ];
+
+        const matchedTags = trimmedQuery
+          ? searchable
+            .filter(Boolean)
+            .map((item) => String(item))
+            .filter((item) => item.toLowerCase().includes(trimmedQuery.toLowerCase()))
+            .slice(0, 3)
+          : [];
+
+        return { ...person, matchedTags };
+      });
+
+      setResults(mapped);
     } catch (err) {
       console.error('Search error:', err);
       setResults([]);

@@ -91,8 +91,10 @@ const authService = {
   /**
    * Get Google OAuth login URL
    */
-  getGoogleLoginUrl: async () => {
-    const response = await api.get('/auth/google/login');
+  getGoogleLoginUrl: async (nextPath = '') => {
+    const response = await api.get('/auth/google/login', {
+      params: nextPath ? { next: nextPath } : {}
+    });
     return response.data;
   },
 };

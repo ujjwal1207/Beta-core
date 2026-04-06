@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, Settings, User, Edit3, Plus, Loader, Users, Camera, GraduationCap, BookOpen } from 'lucide-react';
+import { ArrowLeft, Settings, User, Edit3, Plus, Loader, Users, Camera, GraduationCap, BookOpen, Briefcase, Zap, CheckCircle, Smile } from 'lucide-react';
 import { useAppContext } from '../../context/AppContext';
-import ProfileCompletionNudge from './components/ProfileCompletionNudge';
-import FeedJourneyCard from '../feed/components/FeedJourneyCard';
+import BasicProfileModal from './components/BasicProfileModal';
 import Button from '../../components/ui/Button';
 import { MOOD_LABELS, MOOD_COLORS, getMoodGradient } from '../../config/theme';
 import PostCard from '../feed/components/PostCard';
 import feedService from '../../services/feedService';
 import userService from '../../services/userService';
+import callsService from '../../services/callsService';
 import { getAvatarUrlWithSize } from '../../lib/avatarUtils';
 
 // ── Searchable university combobox ─────────────────────────────────────────
@@ -82,7 +82,7 @@ const UniversitySearchInput = ({ universities, selectedId, selectedName, onChang
               </svg>
             </button>
           )}
-          <svg className="w-4 h-4 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-4 h-4 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             {open
               ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />}
@@ -121,6 +121,49 @@ const UniversitySearchInput = ({ universities, selectedId, selectedName, onChang
 const UserProfileScreen = () => {
   const { setScreen, onboardingAnswers, setOnboardingAnswers, user, updateUserProfile, updateUserMood } = useAppContext();
 
+  const SMART_TAG_SUGGESTIONS = [
+    'Career Growth',
+    'Networking',
+    'Software Engineering',
+    'Product Management',
+    'UX Design',
+    'Data Science',
+    'Marketing',
+    'Finance',
+    'Startups',
+    'Study Abroad',
+    'Higher Education',
+    'Interview Prep',
+  ];
+
+  const isProtectedTag = (tag) => {
+    if (!tag) return false;
+    const normalized = String(tag).trim().toLowerCase();
+    return normalized.startsWith('verified_') || normalized.startsWith('institution_');
+  };
+
+  const sanitizeTag = (tag) =>
+    String(tag || '')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 30);
+
+  const mergeUniqueTags = (tags = []) => {
+    const seen = new Set();
+    const result = [];
+
+    for (const tag of tags) {
+      const cleanTag = sanitizeTag(tag);
+      if (!cleanTag) continue;
+      const key = cleanTag.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      result.push(cleanTag);
+    }
+
+    return result;
+  };
+
   // Use backend user data instead of local profileData
   const [localName, setLocalName] = useState('');
   const [localRole, setLocalRole] = useState('');
@@ -128,7 +171,11 @@ const UserProfileScreen = () => {
   const [localTagline, setLocalTagline] = useState('');
   const [localLocation, setLocalLocation] = useState('');
   const [localIndustry, setLocalIndustry] = useState('');
+  const [localLookingFor, setLocalLookingFor] = useState('');
   const [localExpertise, setLocalExpertise] = useState('');
+  const [localTags, setLocalTags] = useState([]);
+  const [customTagInput, setCustomTagInput] = useState('');
+  const [isGeneratingTags, setIsGeneratingTags] = useState(false);
   const [currentMood, setCurrentMood] = useState(0);
   const [isDirty, setIsDirty] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -141,22 +188,9 @@ const UserProfileScreen = () => {
   const [postsLoading, setPostsLoading] = useState(false);
   const [savedPosts, setSavedPosts] = useState([]);
   const [savedLoading, setSavedLoading] = useState(false);
-  // Calculate if user has incomplete profile (should show expanded About Me section)
-  const hasIncompleteProfile = () => {
-    if (!user) return true; // New users should see expanded section
-
-    // Check basic profile fields
-    const basicFieldsIncomplete = !user.full_name?.trim() || !user.bio?.trim() ||
-      !user.location?.trim() || !user.industry?.trim() ||
-      !user.role?.trim() || !user.expertise?.trim();
-
-    // Check if onboarding journey is incomplete
-    const onboardingIncomplete = !onboardingAnswers || Object.keys(onboardingAnswers).length === 0;
-
-    return basicFieldsIncomplete || onboardingIncomplete;
-  };
-
-  const [isAboutMeExpanded, setIsAboutMeExpanded] = useState(hasIncompleteProfile());
+  const [isBasicSetupOpen, setIsBasicSetupOpen] = useState(false);
+  const [isBasicEditMode, setIsBasicEditMode] = useState(false);
+  const [isAdditionalEditMode, setIsAdditionalEditMode] = useState(false);
   const [education, setEducation] = useState([]);
   const [universities, setUniversities] = useState([]);
   const [universitiesLoading, setUniversitiesLoading] = useState(false);
@@ -164,11 +198,16 @@ const UserProfileScreen = () => {
   const [editingSchoolIndex, setEditingSchoolIndex] = useState(null);
   const [newSchool, setNewSchool] = useState({ university_id: '', name: '', entry_year: '', passing_year: '', enrollment_status: '' });
   const [isEditingSharerInsights, setIsEditingSharerInsights] = useState(false);
+  const [isEditingCommunityGratitude, setIsEditingCommunityGratitude] = useState(false);
   const [editingSharerInsights, setEditingSharerInsights] = useState({
     youngerSelf: '',
     lifeLessons: [],
-    societyChange: ''
+    societyChange: '',
+    communityGratitude: [],
   });
+  const [userReviews, setUserReviews] = useState([]);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
+  const [gratitudeSelectionError, setGratitudeSelectionError] = useState('');
 
   // Load user data from backend
   useEffect(() => {
@@ -179,13 +218,178 @@ const UserProfileScreen = () => {
       setLocalTagline(user.bio || '');
       setLocalLocation(user.location || '');
       setLocalIndustry(user.industry || '');
+      setLocalLookingFor(user.exploring || onboardingAnswers?.LOOKING_FOR || '');
       setLocalExpertise(user.expertise || '');
+      const persistedTags = Array.isArray(user.tags) ? user.tags : [];
+      const fallbackTags = (user.expertise || '')
+        .split(',')
+        .map((tag) => tag.trim())
+        .filter(Boolean);
+
+      const editableTags = mergeUniqueTags(
+        (persistedTags.length ? persistedTags : fallbackTags).filter((tag) => !isProtectedTag(tag))
+      );
+
+      setLocalTags(editableTags);
+      setCustomTagInput('');
       // Set photo preview from existing profile photo only if no new photo is selected
       if (user.profile_photo) {
         setPhotoPreview(user.profile_photo);
       }
     }
-  }, [user?.id]); // Only when user changes (not on every user object update)
+  }, [user?.id]); // Initialize from user only when user identity changes
+
+  const calculateProfileCompletion = () => {
+    const completionChecks = [
+      String(localName || '').trim().length > 0,
+      String(localRole || '').trim().length > 0,
+      String(localIndustry || '').trim().length > 0,
+      String(localLookingFor || '').trim().length > 0,
+      String(localTagline || '').trim().length > 0,
+      Array.isArray(education) && education.length > 0,
+    ];
+
+    const completed = completionChecks.filter(Boolean).length;
+    return Math.max(15, Math.round((completed / completionChecks.length) * 100));
+  };
+
+  const completionPercentage = calculateProfileCompletion();
+
+  const primaryEducation = education && education.length > 0 ? education[0] : null;
+  const educationDisplay = primaryEducation
+    ? `${primaryEducation.name}${primaryEducation.passing_year ? ` '${String(primaryEducation.passing_year).slice(-2)}` : ''}`
+    : 'Not set';
+
+  const lookingForDisplay =
+    localLookingFor ||
+    user?.exploring ||
+    onboardingAnswers?.LOOKING_FOR ||
+    'Advice on higher studies & exams';
+
+  const handleAutoTagBio = () => {
+    setIsGeneratingTags(true);
+    setTimeout(() => {
+      const text = `${localTagline} ${localRole} ${localIndustry}`.toLowerCase();
+      const tags = [];
+      if (text.includes('design') || text.includes('ux')) tags.push('UX Design');
+      if (text.includes('react') || text.includes('frontend') || text.includes('engineer')) tags.push('Software Engineering');
+      if (text.includes('startup') || text.includes('founder')) tags.push('Startups');
+      if (text.includes('product')) tags.push('Product Management');
+      if (text.includes('market')) tags.push('Marketing');
+      if (text.includes('finance')) tags.push('Finance');
+      setLocalTags((prev) => mergeUniqueTags([...(tags.length ? tags : ['Networking', 'Career Growth']), ...prev]));
+      setIsDirty(true);
+      setIsGeneratingTags(false);
+    }, 700);
+  };
+
+  const handleAddCustomTag = () => {
+    const cleanTag = sanitizeTag(customTagInput);
+    if (!cleanTag) return;
+
+    setLocalTags((prev) => mergeUniqueTags([cleanTag, ...prev]));
+    setCustomTagInput('');
+    setIsDirty(true);
+  };
+
+  const handleRemoveTag = (tagToRemove) => {
+    setLocalTags((prev) => prev.filter((tag) => tag.toLowerCase() !== String(tagToRemove).toLowerCase()));
+    setIsDirty(true);
+  };
+
+  const handleAddSuggestedTag = (tag) => {
+    setLocalTags((prev) => mergeUniqueTags([tag, ...prev]));
+    setIsDirty(true);
+  };
+
+  const handleAutoWriteBio = () => {
+    setIsGeneratingTags(true);
+    setTimeout(() => {
+      const role = localRole || 'professional';
+      const location = localLocation ? ` based in ${localLocation}` : '';
+      setLocalTagline(`I am a ${role}${location} focused on growth, meaningful conversations, and sharing practical lessons from my journey.`);
+      setIsGeneratingTags(false);
+      setIsDirty(true);
+    }, 700);
+  };
+
+  const handleBasicSetupSave = async (data) => {
+    const nextName = data?.name || '';
+    const nextLocation = data?.location || '';
+    const nextIndustry = data?.industry || data?.focus || '';
+    const nextExpertise = data?.expertise || '';
+    const nextLookingFor = data?.exploring || data?.connectionGoal || '';
+
+    setLocalName(nextName);
+    setLocalLocation(nextLocation);
+    setLocalIndustry(nextIndustry);
+    setLocalExpertise(nextExpertise);
+    setLocalLookingFor(nextLookingFor);
+
+    if (data?.role) {
+      setLocalRole(data.role);
+    }
+
+    let mergedEducation = null;
+    if (Array.isArray(data?.education) && data.education.length > 0) {
+      const incomingPrimary = data.education[0] || {};
+      const existingPrimary = Array.isArray(education) && education.length > 0 ? education[0] : null;
+      const isSameSchool =
+        existingPrimary &&
+        (
+          (incomingPrimary.university_id && existingPrimary.university_id && String(incomingPrimary.university_id) === String(existingPrimary.university_id)) ||
+          (String(incomingPrimary.name || '').trim().toLowerCase() === String(existingPrimary.name || '').trim().toLowerCase())
+        );
+
+      mergedEducation = data.education.map((item, idx) => {
+        if (idx !== 0) return item;
+
+        const fallbackStatus = isSameSchool
+          ? existingPrimary?.approval_status
+          : null;
+
+        return {
+          ...item,
+          approval_status: item?.approval_status || fallbackStatus || 'not_verified',
+        };
+      });
+
+      setEducation(mergedEducation);
+    }
+
+    if (Array.isArray(data?.topics)) {
+      setLocalTags(data.topics);
+    }
+
+    const updatedOnboardingAnswers = { ...onboardingAnswers };
+    if (nextLookingFor.trim()) updatedOnboardingAnswers.LOOKING_FOR = nextLookingFor.trim();
+    else delete updatedOnboardingAnswers.LOOKING_FOR;
+    setOnboardingAnswers(updatedOnboardingAnswers);
+
+    try {
+      setIsSaving(true);
+      setSaveError('');
+
+      await updateUserProfile({
+        full_name: nextName,
+        location: nextLocation,
+        industry: nextIndustry,
+        expertise: nextExpertise,
+        exploring: nextLookingFor,
+        role: data?.role || localRole,
+        education: mergedEducation || education,
+        onboarding_answers: updatedOnboardingAnswers,
+      });
+
+      setIsDirty(false);
+    } catch (error) {
+      console.error('Error saving basic profile setup:', error);
+      setSaveError('Failed to save basic profile setup. Please try again.');
+      setIsDirty(true);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   // Load education separately to avoid overwriting unsaved changes
   useEffect(() => {
@@ -217,10 +421,35 @@ const UserProfileScreen = () => {
       setEditingSharerInsights({
         youngerSelf: user.sharer_insights.youngerSelf || '',
         lifeLessons: user.sharer_insights.lifeLessons || [],
-        societyChange: user.sharer_insights.societyChange || ''
+        societyChange: user.sharer_insights.societyChange || '',
+        communityGratitude: Array.isArray(user.sharer_insights.communityGratitude)
+          ? user.sharer_insights.communityGratitude.slice(0, 3)
+          : [],
       });
     }
   }, [user?.id]); // Only when user changes
+
+  useEffect(() => {
+    const fetchUserReviews = async () => {
+      if (!user?.id || !user?.is_super_linker) {
+        setUserReviews([]);
+        return;
+      }
+
+      try {
+        setReviewsLoading(true);
+        const reviews = await callsService.getUserReviews(user.id, 50);
+        setUserReviews(Array.isArray(reviews) ? reviews : []);
+      } catch (error) {
+        console.error('Error fetching user reviews for gratitude selection:', error);
+        setUserReviews([]);
+      } finally {
+        setReviewsLoading(false);
+      }
+    };
+
+    fetchUserReviews();
+  }, [user?.id, user?.is_super_linker]);
 
   // Sync mood separately to ensure it updates when changed from other screens
   useEffect(() => {
@@ -273,9 +502,64 @@ const UserProfileScreen = () => {
     lifeLessons: onboardingAnswers['SHARER_TRACK_2'],
     societyChange: onboardingAnswers['SHARER_TRACK_3'],
   };
-  const hasSharerInsights = sharerInsights.youngerSelf || (sharerInsights.lifeLessons && sharerInsights.lifeLessons.length > 0) || sharerInsights.societyChange;
+  const selectedCommunityGratitude = Array.isArray(sharerInsights.communityGratitude)
+    ? sharerInsights.communityGratitude.filter((item) => String(item?.text || '').trim()).slice(0, 3)
+    : [];
+  const hasSharerInsights =
+    sharerInsights.youngerSelf ||
+    (sharerInsights.lifeLessons && sharerInsights.lifeLessons.length > 0) ||
+    sharerInsights.societyChange ||
+    selectedCommunityGratitude.length > 0;
+  const curiosityHookText = (sharerInsights.youngerSelf || '').trim() || 'Ask me the exact phrase I use to increase my job offers by 20%.';
+  const experiencesSharedText =
+    sharerInsights.lifeLessons?.find((lesson) => lesson?.lesson?.trim())?.lesson?.trim() ||
+    'Key decisions that shaped my journey';
+  const conversationVibeText = (sharerInsights.societyChange || '').trim() || 'Offering practical insights for their next steps';
+
+  const toggleCommunityGratitude = (review) => {
+    const normalizedContent = String(review?.content || '').trim();
+    if (!normalizedContent) return;
+
+    const reviewId = review.id;
+
+    setEditingSharerInsights((prev) => {
+      const current = Array.isArray(prev.communityGratitude) ? prev.communityGratitude : [];
+      const alreadySelected = current.some((item) => item?.reviewId === reviewId);
+
+      if (alreadySelected) {
+        setGratitudeSelectionError('');
+        return {
+          ...prev,
+          communityGratitude: current.filter((item) => item?.reviewId !== reviewId),
+        };
+      }
+
+      if (current.length >= 3) {
+        setGratitudeSelectionError('You can select up to 3 community gratitude highlights.');
+        return prev;
+      }
+
+      setGratitudeSelectionError('');
+      return {
+        ...prev,
+        communityGratitude: [
+          ...current,
+          {
+            reviewId,
+            text: normalizedContent,
+            from: review?.reviewer_name || 'Anonymous',
+            rating: review?.rating || 0,
+            createdAt: review?.created_at || null,
+          },
+        ],
+      };
+    });
+
+    setIsDirty(true);
+  };
 
   const handleSave = async () => {
+    let didSave = false;
     setIsSaving(true);
     setSaveError(null);
 
@@ -284,7 +568,12 @@ const UserProfileScreen = () => {
       const sharerInsightsData = {
         youngerSelf: editingSharerInsights.youngerSelf.trim(),
         lifeLessons: editingSharerInsights.lifeLessons.filter(l => l.lesson.trim() || l.where.trim()),
-        societyChange: editingSharerInsights.societyChange.trim()
+        societyChange: editingSharerInsights.societyChange.trim(),
+        communityGratitude: (Array.isArray(editingSharerInsights.communityGratitude)
+          ? editingSharerInsights.communityGratitude
+          : [])
+          .filter((item) => String(item?.text || '').trim())
+          .slice(0, 3),
       };
 
       // Update onboarding answers for compatibility
@@ -298,8 +587,17 @@ const UserProfileScreen = () => {
       if (sharerInsightsData.societyChange) updatedOnboardingAnswers['SHARER_TRACK_3'] = sharerInsightsData.societyChange;
       else delete updatedOnboardingAnswers['SHARER_TRACK_3'];
 
+      if (localLookingFor.trim()) updatedOnboardingAnswers['LOOKING_FOR'] = localLookingFor.trim();
+      else delete updatedOnboardingAnswers['LOOKING_FOR'];
+
       // Update the state
       setOnboardingAnswers(updatedOnboardingAnswers);
+
+      const protectedTags = Array.isArray(user?.tags)
+        ? user.tags.filter((tag) => isProtectedTag(tag))
+        : [];
+
+      const finalTags = mergeUniqueTags([...localTags, ...protectedTags]);
 
       const fullUpdateData = {
         full_name: localName,
@@ -308,7 +606,10 @@ const UserProfileScreen = () => {
         bio: localTagline,
         location: localLocation,
         industry: localIndustry,
+        exploring: localLookingFor.trim(),
         expertise: localExpertise,
+        tags: finalTags,
+        sharer_insights: sharerInsightsData,
         education: education,
         onboarding_answers: updatedOnboardingAnswers,
       };
@@ -334,12 +635,33 @@ const UserProfileScreen = () => {
 
       setIsDirty(false);
       setIsEditingSharerInsights(false);
+      setIsEditingCommunityGratitude(false);
       setProfilePhoto(null); // Clear the file object, keep preview from server
+      didSave = true;
     } catch (error) {
       console.error('Error saving profile:', error);
       setSaveError('Failed to save changes. Please try again.');
     } finally {
       setIsSaving(false);
+    }
+
+    return didSave;
+  };
+
+  const handleAdditionalDetailsToggle = async () => {
+    if (!isAdditionalEditMode) {
+      setIsAdditionalEditMode(true);
+      return;
+    }
+
+    if (!isDirty) {
+      setIsAdditionalEditMode(false);
+      return;
+    }
+
+    const saved = await handleSave();
+    if (saved) {
+      setIsAdditionalEditMode(false);
     }
   };
 
@@ -445,16 +767,9 @@ const UserProfileScreen = () => {
           >
             <ArrowLeft className="w-5 h-5 text-slate-600" />
           </button>
-          <h1 className="text-xl font-bold text-slate-800">Profile</h1>
+          <h1 className="text-xl font-bold text-slate-800">My Profile</h1>
         </div>
         <div className="flex items-center space-x-2">
-          <button
-            onClick={() => setScreen('MY_CONNECTIONS')}
-            className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
-            aria-label="My Connections"
-          >
-            <Users className="w-5 h-5 text-slate-600" />
-          </button>
           <button
             onClick={() => setScreen('SETTINGS')}
             className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
@@ -465,12 +780,142 @@ const UserProfileScreen = () => {
         </div>
       </div>
 
-      <div className="flex-grow overflow-y-auto pt-[57px] p-4 space-y-4 pb-24">
+      <div className="grow overflow-y-auto pt-14.25 p-4 space-y-4 pb-24">
+
+        <BasicProfileModal
+          isOpen={isBasicSetupOpen}
+          onClose={() => setIsBasicSetupOpen(false)}
+          onSave={handleBasicSetupSave}
+          universities={universities}
+          universitiesLoading={universitiesLoading}
+          profileData={{
+            name: localName,
+            organization: localCompany,
+            customTagline: localTagline,
+            location: localLocation,
+            role: localRole,
+            education,
+            focus: localIndustry,
+            connectionGoal: localLookingFor,
+            industry: localIndustry,
+            expertise: localExpertise,
+            exploring: localLookingFor,
+            topics: localTags,
+          }}
+        />
+
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          onChange={handlePhotoChange}
+          className="hidden"
+        />
 
         <div className="relative bg-white p-6 rounded-xl shadow-sm border border-slate-100 w-full">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Basic Info</h2>
+            <button
+              onClick={() => setIsBasicSetupOpen(true)}
+              className="inline-flex items-center gap-1.5 text-indigo-600 hover:text-indigo-700 text-sm font-bold"
+            >
+              <Edit3 className="w-4 h-4" />
+              Edit
+            </button>
+          </div>
+
+          {!isBasicEditMode && (
+            <>
+              <div className="flex flex-col gap-3 mb-5">
+                <div className="flex items-center min-w-0 gap-3">
+                  <div className="relative shrink-0">
+                    <button
+                      type="button"
+                      onClick={handlePhotoClick}
+                      className="w-20 h-20 rounded-full bg-linear-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white text-3xl font-bold overflow-hidden shadow-lg cursor-pointer"
+                      aria-label="Change profile photo"
+                      title="Change profile photo"
+                    >
+                      {photoPreview ? (
+                        <img src={photoPreview} alt="Profile" className="w-full h-full object-cover rounded-full" />
+                      ) : (
+                        <img
+                          src={getAvatarUrlWithSize({ ...user, full_name: localName }, 96)}
+                          alt="Profile"
+                          className="w-full h-full object-cover rounded-full"
+                        />
+                      )}
+                    </button>
+                    <span className="absolute -bottom-1 -right-1 bg-indigo-600 text-white rounded-full p-1 shadow-md pointer-events-none">
+                      <Camera className="w-3.5 h-3.5" />
+                    </span>
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="text-xl sm:text-2xl font-black text-slate-800 leading-tight wrap-break-word whitespace-normal">
+                      {localName || 'Anonymous'}
+                    </h3>
+                  </div>
+                </div>
+
+                <p className="self-end text-xs font-bold uppercase tracking-widest text-indigo-600">
+                  {completionPercentage}% Complete
+                </p>
+              </div>
+
+              <div className="bg-slate-50 rounded-2xl border border-slate-200 p-4 space-y-4">
+                <div className="flex items-start gap-3">
+                  <Briefcase className="w-5 h-5 text-indigo-400 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Education</p>
+                    <p className="text-lg font-semibold text-slate-800 leading-snug">{educationDisplay}</p>
+                    {primaryEducation && (
+                      <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                        {(() => {
+                          const badge = getApprovalBadge(primaryEducation.approval_status || 'not_verified');
+                          return (
+                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold border whitespace-nowrap ${badge.className}`}>
+                              {badge.label}
+                            </span>
+                          );
+                        })()}
+                        {primaryEducation.enrollment_status === 'alumni' ? (
+                          <span className="inline-flex items-center whitespace-nowrap gap-1 text-[10px] font-bold text-violet-700 bg-violet-50 border border-violet-200 px-2 py-0.5 rounded-full">
+                            <GraduationCap className="w-3.5 h-3.5 shrink-0" />
+                            Alumni
+                          </span>
+                        ) : primaryEducation.enrollment_status === 'currently_enrolled' ? (
+                          <span className="inline-flex items-center whitespace-nowrap gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                            <BookOpen className="w-3.5 h-3.5 shrink-0" />
+                            Currently Enrolled
+                          </span>
+                        ) : null}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <Zap className="w-5 h-5 text-amber-500 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Current Focus / Industry</p>
+                    <p className="text-lg font-semibold text-slate-800 leading-snug">{localIndustry || 'Not set'}</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <Users className="w-5 h-5 text-rose-400 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Looking for</p>
+                    <p className="text-lg font-semibold text-slate-800 leading-snug">{lookingForDisplay}</p>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+
+          {isBasicEditMode && (
+            <>
           <div className="flex items-center mb-6">
             <div className="relative">
-              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white text-3xl font-bold mr-4 flex-shrink-0 overflow-hidden">
+              <div className="w-20 h-20 rounded-full bg-linear-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white text-3xl font-bold mr-4 shrink-0 overflow-hidden">
                 {photoPreview ? (
                   <img src={photoPreview} alt="Profile" className="w-full h-full object-cover rounded-full" />
                 ) : (
@@ -488,15 +933,8 @@ const UserProfileScreen = () => {
               >
                 <Camera className="w-4 h-4" />
               </button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handlePhotoChange}
-                className="hidden"
-              />
             </div>
-            <div className="flex-grow min-w-0">
+            <div className="grow min-w-0">
               <label className="text-xs font-semibold text-slate-500">Display Name</label>
               <input
                 type="text"
@@ -543,14 +981,6 @@ const UserProfileScreen = () => {
               <p className="text-xs font-medium text-slate-500 mt-1">Posts</p>
             </button>
           </div>
-
-          {/* Show journey card for profile completion/editing - positioned above About Me section */}
-          <FeedJourneyCard
-            onboardingAnswers={onboardingAnswers}
-            setScreen={setScreen}
-            onClose={() => { }} // No close action for profile screen - always available for editing
-            dismissible={false}
-          />
 
           <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 w-full mb-6">
             {/* Education Section */}
@@ -650,9 +1080,11 @@ const UserProfileScreen = () => {
 
                         <div className="flex gap-2 pt-1">
                           <button
-                            onClick={() => {
+                            onClick={async () => {
                               setEditingSchoolIndex(null);
-                              setIsDirty(true);
+                              if (isDirty) {
+                                await handleSave();
+                              }
                             }}
                             className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 px-4 rounded-lg transition-colors text-sm shadow-sm"
                           >
@@ -669,7 +1101,7 @@ const UserProfileScreen = () => {
                     ) : (
                       <div key={index} className="bg-white border border-slate-200 rounded-xl p-3.5 flex items-start justify-between hover:border-indigo-300 hover:shadow-sm transition-all">
                         <div className="flex items-start gap-3 flex-1 min-w-0">
-                          <div className="w-9 h-9 rounded-lg bg-indigo-50 flex items-center justify-center flex-shrink-0 mt-0.5">
+                          <div className="w-9 h-9 rounded-lg bg-indigo-50 flex items-center justify-center shrink-0 mt-0.5">
                             <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" /></svg>
                           </div>
                           <div className="flex-1 min-w-0">
@@ -679,19 +1111,19 @@ const UserProfileScreen = () => {
                                 {(() => {
                                   const badge = getApprovalBadge(school.approval_status);
                                   return (
-                                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold border flex-shrink-0 whitespace-nowrap ${badge.className}`}>
+                                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold border shrink-0 whitespace-nowrap ${badge.className}`}>
                                       {badge.label}
                                     </span>
                                   );
                                 })()}
                                 {school.enrollment_status === 'alumni' ? (
                                   <span className="inline-flex items-center whitespace-nowrap gap-1 text-[11px] font-bold text-violet-700 bg-violet-50 border border-violet-200 px-2 py-0.5 rounded-full">
-                                    <GraduationCap className="w-3.5 h-3.5 flex-shrink-0" />
+                                    <GraduationCap className="w-3.5 h-3.5 shrink-0" />
                                     Alumni
                                   </span>
                                 ) : school.enrollment_status === 'currently_enrolled' ? (
                                   <span className="inline-flex items-center whitespace-nowrap gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
-                                    <BookOpen className="w-3.5 h-3.5 flex-shrink-0" />
+                                    <BookOpen className="w-3.5 h-3.5 shrink-0" />
                                     Currently Enrolled
                                   </span>
                                 ) : null}
@@ -703,7 +1135,7 @@ const UserProfileScreen = () => {
                             </p>
                           </div>
                         </div>
-                        <div className="flex gap-1.5 ml-2 flex-shrink-0">
+                        <div className="flex gap-1.5 ml-2 shrink-0">
                           <button
                             onClick={() => setEditingSchoolIndex(index)}
                             className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all"
@@ -825,103 +1257,134 @@ const UserProfileScreen = () => {
               )}
             </div>
 
-            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 w-full mb-6">
-              <div
-                className="flex items-center justify-between cursor-pointer"
-                onClick={() => setIsAboutMeExpanded(!isAboutMeExpanded)}
-              >
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <h3 className="text-base font-bold text-slate-800">About me</h3>
-                    {hasIncompleteProfile() && (
-                      <ProfileCompletionNudge
-                        onboardingAnswers={onboardingAnswers}
-                        setScreen={setScreen}
-                      />
-                    )}
-                  </div>
-                  <p className="text-sm text-slate-500">Completing your journey helps us find you the best connections.</p>
+          </div>
+            </>
+          )}
+        </div>
+
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 w-full">
+          <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+            <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Additional Details</h2>
+            <button
+              onClick={handleAdditionalDetailsToggle}
+              disabled={isSaving}
+              className="inline-flex items-center gap-1.5 text-indigo-600 hover:text-indigo-700 text-sm font-bold"
+            >
+              <Edit3 className="w-4 h-4" />
+              {isAdditionalEditMode ? 'Done' : 'Edit'}
+            </button>
+          </div>
+
+          {isAdditionalEditMode ? (
+            <div className="space-y-4">
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-sm font-semibold text-slate-700">Short Bio</label>
+                  <button
+                    onClick={handleAutoWriteBio}
+                    disabled={isGeneratingTags}
+                    className="text-[10px] bg-indigo-50 text-indigo-700 font-bold px-2 py-1 rounded border border-indigo-200 hover:bg-indigo-100 disabled:opacity-50"
+                  >
+                    Polish Bio
+                  </button>
                 </div>
-                <div className={`transform transition-transform ${isAboutMeExpanded ? 'rotate-180' : ''}`}>
-                  <svg className="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </div>
+                <textarea
+                  placeholder="e.g., Exploring new career paths"
+                  value={localTagline}
+                  onChange={(e) => { setLocalTagline(e.target.value); setIsDirty(true); }}
+                  className="w-full p-3 bg-slate-50 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-base"
+                  rows="3"
+                />
               </div>
 
-              {isAboutMeExpanded && (
-                <div className="mt-4 space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-sm font-semibold text-slate-700 mb-1.5 block">Role</label>
-                      <input
-                        type="text"
-                        placeholder="e.g., Product Manager"
-                        value={localRole}
-                        onChange={(e) => { setLocalRole(e.target.value); setIsDirty(true); }}
-                        className="w-full p-3 bg-slate-50 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-base"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-sm font-semibold text-slate-700 mb-1.5 block">Company</label>
-                      <input
-                        type="text"
-                        placeholder="e.g., Acme Inc."
-                        value={localCompany}
-                        onChange={(e) => { setLocalCompany(e.target.value); setIsDirty(true); }}
-                        className="w-full p-3 bg-slate-50 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-base"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-sm font-semibold text-slate-700 mb-1.5 block">Bio</label>
-                    <input
-                      type="text"
-                      placeholder="e.g., Exploring new career paths"
-                      value={localTagline}
-                      onChange={(e) => { setLocalTagline(e.target.value); setIsDirty(true); }}
-                      className="w-full p-3 bg-slate-50 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-base"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-sm font-semibold text-slate-700 mb-1.5 block">Location</label>
-                      <input
-                        type="text"
-                        placeholder="e.g., Mumbai, India"
-                        value={localLocation}
-                        onChange={(e) => { setLocalLocation(e.target.value); setIsDirty(true); }}
-                        className="w-full p-3 bg-slate-50 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-base"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-sm font-semibold text-slate-700 mb-1.5 block">Industry</label>
-                      <input
-                        type="text"
-                        placeholder="e.g., Technology"
-                        value={localIndustry}
-                        onChange={(e) => { setLocalIndustry(e.target.value); setIsDirty(true); }}
-                        className="w-full p-3 bg-slate-50 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-base"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-sm font-semibold text-slate-700 mb-1.5 block">My Expertise</label>
-                    <textarea
-                      className="w-full p-3 bg-slate-50 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-base"
-                      rows="3"
-                      placeholder="e.g., Product management, frontend development, mentoring"
-                      value={localExpertise}
-                      onChange={(e) => { setLocalExpertise(e.target.value); setIsDirty(true); }}
-                    />
-                  </div>
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-sm font-semibold text-slate-700">Smart Tags</label>
+                  <button
+                    onClick={handleAutoTagBio}
+                    disabled={isGeneratingTags}
+                    className="text-[10px] bg-indigo-50 text-indigo-700 font-bold px-2 py-1 rounded border border-indigo-200 hover:bg-indigo-100 disabled:opacity-50"
+                  >
+                    {isGeneratingTags ? 'Generating...' : 'Auto-Tag Bio'}
+                  </button>
                 </div>
-              )}
+
+                <div className="flex gap-2 mb-2">
+                  <input
+                    type="text"
+                    placeholder="Add custom tag"
+                    value={customTagInput}
+                    onChange={(e) => setCustomTagInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAddCustomTag();
+                      }
+                    }}
+                    className="flex-1 p-3 bg-slate-50 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-base"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddCustomTag}
+                    className="px-3 py-2.5 text-xs font-bold bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+                  >
+                    Add
+                  </button>
+                </div>
+
+                <div className="flex flex-wrap gap-1.5 mt-2 min-h-6">
+                  {localTags.length > 0 ? localTags.map((tag) => (
+                    <button
+                      key={tag}
+                      type="button"
+                      onClick={() => handleRemoveTag(tag)}
+                      className="px-2 py-1 bg-indigo-50 text-indigo-700 text-[10px] font-bold rounded-full border border-indigo-100 hover:bg-indigo-100"
+                      title="Remove tag"
+                    >
+                      {tag} ×
+                    </button>
+                  )) : (
+                    <span className="text-[10px] text-slate-400 italic">No tags yet</span>
+                  )}
+                </div>
+
+                <p className="text-[11px] text-slate-500 mt-2 mb-1">Suggestions</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {SMART_TAG_SUGGESTIONS.filter(
+                    (tag) => !localTags.some((currentTag) => currentTag.toLowerCase() === tag.toLowerCase())
+                  ).slice(0, 8).map((tag) => (
+                    <button
+                      key={tag}
+                      type="button"
+                      onClick={() => handleAddSuggestedTag(tag)}
+                      className="px-2 py-1 bg-slate-100 text-slate-700 text-[10px] font-semibold rounded-full border border-slate-200 hover:bg-slate-200"
+                    >
+                      + {tag}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="space-y-3">
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Short Bio</p>
+                <p className="text-sm text-slate-700">{localTagline || 'Not shared yet'}</p>
+              </div>
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Smart Tags</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {localTags.length > 0 ? localTags.map((tag) => (
+                    <span key={tag} className="px-2 py-1 bg-indigo-50 text-indigo-700 text-[10px] font-bold rounded-full border border-indigo-100">
+                      {tag}
+                    </span>
+                  )) : (
+                    <span className="text-[10px] text-slate-400 italic">No tags yet</span>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Tab Navigation */}
@@ -959,151 +1422,214 @@ const UserProfileScreen = () => {
 
         {/* Bio Tab Content */}
         {activeTab === 'bio' && (
-          <div>
-            {/* My Shared Wisdom Section */}
+          <>
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 w-full mb-6">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-extrabold text-slate-800">My Shared Wisdom</h3>
+              {!isEditingSharerInsights && (
+                <button
+                  onClick={() => setIsEditingSharerInsights(true)}
+                  className="p-2 rounded-full hover:bg-slate-100"
+                  aria-label="Edit Shared Wisdom"
+                >
+                  <Edit3 className="w-5 h-5 text-indigo-600" />
+                </button>
+              )}
+            </div>
+
+            {isEditingSharerInsights ? (
+              <div className="space-y-6">
+                <div>
+                  <label className="text-sm font-bold text-slate-600 mb-2 block">Curiosity Hook</label>
+                  <textarea
+                    value={editingSharerInsights.youngerSelf}
+                    onChange={(e) => {
+                      setEditingSharerInsights(prev => ({ ...prev, youngerSelf: e.target.value }));
+                      setIsDirty(true);
+                    }}
+                    placeholder="Share one line people can ask you about"
+                    className="w-full p-3 bg-slate-50 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-sm resize-none"
+                    rows="3"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm font-bold text-slate-600 mb-2 block">Experiences Shared</label>
+                  <div className="space-y-3">
+                    {editingSharerInsights.lifeLessons.map((lesson, index) => (
+                      <div key={index} className="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                        <textarea
+                          value={lesson.lesson}
+                          onChange={(e) => {
+                            const updated = [...editingSharerInsights.lifeLessons];
+                            updated[index] = { ...updated[index], lesson: e.target.value };
+                            setEditingSharerInsights(prev => ({ ...prev, lifeLessons: updated }));
+                            setIsDirty(true);
+                          }}
+                          placeholder="What experience or decision shaped your journey?"
+                          className="w-full p-2 bg-white border border-slate-300 rounded mb-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm resize-none"
+                          rows="2"
+                        />
+                        <input
+                          type="text"
+                          value={lesson.where}
+                          onChange={(e) => {
+                            const updated = [...editingSharerInsights.lifeLessons];
+                            updated[index] = { ...updated[index], where: e.target.value };
+                            setEditingSharerInsights(prev => ({ ...prev, lifeLessons: updated }));
+                            setIsDirty(true);
+                          }}
+                          placeholder="Context (optional)"
+                          className="w-full p-2 bg-white border border-slate-300 rounded focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                        />
+                        <button
+                          onClick={() => {
+                            const updated = editingSharerInsights.lifeLessons.filter((_, i) => i !== index);
+                            setEditingSharerInsights(prev => ({ ...prev, lifeLessons: updated }));
+                            setIsDirty(true);
+                          }}
+                          className="mt-2 text-red-500 hover:text-red-700 text-sm font-medium"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      onClick={() => {
+                        setEditingSharerInsights(prev => ({
+                          ...prev,
+                          lifeLessons: [...prev.lifeLessons, { lesson: '', where: '' }]
+                        }));
+                        setIsDirty(true);
+                      }}
+                      className="w-full p-3 border-2 border-dashed border-slate-300 rounded-lg text-slate-500 font-semibold text-sm hover:bg-slate-50 hover:border-slate-400 transition-all"
+                    >
+                      <Plus className="w-4 h-4 inline mr-2" /> Add Experience
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-sm font-bold text-slate-600 mb-2 block">Conversation Vibe</label>
+                  <textarea
+                    value={editingSharerInsights.societyChange}
+                    onChange={(e) => {
+                      setEditingSharerInsights(prev => ({ ...prev, societyChange: e.target.value }));
+                      setIsDirty(true);
+                    }}
+                    placeholder="How do you usually help people in conversations?"
+                    className="w-full p-3 bg-slate-50 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-sm resize-none"
+                    rows="3"
+                  />
+                </div>
+
+              </div>
+            ) : (
+              <div className="space-y-6">
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Zap className="w-4 h-4 text-amber-500" />
+                    <h4 className="text-[13px] font-extrabold text-slate-600 uppercase tracking-wide">Curiosity Hook</h4>
+                  </div>
+                  <div className="rounded-xl bg-slate-100 border border-slate-200 p-4 border-l-4 border-l-indigo-300">
+                    <p className="text-[18px] leading-relaxed text-slate-700 italic">"{curiosityHookText}"</p>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Briefcase className="w-4 h-4 text-slate-400" />
+                    <h4 className="text-[13px] font-extrabold text-slate-600 uppercase tracking-wide">Experiences Shared</h4>
+                  </div>
+                  <div className="rounded-xl bg-white border border-slate-300 p-4 flex items-start gap-3">
+                    <CheckCircle className="w-5 h-5 text-emerald-500 mt-0.5 shrink-0" />
+                    <p className="text-base font-semibold text-slate-800 leading-snug">{experiencesSharedText}</p>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Users className="w-4 h-4 text-slate-400" />
+                    <h4 className="text-[13px] font-extrabold text-slate-600 uppercase tracking-wide">Conversation Vibe</h4>
+                  </div>
+                  <div className="rounded-xl bg-white border border-slate-300 p-4 flex items-start gap-3">
+                    <Smile className="w-5 h-5 text-indigo-500 mt-0.5 shrink-0" />
+                    <p className="text-base font-semibold text-slate-800 leading-snug">{conversationVibeText}</p>
+                  </div>
+                </div>
+
+              </div>
+            )}
+          </div>
+
+          {user?.is_super_linker && (
             <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 w-full mb-6">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-xl font-extrabold text-slate-800">My Shared Wisdom</h3>
-                {!isEditingSharerInsights && (
+                <h3 className="text-xl font-extrabold text-slate-800">Community Gratitude</h3>
+                {!isEditingCommunityGratitude && (
                   <button
-                    onClick={() => setIsEditingSharerInsights(true)}
+                    onClick={() => setIsEditingCommunityGratitude(true)}
                     className="p-2 rounded-full hover:bg-slate-100"
-                    aria-label="Edit Shared Wisdom"
+                    aria-label="Edit Community Gratitude"
                   >
                     <Edit3 className="w-5 h-5 text-indigo-600" />
                   </button>
                 )}
               </div>
 
-              {isEditingSharerInsights ? (
-                <div className="space-y-6">
-                  {/* Advice to Younger Self */}
-                  <div>
-                    <label className="text-sm font-bold text-slate-600 mb-2 block">Advice to Younger Self</label>
-                    <textarea
-                      value={editingSharerInsights.youngerSelf}
-                      onChange={(e) => {
-                        setEditingSharerInsights(prev => ({ ...prev, youngerSelf: e.target.value }));
-                        setIsDirty(true);
-                      }}
-                      placeholder="What advice would you give your younger self?"
-                      className="w-full p-3 bg-slate-50 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-sm resize-none"
-                      rows="3"
-                    />
-                  </div>
+              {isEditingCommunityGratitude ? (
+                <div>
+                  <p className="text-xs text-slate-500 mb-3">Select up to 3 reviews from your community feedback to showcase publicly.</p>
 
-                  {/* Key Life Lessons */}
-                  <div>
-                    <label className="text-sm font-bold text-slate-600 mb-2 block">Key Life Lessons</label>
-                    <div className="space-y-3">
-                      {editingSharerInsights.lifeLessons.map((lesson, index) => (
-                        <div key={index} className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-                          <textarea
-                            value={lesson.lesson}
-                            onChange={(e) => {
-                              const updated = [...editingSharerInsights.lifeLessons];
-                              updated[index] = { ...updated[index], lesson: e.target.value };
-                              setEditingSharerInsights(prev => ({ ...prev, lifeLessons: updated }));
-                              setIsDirty(true);
-                            }}
-                            placeholder="What lesson did you learn?"
-                            className="w-full p-2 bg-white border border-slate-300 rounded mb-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm resize-none"
-                            rows="2"
-                          />
-                          <input
-                            type="text"
-                            value={lesson.where}
-                            onChange={(e) => {
-                              const updated = [...editingSharerInsights.lifeLessons];
-                              updated[index] = { ...updated[index], where: e.target.value };
-                              setEditingSharerInsights(prev => ({ ...prev, lifeLessons: updated }));
-                              setIsDirty(true);
-                            }}
-                            placeholder="Where did you learn this?"
-                            className="w-full p-2 bg-white border border-slate-300 rounded focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-                          />
-                          <button
-                            onClick={() => {
-                              const updated = editingSharerInsights.lifeLessons.filter((_, i) => i !== index);
-                              setEditingSharerInsights(prev => ({ ...prev, lifeLessons: updated }));
-                              setIsDirty(true);
-                            }}
-                            className="mt-2 text-red-500 hover:text-red-700 text-sm font-medium"
-                          >
-                            Remove
-                          </button>
-                        </div>
-                      ))}
-                      <button
-                        onClick={() => {
-                          setEditingSharerInsights(prev => ({
-                            ...prev,
-                            lifeLessons: [...prev.lifeLessons, { lesson: '', where: '' }]
-                          }));
-                          setIsDirty(true);
-                        }}
-                        className="w-full p-3 border-2 border-dashed border-slate-300 rounded-lg text-slate-500 font-semibold text-sm hover:bg-slate-50 hover:border-slate-400 transition-all"
-                      >
-                        <Plus className="w-4 h-4 inline mr-2" /> Add Life Lesson
-                      </button>
+                  {reviewsLoading ? (
+                    <div className="flex items-center gap-2 text-sm text-slate-500">
+                      <Loader className="w-4 h-4 animate-spin" /> Loading reviews...
                     </div>
-                  </div>
+                  ) : userReviews.filter((review) => String(review?.content || '').trim()).length === 0 ? (
+                    <p className="text-sm text-slate-500">No review messages available yet to feature.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {userReviews
+                        .filter((review) => String(review?.content || '').trim())
+                        .slice(0, 12)
+                        .map((review) => {
+                          const isSelected = (editingSharerInsights.communityGratitude || []).some((item) => item?.reviewId === review.id);
+                          return (
+                            <button
+                              key={review.id}
+                              type="button"
+                              onClick={() => toggleCommunityGratitude(review)}
+                              className={`w-full text-left p-3 rounded-lg border transition-all ${isSelected ? 'border-indigo-400 bg-indigo-50' : 'border-slate-200 bg-white hover:border-slate-300'}`}
+                            >
+                              <p className="text-sm text-slate-700 line-clamp-2">"{review.content}"</p>
+                              <p className="text-xs font-semibold text-slate-500 mt-1">— {review.reviewer_name || 'Anonymous'}</p>
+                            </button>
+                          );
+                        })}
+                    </div>
+                  )}
 
-                  {/* Change I Want to See */}
-                  <div>
-                    <label className="text-sm font-bold text-slate-600 mb-2 block">Change I Want to See in Society</label>
-                    <textarea
-                      value={editingSharerInsights.societyChange}
-                      onChange={(e) => {
-                        setEditingSharerInsights(prev => ({ ...prev, societyChange: e.target.value }));
-                        setIsDirty(true);
-                      }}
-                      placeholder="What change would you like to see in the world?"
-                      className="w-full p-3 bg-slate-50 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-sm resize-none"
-                      rows="3"
-                    />
-                  </div>
+                  {gratitudeSelectionError && (
+                    <p className="text-xs font-semibold text-rose-600 mt-2">{gratitudeSelectionError}</p>
+                  )}
                 </div>
               ) : (
-                !hasSharerInsights ? (
-                  <button
-                    onClick={() => setIsEditingSharerInsights(true)}
-                    className="flex items-center justify-center w-full p-4 border-2 border-dashed border-slate-300 rounded-xl text-slate-500 font-semibold text-sm hover:bg-slate-50 hover:border-slate-400 transition-all"
-                  >
-                    <Plus className="w-5 h-5 mr-2" /> Add Your Wisdom & Insights
-                  </button>
-                ) : (
-                  <div className="space-y-4">
-                    {sharerInsights.youngerSelf && (
-                      <div>
-                        <h4 className="text-sm font-bold text-slate-600 mb-1">Advice to Younger Self</h4>
-                        <p className="text-sm text-slate-700 italic">"{sharerInsights.youngerSelf}"</p>
+                selectedCommunityGratitude.length > 0 ? (
+                  <div className="space-y-2">
+                    {selectedCommunityGratitude.map((item, index) => (
+                      <div key={`${item.reviewId || index}`} className="rounded-xl bg-slate-50 border border-slate-200 p-3">
+                        <p className="text-sm text-slate-700 italic">"{item.text}"</p>
+                        <p className="text-xs font-semibold text-slate-500 mt-1">— {item.from || 'Anonymous'}</p>
                       </div>
-                    )}
-                    {sharerInsights.lifeLessons && sharerInsights.lifeLessons.length > 0 && (
-                      <div>
-                        <h4 className="text-sm font-bold text-slate-600 mb-2">Key Life Lessons</h4>
-                        <div className="space-y-2">
-                          {sharerInsights.lifeLessons.map((lesson, i) => (
-                            <div key={i} className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-                              <p className="text-sm font-semibold text-slate-800 italic">"{lesson.lesson}"</p>
-                              <p className="text-xs text-slate-500 mt-1">Learned at: <span className="font-medium">{lesson.where}</span></p>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    {sharerInsights.societyChange && (
-                      <div>
-                        <h4 className="text-sm font-bold text-slate-600 mb-1">Change I Want to See</h4>
-                        <p className="text-sm text-slate-700 italic">"{sharerInsights.societyChange}"</p>
-                      </div>
-                    )}
+                    ))}
                   </div>
+                ) : (
+                  <p className="text-sm text-slate-500">No gratitude highlights selected yet.</p>
                 )
               )}
             </div>
-          </div>
+          )}
+          </>
         )}
 
         {/* Posts Tab Content */}
@@ -1171,15 +1697,15 @@ const UserProfileScreen = () => {
 
       </div>
 
-      {isDirty && (
-        <div className="fixed bottom-0 left-0 w-full p-4 pb-8 sm:pb-4 bg-white/90 backdrop-blur-lg border-t border-slate-200 z-[100] shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
+      {isDirty && !isAdditionalEditMode && (
+        <div className="fixed bottom-0 left-0 w-full p-4 pb-8 sm:pb-4 bg-white/90 backdrop-blur-lg border-t border-slate-200 z-100 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
           {saveError && (
             <p className="text-sm text-red-600 mb-2 text-center">{saveError}</p>
           )}
           <Button
             primary
             onClick={handleSave}
-            disabled={isSaving}
+            disabled={isSaving || !isDirty}
             className="w-full relative shadow-lg"
           >
             {isSaving ? (
