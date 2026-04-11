@@ -17,6 +17,10 @@ export const useAppContext = () => {
 };
 
 export const AppProvider = ({ children }) => {
+  // PWA Install prompt state
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+  const [isInstallable, setIsInstallable] = useState(false);
+
   const getVerificationMessage = () => 'Verification badge appears after admin approval.';
 
   const [screen, setScreen] = useState('WELCOME');
@@ -122,6 +126,32 @@ export const AppProvider = ({ children }) => {
     }
 
     return {};
+  };
+
+  // PWA Install prompt listener
+  useEffect(() => {
+    // If you don't prevent default, the browser will automatically show its native prompt
+    // (like the mini-infobar on Chrome Android or the install icon in the address bar on Desktop).
+    // We are just listening to it here if you need to track analytics later.
+    const handleBeforeInstallPrompt = (e) => {
+      setDeferredPrompt(e);
+      setIsInstallable(true);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
+  }, []);
+
+  const triggerInstallPrompt = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    console.log(`User response to the install prompt: ${outcome}`);
+    setDeferredPrompt(null);
+    setIsInstallable(false);
   };
 
   // Check authentication status on mount
@@ -737,6 +767,9 @@ export const AppProvider = ({ children }) => {
     // Unread notifications count
     unreadNotificationsCount,
     setUnreadNotificationsCount,
+    // PWA Install prompt state
+    isInstallable,
+    triggerInstallPrompt,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
