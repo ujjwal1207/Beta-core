@@ -145,7 +145,7 @@ const UserProfileScreen = () => {
     'Key decisions that shaped my journey',
   ];
 
-  const MONETIZATION_VIBE_OPTIONS = [
+  const MONETIZATION_STYLE_OPTIONS = [
     'Breaking down complex paths into simple steps',
     'Listening first, then sharing practical guidance',
     'Helping people find clarity on goals and direction',
@@ -223,19 +223,27 @@ const UserProfileScreen = () => {
   });
   const [editingMonetization, setEditingMonetization] = useState({
     sessionTopic: '',
-    sessionVibe: '',
+    sessionStyle: '',
     sessionHook: '',
   });
   const [isMonetizationSetupOpen, setIsMonetizationSetupOpen] = useState(false);
   const [monetizationStep, setMonetizationStep] = useState(1);
   const [monetizationTopicSelections, setMonetizationTopicSelections] = useState([]);
   const [monetizationCustomTopic, setMonetizationCustomTopic] = useState('');
-  const [monetizationVibeSelections, setMonetizationVibeSelections] = useState([]);
-  const [monetizationCustomVibe, setMonetizationCustomVibe] = useState('');
+  const [monetizationStyleSelections, setMonetizationStyleSelections] = useState([]);
+  const [monetizationCustomStyle, setMonetizationCustomStyle] = useState('');
   const [monetizationHook, setMonetizationHook] = useState('');
   const [userReviews, setUserReviews] = useState([]);
   const [reviewsLoading, setReviewsLoading] = useState(false);
   const [gratitudeSelectionError, setGratitudeSelectionError] = useState('');
+
+  useEffect(() => {
+    const shouldOpenBasicSetup = sessionStorage.getItem('openBasicProfileSetup') === 'true';
+    if (!shouldOpenBasicSetup) return;
+
+    setIsBasicSetupOpen(true);
+    sessionStorage.removeItem('openBasicProfileSetup');
+  }, []);
 
   // Load user data from backend
   useEffect(() => {
@@ -460,7 +468,7 @@ const UserProfileScreen = () => {
   useEffect(() => {
     setEditingMonetization({
       sessionTopic: String(onboardingAnswers?.MONETIZATION_TRACK_1 || '').trim(),
-      sessionVibe: String(onboardingAnswers?.MONETIZATION_TRACK_2 || '').trim(),
+      sessionStyle: String(onboardingAnswers?.MONETIZATION_TRACK_2 || '').trim(),
       sessionHook: String(onboardingAnswers?.MONETIZATION_TRACK_3 || '').trim(),
     });
   }, [user?.id, onboardingAnswers?.MONETIZATION_TRACK_1, onboardingAnswers?.MONETIZATION_TRACK_2, onboardingAnswers?.MONETIZATION_TRACK_3]);
@@ -532,7 +540,7 @@ const UserProfileScreen = () => {
     ? user.sharer_insights.communityGratitude.filter((item) => String(item?.text || '').trim()).slice(0, 3)
     : [];
   const monetizationTopicText = String(onboardingAnswers?.MONETIZATION_TRACK_1 || '').trim();
-  const monetizationVibeText = String(onboardingAnswers?.MONETIZATION_TRACK_2 || '').trim();
+  const monetizationStyleText = String(onboardingAnswers?.MONETIZATION_TRACK_2 || '').trim();
   const monetizationHookText = String(onboardingAnswers?.MONETIZATION_TRACK_3 || '').trim();
   const monetizationApprovalStatus = String(onboardingAnswers?.MONETIZATION_APPROVAL_STATUS || '').trim().toLowerCase();
 
@@ -580,25 +588,25 @@ const UserProfileScreen = () => {
 
   const openMonetizationSetup = () => {
     const currentTopic = String(onboardingAnswers?.MONETIZATION_TRACK_1 || '').trim();
-    const currentVibe = String(onboardingAnswers?.MONETIZATION_TRACK_2 || '').trim();
+    const currentStyle = String(onboardingAnswers?.MONETIZATION_TRACK_2 || '').trim();
     const currentHook = String(onboardingAnswers?.MONETIZATION_TRACK_3 || '').trim();
 
     const parsedTopics = currentTopic
       ? currentTopic.split(',').map((item) => item.trim()).filter(Boolean)
       : [];
-    const parsedVibes = currentVibe
-      ? currentVibe.split(',').map((item) => item.trim()).filter(Boolean)
+    const parsedStyles = currentStyle
+      ? currentStyle.split(',').map((item) => item.trim()).filter(Boolean)
       : [];
 
     const selectedTopics = parsedTopics.filter((item) => MONETIZATION_TOPIC_OPTIONS.includes(item));
     const customTopics = parsedTopics.filter((item) => !MONETIZATION_TOPIC_OPTIONS.includes(item));
-    const selectedVibes = parsedVibes.filter((item) => MONETIZATION_VIBE_OPTIONS.includes(item));
-    const customVibes = parsedVibes.filter((item) => !MONETIZATION_VIBE_OPTIONS.includes(item));
+    const selectedStyles = parsedStyles.filter((item) => MONETIZATION_STYLE_OPTIONS.includes(item));
+    const customStyles = parsedStyles.filter((item) => !MONETIZATION_STYLE_OPTIONS.includes(item));
 
     setMonetizationTopicSelections(selectedTopics);
     setMonetizationCustomTopic(customTopics.join(', '));
-    setMonetizationVibeSelections(selectedVibes);
-    setMonetizationCustomVibe(customVibes.join(', '));
+    setMonetizationStyleSelections(selectedStyles);
+    setMonetizationCustomStyle(customStyles.join(', '));
     setMonetizationHook(currentHook);
     setMonetizationStep(1);
     setIsMonetizationSetupOpen(true);
@@ -610,8 +618,8 @@ const UserProfileScreen = () => {
     );
   };
 
-  const toggleMonetizationVibe = (option) => {
-    setMonetizationVibeSelections((prev) =>
+  const toggleMonetizationStyle = (option) => {
+    setMonetizationStyleSelections((prev) =>
       prev.includes(option) ? prev.filter((item) => item !== option) : [...prev, option]
     );
   };
@@ -621,17 +629,17 @@ const UserProfileScreen = () => {
       ...monetizationTopicSelections,
       ...String(monetizationCustomTopic || '').split(',').map((item) => item.trim()).filter(Boolean),
     ];
-    const vibeParts = [
-      ...monetizationVibeSelections,
-      ...String(monetizationCustomVibe || '').split(',').map((item) => item.trim()).filter(Boolean),
+    const styleParts = [
+      ...monetizationStyleSelections,
+      ...String(monetizationCustomStyle || '').split(',').map((item) => item.trim()).filter(Boolean),
     ];
 
     const uniqueTopics = Array.from(new Set(topicParts));
-    const uniqueVibes = Array.from(new Set(vibeParts));
+    const uniqueStyles = Array.from(new Set(styleParts));
 
     setEditingMonetization({
       sessionTopic: uniqueTopics.join(', '),
-      sessionVibe: uniqueVibes.join(', '),
+      sessionStyle: uniqueStyles.join(', '),
       sessionHook: monetizationHook.trim(),
     });
     setIsDirty(true);
@@ -651,7 +659,7 @@ const UserProfileScreen = () => {
         lifeLessons: editingMonetization.sessionTopic.trim()
           ? [{ lesson: editingMonetization.sessionTopic.trim(), where: '' }]
           : [],
-        societyChange: editingMonetization.sessionVibe.trim(),
+        societyChange: editingMonetization.sessionStyle.trim(),
         communityGratitude: (Array.isArray(editingSharerInsights.communityGratitude)
           ? editingSharerInsights.communityGratitude
           : [])
@@ -676,7 +684,7 @@ const UserProfileScreen = () => {
       if (editingMonetization.sessionTopic.trim()) updatedOnboardingAnswers['MONETIZATION_TRACK_1'] = editingMonetization.sessionTopic.trim();
       else delete updatedOnboardingAnswers['MONETIZATION_TRACK_1'];
 
-      if (editingMonetization.sessionVibe.trim()) updatedOnboardingAnswers['MONETIZATION_TRACK_2'] = editingMonetization.sessionVibe.trim();
+      if (editingMonetization.sessionStyle.trim()) updatedOnboardingAnswers['MONETIZATION_TRACK_2'] = editingMonetization.sessionStyle.trim();
       else delete updatedOnboardingAnswers['MONETIZATION_TRACK_2'];
 
       if (editingMonetization.sessionHook.trim()) updatedOnboardingAnswers['MONETIZATION_TRACK_3'] = editingMonetization.sessionHook.trim();
@@ -684,7 +692,7 @@ const UserProfileScreen = () => {
 
       const hasMonetizationSubmission = Boolean(
         editingMonetization.sessionTopic.trim() ||
-        editingMonetization.sessionVibe.trim() ||
+        editingMonetization.sessionStyle.trim() ||
         editingMonetization.sessionHook.trim()
       );
 
@@ -1477,7 +1485,7 @@ const UserProfileScreen = () => {
 
         <div className="w-full mb-6 rounded-2xl border border-indigo-100 bg-linear-to-br from-white via-indigo-50/40 to-sky-50/40 p-5 shadow-sm">
           <div className="flex justify-between items-center mb-4">
-            {(monetizationTopicText || monetizationVibeText || monetizationHookText) && (
+            {(monetizationTopicText || monetizationStyleText || monetizationHookText) && (
               <div>
                 <h3 className="text-xl font-black text-slate-800">Monetization Questions</h3>
                 <p className="text-xs font-semibold tracking-wide uppercase text-indigo-500 mt-0.5">Paid Session Profile</p>
@@ -1498,7 +1506,7 @@ const UserProfileScreen = () => {
                 )}
               </div>
             )}
-            {(monetizationTopicText || monetizationVibeText || monetizationHookText) && (
+            {(monetizationTopicText || monetizationStyleText || monetizationHookText) && (
               <button
                 onClick={openMonetizationSetup}
                 className="p-2.5 rounded-full border border-indigo-200 bg-white/90 hover:bg-white transition-colors shadow-sm"
@@ -1509,7 +1517,7 @@ const UserProfileScreen = () => {
             )}
           </div>
 
-          {!(monetizationTopicText || monetizationVibeText || monetizationHookText) ? (
+          {!(monetizationTopicText || monetizationStyleText || monetizationHookText) ? (
             <div className="rounded-2xl border border-indigo-100 bg-white/85 p-6 text-center shadow-sm">
               <div className="w-14 h-14 rounded-2xl bg-indigo-100 text-indigo-600 mx-auto mb-4 flex items-center justify-center">
                 <Zap className="w-8 h-8" />
@@ -1542,7 +1550,7 @@ const UserProfileScreen = () => {
                   </div>
                   <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Conversation Style</p>
                 </div>
-                <p className="text-[15px] leading-snug font-semibold text-slate-800">{monetizationVibeText || 'Not shared yet'}</p>
+                <p className="text-[15px] leading-snug font-semibold text-slate-800">{monetizationStyleText || 'Not shared yet'}</p>
               </div>
 
               <div className="rounded-xl border border-slate-200 bg-white/90 p-3.5">
@@ -1803,22 +1811,22 @@ const UserProfileScreen = () => {
                     <label className="text-sm font-bold text-slate-700 mb-1 block">2. How do you usually help people in conversations?</label>
                     <p className="text-xs text-slate-500 mb-3 font-medium">Select all that apply.</p>
                     <div className="space-y-2.5">
-                      {MONETIZATION_VIBE_OPTIONS.map((option) => (
+                      {MONETIZATION_STYLE_OPTIONS.map((option) => (
                         <button
                           key={option}
-                          onClick={() => toggleMonetizationVibe(option)}
-                          className={`w-full text-left p-4 rounded-xl border transition-all font-medium flex justify-between items-center ${monetizationVibeSelections.includes(option) ? 'bg-indigo-50 border-indigo-500 text-indigo-700 ring-2 ring-indigo-200' : 'bg-white border-slate-200 text-slate-700 hover:border-indigo-300 hover:bg-slate-50'}`}
+                          onClick={() => toggleMonetizationStyle(option)}
+                          className={`w-full text-left p-4 rounded-xl border transition-all font-medium flex justify-between items-center ${monetizationStyleSelections.includes(option) ? 'bg-indigo-50 border-indigo-500 text-indigo-700 ring-2 ring-indigo-200' : 'bg-white border-slate-200 text-slate-700 hover:border-indigo-300 hover:bg-slate-50'}`}
                         >
                           <span>{option}</span>
-                          {monetizationVibeSelections.includes(option) && <CheckCircle className="w-5 h-5 text-indigo-600" />}
+                          {monetizationStyleSelections.includes(option) && <CheckCircle className="w-5 h-5 text-indigo-600" />}
                         </button>
                       ))}
                       <div className="mt-4 pt-2 border-t border-slate-100">
                         <input
                           type="text"
                           placeholder="Or type your own (comma separated)..."
-                          value={monetizationCustomVibe}
-                          onChange={(e) => setMonetizationCustomVibe(e.target.value)}
+                          value={monetizationCustomStyle}
+                          onChange={(e) => setMonetizationCustomStyle(e.target.value)}
                           className="w-full p-4 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 font-medium text-slate-800"
                         />
                       </div>
@@ -1857,7 +1865,7 @@ const UserProfileScreen = () => {
                     className="!w-auto !py-2.5 !px-6"
                     disabled={
                       (monetizationStep === 1 && monetizationTopicSelections.length === 0 && !monetizationCustomTopic.trim()) ||
-                      (monetizationStep === 2 && monetizationVibeSelections.length === 0 && !monetizationCustomVibe.trim())
+                      (monetizationStep === 2 && monetizationStyleSelections.length === 0 && !monetizationCustomStyle.trim())
                     }
                     onClick={() => setMonetizationStep((prev) => prev + 1)}
                   >
@@ -1908,3 +1916,5 @@ const UserProfileScreen = () => {
 };
 
 export default UserProfileScreen;
+
+

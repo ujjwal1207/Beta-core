@@ -25,8 +25,7 @@ export const ALL_PEOPLE = [
     id: 1, name: 'Dr. Chen', age: 38, role: 'Zen Master (Wellness Coach)',
     bio: "After burning out as a clinical psychologist, I rediscovered my calling. Now I help high-performers find their 'off-switch' and build a life that actually *feels* good, not just one that looks good.",
     tags: ['Mindfulness', 'Burnout Recovery', 'Millennial', 'Coaching', 'Mental Wellness'],
-    image: 'https://picsum.photos/seed/drchen/400/500', mood: 2,
-    connections: 241, trustScore: 4.9,
+    image: 'https://picsum.photos/seed/drchen/400/500',    connections: 241, trustScore: 4.9,
     gratitude: [
       { from: "Laura B.", text: "Dr. Chen helped me see my burnout as a signal, not a failure. Her perspective was a true game-changer for my career pivot." },
       { from: "Sam J.", text: "In just one call, she gave me practical tools to manage my anxiety. Incredibly empathetic and wise. Worth every rupee." }
@@ -43,8 +42,7 @@ export const ALL_PEOPLE = [
     id: 2, name: 'Rajesh K.', age: 30, role: 'Hustler (Founder @TechUp)',
     bio: "I'm a founder, which means I'm a professional at getting messy with new ideas and learning from what breaks. Happy to share the *real* story, not just the funding announcements.",
     tags: ['Startups', 'Tech', 'Student', 'Engineering', 'Funding'], 
-    image: 'https://picsum.photos/seed/rajeshk/400/500', mood: 3,
-    connections: 89, trustScore: 4.2,
+    image: 'https://picsum.photos/seed/rajeshk/400/500',    connections: 89, trustScore: 4.2,
     sharerInsights: {
       youngerSelf: "Just start. Your v1 is supposed to be embarrassing. If you're not embarrassed, you waited too long. Perfection is the enemy of progress.",
       lifeLessons: [
@@ -57,8 +55,7 @@ export const ALL_PEOPLE = [
     id: 3, name: 'Laura B.', age: 26, role: 'The Great Pivot (Product Lead)',
     bio: "Made 'The Great Pivot' from finance to design, and it was the scariest, best thing I've ever done. If you're feeling stuck or dreaming of a change, I've been there.",
     tags: ['New Job', 'Design', 'Younger Crew', 'Career Change', 'Product Management'], 
-    image: 'https://picsum.photos/seed/laurab/400/500', mood: 0,
-    connections: 42, trustScore: 4.6,
+    image: 'https://picsum.photos/seed/laurab/400/500',    connections: 42, trustScore: 4.6,
     sharerInsights: {
       youngerSelf: "That 'safe' job you hate? It's riskier than you think. The 'what if' will haunt you way more than the 'oh well'. Take the leap.",
       lifeLessons: [
@@ -71,8 +68,7 @@ export const ALL_PEOPLE = [
     id: 4, name: 'Marcus H.', age: 45, role: 'Money Magician (Negotiator)',
     bio: "I've negotiated 6-figure deals and... I've also been laid off. Both taught me about worth. Now, I share what I've learned to help *everyone*, especially underrepresented folks, get paid what they deserve.",
     tags: ['Money Talk', 'Big Boss', 'Older Crew', 'Negotiation', 'Finance'], 
-    image: 'https://picsum.photos/seed/marcush/400/500', mood: 2,
-    connections: 312, trustScore: 4.8,
+    image: 'https://picsum.photos/seed/marcush/400/500',    connections: 312, trustScore: 4.8,
     gratitude: [
       { from: "Rajesh K.", text: "Marcus helped me prep for my seed round pitch. His advice on reframing our 'worth' wasn't just about money, it was about confidence. A total pro." },
       { from: "Anna R.", text: "I used his tactics to negotiate a 20% salary bump! He's direct, kind, and unbelievably sharp." }
@@ -90,8 +86,7 @@ export const ALL_PEOPLE = [
     id: 5, name: 'Sam J.', age: 24, role: 'Forever Student (Data Scientist)', 
     bio: 'I live nearby and want to meet people to talk about new tech ideas.', 
     tags: ['Data', 'Younger Crew', 'Local', 'React Development', 'Remote Work'], 
-    image: 'https://picsum.photos/seed/samj/400/500', mood: 2,
-    connections: 15, trustScore: 4.1,
+    image: 'https://picsum.photos/seed/samj/400/500',    connections: 15, trustScore: 4.1,
     sharerInsights: {
       youngerSelf: "Don't just learn *what* to think. Learn *how* to think. And go talk to actual people... not just your computer screen.",
       lifeLessons: [
@@ -104,8 +99,7 @@ export const ALL_PEOPLE = [
     id: 6, name: 'Eliza C.', age: 33, role: 'Community Champion (Marketing Director)', 
     bio: 'I run a local company and love helping people in my town. Lets share stories!', 
     tags: ['Marketing', 'Middle Crew', 'Local Hero', 'Marketing Strategy', 'Community'], 
-    image: 'https://picsum.photos/seed/elizac/400/500', mood: 3,
-    connections: 76, trustScore: 4.4,
+    image: 'https://picsum.photos/seed/elizac/400/500',    connections: 76, trustScore: 4.4,
     sharerInsights: {
       youngerSelf: "Stop waiting for permission. Your voice is stronger than you know. Use it to lift others up, and you'll find you lift yourself, too.",
       lifeLessons: [
@@ -118,8 +112,7 @@ export const ALL_PEOPLE = [
     id: 7, name: 'Alice Z.', age: 25, role: 'Junior Designer', 
     bio: 'Focusing on accessibility in **UX Design**. Love discussing new tools.', 
     tags: ['UX Design', 'Design', 'Gen Z', 'Local'], 
-    image: 'https://picsum.photos/seed/alicez/400/500', mood: 2,
-    connections: 33, trustScore: 4.3,
+    image: 'https://picsum.photos/seed/alicez/400/500',    connections: 33, trustScore: 4.3,
     sharerInsights: {
       youngerSelf: "Your 'fresh eyes' are a superpower, not a weakness. Don't be afraid to ask 'why' in a room full of people who only talk 'how'.",
       lifeLessons: [
@@ -132,8 +125,7 @@ export const ALL_PEOPLE = [
     id: 8, name: 'Ben F.', age: 40, role: 'CTO', 
     bio: 'Building **Startups** in the fintech space. Always open to mentorship.', 
     tags: ['Startups', 'Tech', 'Millennial', 'Mentorship', 'Financial Independence'], 
-    image: 'https://picsum.photos/seed/benf/400/500', mood: 3,
-    connections: 112, trustScore: 4.5,
+    image: 'https://picsum.photos/seed/benf/400/500',    connections: 112, trustScore: 4.5,
     sharerInsights: {
       youngerSelf: "The code you write is the *least* important part of your job. The team you build, the people you mentor... *that's* the real legacy.",
       lifeLessons: [
@@ -146,8 +138,7 @@ export const ALL_PEOPLE = [
     id: 9, name: 'Chloe G.', age: 28, role: 'Remote Work Expert (DevOps)', 
     bio: 'Masters of efficient asynchronous team communication.', 
     tags: ['Remote Work', 'Tech', 'Millennial', 'Efficiency'], 
-    image: 'https://picsum.photos/seed/chloeg/400/500', mood: 3,
-    connections: 61, trustScore: 4.0,
+    image: 'https://picsum.photos/seed/chloeg/400/500',    connections: 61, trustScore: 4.0,
     sharerInsights: {
       youngerSelf: "You don't have to be in the office to be 'seen'. Your work and your integrity will speak for you. Build your reputation on reliability, not just visibility.",
       lifeLessons: [
@@ -160,8 +151,7 @@ export const ALL_PEOPLE = [
     id: 10, name: 'David W.', age: 52, role: 'Life Balance Guru',
     bio: "For 20 years, I climbed the corporate ladder until I hit a wall. Now, I'm a 'Life Balance Guru' (my kids' title, not mine) helping others find success *without* sacrificing their health or family.",
     tags: ['Wellness', 'Balance', 'Older Crew', 'Coaching'], 
-    image: 'https://picsum.photos/seed/davidw/400/500', mood: 2,
-    connections: 150, trustScore: 4.7,
+    image: 'https://picsum.photos/seed/davidw/400/500',    connections: 150, trustScore: 4.7,
     sharerInsights: {
       youngerSelf: "That promotion you're killing yourself for? In 10 years, you won't even remember the title. But you *will* remember the family dinners you missed. Go home.",
       lifeLessons: [
@@ -172,9 +162,7 @@ export const ALL_PEOPLE = [
   },
   { 
     id: 11, name: 'Eleanor P.', age: 22, role: 'UX • Student', 
-    text: "We are making a cool design project next week! Everyone can join. Ask me for the link.", 
-    mood: 2,
-    bio: "Just a UX student trying to make things that are easy to use and nice to look at. Always open to collaboration and coffee chats!",
+    text: "We are making a cool design project next week! Everyone can join. Ask me for the link.",    bio: "Just a UX student trying to make things that are easy to use and nice to look at. Always open to collaboration and coffee chats!",
     tags: ['UX Design', 'Student', 'Gen Z', 'Collaboration', 'Creative Projects'],
     image: 'https://picsum.photos/seed/eleanorp/400/500',
     connections: 12, trustScore: 4.0,
@@ -188,9 +176,7 @@ export const ALL_PEOPLE = [
   },
   { 
     id: 12, name: 'Anna R.', age: 29, role: 'Project Manager • Grad', 
-    text: "We are looking for a software helper for our team. You need to know React and Firebase. Send me a message!", 
-    mood: 3,
-    bio: "Graduated PM, now wrangling timelines and teams. I'm obsessed with finding tools and processes that make everyone's life easier.",
+    text: "We are looking for a software helper for our team. You need to know React and Firebase. Send me a message!",    bio: "Graduated PM, now wrangling timelines and teams. I'm obsessed with finding tools and processes that make everyone's life easier.",
     tags: ['Project Management', 'Hiring', 'React', 'Firebase', 'Millennial'],
     image: 'https://picsum.photos/seed/annar/400/500',
     connections: 55, trustScore: 4.3,
@@ -204,9 +190,7 @@ export const ALL_PEOPLE = [
   },
   { 
     id: 13, name: 'Joseph C.', age: 23, role: 'Engineer • Student', 
-    text: "Look at these great design tools I found. Link below!", 
-    mood: 1,
-    bio: "Engineering student who loves to code, but secretly has a passion for good design. Always tinkering with new tools.",
+    text: "Look at these great design tools I found. Link below!",    bio: "Engineering student who loves to code, but secretly has a passion for good design. Always tinkering with new tools.",
     tags: ['Engineering', 'Student', 'Design Tools', 'Gen Z', 'React Development'],
     image: 'https://picsum.photos/seed/josephc/400/500',
     connections: 21, trustScore: 3.9,
@@ -219,3 +203,4 @@ export const ALL_PEOPLE = [
     }
   },
 ];
+

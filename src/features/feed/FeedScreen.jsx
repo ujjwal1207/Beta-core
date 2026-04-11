@@ -10,6 +10,8 @@ import feedService from '../../services/feedService';
 import connectionsService from '../../services/connectionsService';
 import { getAvatarUrlWithSize } from '../../lib/avatarUtils';
 
+const getJourneyDismissedKey = (userId) => `quizNudgeDismissed:${userId || 'anonymous'}`;
+
 const FeedScreen = () => {
   const {
     setScreen,
@@ -26,11 +28,7 @@ const FeedScreen = () => {
     showToast,
   } = useAppContext();
 
-  const [showNudge, setShowNudge] = useState(() => {
-    // Check if user has dismissed the quiz nudge
-    const dismissed = localStorage.getItem('quizNudgeDismissed');
-    return dismissed !== 'true';
-  });
+  const [showNudge, setShowNudge] = useState(true);
   const [searchValue, setSearchValue] = useState("");
   const [posts, setPosts] = useState([]);
   const [isLoadingPosts, setIsLoadingPosts] = useState(true);
@@ -168,6 +166,16 @@ const FeedScreen = () => {
     setHiddenPostIds(new Set());
   }, [isAuthenticated, user?.id]);
 
+  useEffect(() => {
+    if (!isAuthenticated || !user?.id) {
+      setShowNudge(true);
+      return;
+    }
+
+    const dismissed = localStorage.getItem(getJourneyDismissedKey(user.id));
+    setShowNudge(dismissed !== 'true');
+  }, [isAuthenticated, user?.id]);
+
   // Listen for post creation events
   useEffect(() => {
     const handlePostCreated = () => {
@@ -300,7 +308,9 @@ const FeedScreen = () => {
               setScreen={setScreen}
               onClose={() => {
                 setShowNudge(false);
-                localStorage.setItem('quizNudgeDismissed', 'true');
+                if (user?.id) {
+                  localStorage.setItem(getJourneyDismissedKey(user.id), 'true');
+                }
               }}
             />
           )}

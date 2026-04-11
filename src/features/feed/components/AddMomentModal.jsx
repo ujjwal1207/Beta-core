@@ -43,7 +43,6 @@ const AddMomentModal = ({ isOpen, onClose, onPostCreated }) => {
       const postData = {
         content: momentText,
         type: 'moment',
-        mood_at_time: 1,
         tags: selectedTags, // Include selected tags
       };
 

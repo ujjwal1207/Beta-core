@@ -21,7 +21,6 @@ const feedService = {
       const formData = new FormData();
       formData.append('content', postData.content);
       formData.append('type', postData.type);
-      formData.append('mood_at_time', 1);
 
       // Add tags as comma-separated string
       if (postData.tags && postData.tags.length > 0) {

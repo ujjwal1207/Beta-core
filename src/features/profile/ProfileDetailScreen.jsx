@@ -304,7 +304,7 @@ const ProfileDetailScreen = () => {
         .map((item) => String(item?.lesson || '').trim())
         .filter(Boolean)
     : [];
-  const conversationVibeText = (sharedWisdom?.societyChange || '').trim();
+  const conversationStyleText = (sharedWisdom?.societyChange || '').trim();
   const educationList = Array.isArray(person?.education) ? person.education : [];
   const primaryEducation = educationList.length > 0 ? educationList[0] : null;
   const educationDisplay = primaryEducation?.name
@@ -601,15 +601,15 @@ const ProfileDetailScreen = () => {
                       </div>
                     )}
 
-                    {conversationVibeText && (
+                    {conversationStyleText && (
                       <div>
                         <div className="flex items-center text-sm font-bold text-slate-600 mb-2">
                           <Users className="w-4 h-4 mr-2 text-slate-400" />
-                          CONVERSATION VIBE
+                          CONVERSATION STYLE
                         </div>
                         <div className="p-3 rounded-xl border border-slate-200 bg-white shadow-sm flex items-start">
                           <Smile className="w-5 h-5 text-indigo-500 mr-2.5 shrink-0" />
-                          <span className="text-sm font-semibold text-slate-800">{conversationVibeText}</span>
+                          <span className="text-sm font-semibold text-slate-800">{conversationStyleText}</span>
                         </div>
                       </div>
                     )}

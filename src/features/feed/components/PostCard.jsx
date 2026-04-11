@@ -882,8 +882,6 @@ const PostCard = ({ post, onUpdate, onHide, showNotInterested = true }) => {
                 likes_count: originalPostData.likes_count || 0,
                 comments: originalPostData.comments_count || 0,
                 comments_count: originalPostData.comments_count || 0,
-                mood: originalPostData.mood_at_time,
-                mood_at_time: originalPostData.mood_at_time,
                 type: originalPostData.type,
                 timestamp: originalPostData.created_at,
                 created_at: originalPostData.created_at,

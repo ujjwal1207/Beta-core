@@ -22,7 +22,7 @@ import {
 } from '../lib/iconComponents';
 
 export const quizFlow = {
-  'VIBE_QUIZ': {
+  'GOAL_QUIZ': {
     prompt: "What's bringing you here today?",
     allowMultiple: false,
     options: [
@@ -153,7 +153,7 @@ export const quizFlow = {
       { id: 'AGE_45_PLUS', text: "45+", icon: <Clock className='w-6 h-6 text-slate-500'/> }
     ],
     nextStepLogic: (selectedIds, allAnswers) => {
-      if (allAnswers['VIBE_QUIZ']?.includes('KNOWLEDGE_SHARER')) {
+      if (allAnswers['GOAL_QUIZ']?.includes('KNOWLEDGE_SHARER')) {
         return null;
       }
       return 'GIVE_ADVICE_QUIZ';

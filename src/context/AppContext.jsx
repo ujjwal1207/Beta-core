@@ -102,6 +102,28 @@ export const AppProvider = ({ children }) => {
 
   const [onboardingAnswers, setOnboardingAnswers] = useState({});
 
+  const getOnboardingAnswersFromUser = (userData) => {
+    if (userData?.onboarding_answers && Object.keys(userData.onboarding_answers).length > 0) {
+      return userData.onboarding_answers;
+    }
+
+    if (userData?.sharer_insights && Object.keys(userData.sharer_insights).length > 0) {
+      const answers = {};
+      if (userData.sharer_insights.youngerSelf) {
+        answers['SHARER_TRACK_1'] = userData.sharer_insights.youngerSelf;
+      }
+      if (userData.sharer_insights.lifeLessons) {
+        answers['SHARER_TRACK_2'] = userData.sharer_insights.lifeLessons;
+      }
+      if (userData.sharer_insights.societyChange) {
+        answers['SHARER_TRACK_3'] = userData.sharer_insights.societyChange;
+      }
+      return answers;
+    }
+
+    return {};
+  };
+
   // Check authentication status on mount
   useEffect(() => {
     const checkAuth = async () => {
@@ -121,31 +143,12 @@ export const AppProvider = ({ children }) => {
         setUser(userData);
         setIsAuthenticated(true);
         setVerificationMessage(getVerificationMessage(userData));
+        setOnboardingAnswers(getOnboardingAnswersFromUser(userData));
 
         try {
           await userService.setOnline();
         } catch (error) {
           console.error('Failed to set online status:', error);
-        }
-
-        // Load onboarding answers from backend
-        if (userData.onboarding_answers && Object.keys(userData.onboarding_answers).length > 0) {
-          setOnboardingAnswers(userData.onboarding_answers);
-        } else if (userData.sharer_insights && Object.keys(userData.sharer_insights).length > 0) {
-          // Backwards compatibility: if only sharer_insights exists, populate onboarding answers
-          const answers = {};
-          if (userData.sharer_insights.youngerSelf) {
-            answers['SHARER_TRACK_1'] = userData.sharer_insights.youngerSelf;
-          }
-          if (userData.sharer_insights.lifeLessons) {
-            answers['SHARER_TRACK_2'] = userData.sharer_insights.lifeLessons;
-          }
-          if (userData.sharer_insights.societyChange) {
-            answers['SHARER_TRACK_3'] = userData.sharer_insights.societyChange;
-          }
-          if (Object.keys(answers).length > 0) {
-            setOnboardingAnswers(answers);
-          }
         }
 
         // Only auto-navigate if not already on WELCOME or auth screens
@@ -156,6 +159,7 @@ export const AppProvider = ({ children }) => {
         // User not authenticated - redirect to login
         setIsAuthenticated(false);
         setUser(null);
+        setOnboardingAnswers({});
         // Force redirect to login if not already on public pages
         if (screen !== 'WELCOME' && screen !== 'LOGIN' && screen !== 'SIGNUP') {
           setScreen('LOGIN');
@@ -361,6 +365,7 @@ export const AppProvider = ({ children }) => {
       }
       setUser(hydratedUser);
       setIsAuthenticated(true);
+      setOnboardingAnswers(getOnboardingAnswersFromUser(hydratedUser));
 
       try {
         await userService.setOnline();
@@ -393,6 +398,7 @@ export const AppProvider = ({ children }) => {
       }
       setUser(hydratedUser);
       setIsAuthenticated(true);
+      setOnboardingAnswers(getOnboardingAnswersFromUser(hydratedUser));
 
       try {
         await userService.setOnline();
@@ -423,6 +429,7 @@ export const AppProvider = ({ children }) => {
       await authService.logout();
       setUser(null);
       setIsAuthenticated(false);
+      setOnboardingAnswers({});
       setScreen('WELCOME');
     } catch (error) {
       console.error('Logout error:', error);

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { UserCog, Loader, Users, Activity, CreditCard, LogOut, RefreshCw, CheckCircle, XCircle, Search, UserMinus, Key, DollarSign, Calendar, EyeOff, Building2, MoreHorizontal, AlertTriangle, Trash2, Eye, MessageSquareText, FileText, ArrowLeft, Phone } from 'lucide-react';
+import { Loader, Users, Activity, CreditCard, LogOut, RefreshCw, CheckCircle, XCircle, Search, UserMinus, Key, DollarSign, Calendar, EyeOff, Building2, MoreHorizontal, AlertTriangle, Trash2, Eye, MessageSquareText, FileText, ArrowLeft, Phone } from 'lucide-react';
 import adminService from '../services/adminService';
 import authService from '../services/authService';
 
@@ -80,8 +80,8 @@ const ModeratorLogin = ({ onLoginSuccess }) => {
 
       <div className="w-full max-w-md bg-white/80 backdrop-blur-xl rounded-[2rem] shadow-2xl border border-white/50 p-8 relative z-10">
         <div className="flex items-center justify-center flex-col text-center mb-8">
-          <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4 shadow-lg shadow-indigo-900/10" style={{ background: BRAND }}>
-            <UserCog className="w-8 h-8 text-white" />
+          <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4 shadow-lg shadow-indigo-900/10 bg-white border border-slate-200">
+            <img src="listenlinklogo.png" alt="ListenLink" className="w-12 h-12 object-contain" />
           </div>
           <h1 className="text-2xl font-extrabold text-slate-800 tracking-tight mb-1">Moderator Console</h1>
           <p className="text-sm font-medium text-slate-500">Sign in to moderate the platform</p>

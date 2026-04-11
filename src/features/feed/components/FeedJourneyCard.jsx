@@ -25,6 +25,8 @@ const FeedJourneyCard = ({ onboardingAnswers, setScreen, onClose, dismissible = 
       onContinue({ isComplete, percentage, completedSteps, totalSteps: steps.length });
       return;
     }
+
+    sessionStorage.setItem('openBasicProfileSetup', 'true');
     setScreen('USER_PROFILE');
   };
 

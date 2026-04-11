@@ -58,7 +58,6 @@ const AddReflectionModal = ({ isOpen, onClose, onPostCreated }) => {
       const postData = {
         content: reflectionText,
         type: 'story', // Reflections are saved as stories
-        mood_at_time: 1,
         // Add style metadata
         style: {
           backgroundColor,
