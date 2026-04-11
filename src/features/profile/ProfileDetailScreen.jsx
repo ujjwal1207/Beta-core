@@ -370,7 +370,7 @@ const ProfileDetailScreen = () => {
       )}
 
       <div className="flex flex-col h-full bg-slate-100">
-        <div className="grow overflow-y-auto pb-28">
+        <div className="grow min-h-0 overflow-y-auto pb-6">
           <div className="relative w-full h-64 bg-cover bg-center" style={{ backgroundImage: `url(${getAvatarUrlWithSize(person, 400)})` }}>
             <div className="absolute inset-0 bg-linear-to-t from-black/80 to-transparent"></div>
             <button onClick={handleGoBack} className="absolute top-4 left-4 p-2 bg-black/30 backdrop-blur-sm rounded-full text-white hover:bg-black/50 transition-colors z-10">
@@ -655,10 +655,9 @@ const ProfileDetailScreen = () => {
             </div>
           )}
 
-          <div className="h-12"></div>
         </div>
 
-        <div className="absolute bottom-0 left-0 w-full p-4 bg-white/90 backdrop-blur-lg border-t border-slate-200 z-10">
+        <div className="shrink-0 p-4 bg-white/90 backdrop-blur-lg border-t border-slate-200 z-10">
           {person?.is_super_linker && (
             <div className="mb-3 bg-green-50 border border-green-200 rounded-lg p-3 text-center">
               {person?.pay_rate_per_min ? (

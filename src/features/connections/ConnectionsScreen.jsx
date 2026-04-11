@@ -749,6 +749,85 @@ const FindConnectionScreen = () => {
   );
 };
 
+const SuperPersonCard = React.memo(({ person }) => {
+  const isVerifiedUser = isUserVerified(person);
+  const { setScreen, setSelectedPerson, setPreviousScreen } = useAppContext();
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isRequested, setIsRequested] = useState(false);
+
+  const handleNameClick = () => {
+    setPreviousScreen('CONNECTIONS_DASHBOARD');
+    setSelectedPerson(person);
+    setScreen('PROFILE_DETAIL');
+  };
+
+  return (
+    <>
+      <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex items-center mb-3 w-full">
+        <div
+          className="w-16 h-16 rounded-full bg-cover bg-center mr-4 flex-shrink-0 overflow-hidden"
+          style={{ backgroundImage: `url(${getAvatarUrlWithSize(person, 100)})` }}
+        ></div>
+        <div className="flex-grow min-w-0">
+          <button onClick={handleNameClick} className="text-left touch-manipulation">
+            <div className='flex items-center gap-1'>
+              <VerifiedName
+                name={`${person.full_name}${person.age ? `, ${person.age}` : ''}`}
+                isVerified={isVerifiedUser}
+                className="font-semibold text-base text-slate-800 truncate hover:underline"
+              />
+            </div>
+            <p className="text-sm text-slate-500 truncate">{person.role || 'No role specified'}</p>
+          </button>
+          <div className="flex items-center space-x-3 mt-2">
+            <div className="flex items-center text-xs font-medium text-slate-600">
+              <Star className="w-4 h-4 text-amber-500 fill-amber-500 mr-1" />
+              <span><span className="font-bold text-slate-800">{person.trust_score?.toFixed(1) || '0.0'}</span> ({formatRatingCount(person.total_reviews || 0)})</span>
+            </div>
+          </div>
+        </div>
+        <div className="flex gap-2 ml-3 flex-shrink-0">
+          {isRequested ? (
+            <button
+              disabled
+              className="p-2 rounded-lg bg-green-100 text-green-600"
+            >
+              <CheckCircle className="w-5 h-5" />
+            </button>
+          ) : (
+            <button
+              onClick={async () => {
+                try {
+                  setIsRequested(true);
+                  await connectionsService.sendRequest(person.id);
+                } catch (error) {
+                  setIsRequested(false);
+                  console.error('Failed to send connection request:', error);
+                }
+              }}
+              className="p-2 rounded-lg bg-slate-100 text-indigo-600 active:bg-slate-200 touch-manipulation"
+            >
+              <MessageSquare className="w-5 h-5" />
+            </button>
+          )}
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="p-2 rounded-lg bg-rose-100 text-rose-500 hover:bg-rose-200 touch-manipulation"
+          >
+            <Calendar className="w-5 h-5" />
+          </button>
+        </div>
+      </div>
+      <ScheduleCallModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        person={person}
+        setScreen={setScreen}
+      />
+    </>
+  );
+});
+
 // Super ListenLinker Screen
 const SuperListenLinkerScreen = () => {
   const [superLinkers, setSuperLinkers] = useState([]);
@@ -769,86 +848,6 @@ const SuperListenLinkerScreen = () => {
 
     fetchSuperLinkers();
   }, []);
-
-  const SuperPersonCard = ({ person }) => {
-      const isVerifiedUser = isUserVerified(person);
-
-    const { setScreen, setSelectedPerson, setPreviousScreen } = useAppContext();
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [isRequested, setIsRequested] = useState(false);
-
-    const handleNameClick = () => {
-      setPreviousScreen('CONNECTIONS_DASHBOARD');
-      setSelectedPerson(person);
-      setScreen('PROFILE_DETAIL');
-    };
-
-    return (
-      <>
-        <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex items-center mb-3 w-full">
-          <div
-            className="w-16 h-16 rounded-full bg-cover bg-center mr-4 flex-shrink-0 overflow-hidden"
-            style={{ backgroundImage: `url(${getAvatarUrlWithSize(person, 100)})` }}
-          ></div>
-          <div className="flex-grow min-w-0">
-            <button onClick={handleNameClick} className="text-left">
-              <div className='flex items-center gap-1'>
-                <VerifiedName
-                  name={`${person.full_name}${person.age ? `, ${person.age}` : ''}`}
-                  isVerified={isVerifiedUser}
-                  className="font-semibold text-base text-slate-800 truncate hover:underline"
-                />
-              </div>
-              <p className="text-sm text-slate-500 truncate">{person.role || 'No role specified'}</p>
-            </button>
-            <div className="flex items-center space-x-3 mt-2">
-              <div className="flex items-center text-xs font-medium text-slate-600">
-                <Star className="w-4 h-4 text-amber-500 fill-amber-500 mr-1" />
-                <span><span className="font-bold text-slate-800">{person.trust_score?.toFixed(1) || '0.0'}</span> ({formatRatingCount(person.total_reviews || 0)})</span>
-              </div>
-            </div>
-          </div>
-          <div className="flex gap-2 ml-3 flex-shrink-0">
-            {isRequested ? (
-              <button
-                disabled
-                className="p-2 rounded-lg bg-green-100 text-green-600"
-              >
-                <CheckCircle className="w-5 h-5" />
-              </button>
-            ) : (
-              <button
-                onClick={async () => {
-                  try {
-                    setIsRequested(true);
-                    await connectionsService.sendRequest(person.id);
-                  } catch (error) {
-                    setIsRequested(false);
-                    console.error('Failed to send connection request:', error);
-                  }
-                }}
-                className="p-2 rounded-lg bg-slate-100 text-indigo-600 active:bg-slate-200"
-              >
-                <MessageSquare className="w-5 h-5" />
-              </button>
-            )}
-            <button
-              onClick={() => setIsModalOpen(true)}
-              className="p-2 rounded-lg bg-rose-100 text-rose-500 hover:bg-rose-200"
-            >
-              <Calendar className="w-5 h-5" />
-            </button>
-          </div>
-        </div>
-        <ScheduleCallModal
-          isOpen={isModalOpen}
-          onClose={() => setIsModalOpen(false)}
-          person={person}
-          setScreen={setScreen}
-        />
-      </>
-    );
-  };
 
   if (isLoading) {
     return (

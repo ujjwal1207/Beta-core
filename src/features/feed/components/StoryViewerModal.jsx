@@ -62,6 +62,9 @@ const StoryViewerModal = ({ person, onClose }) => {
       if (currentStory?.id && currentStory?.type === 'story') {
         try {
           await feedService.markStoryViewed(currentStory.id);
+          window.dispatchEvent(new CustomEvent('storyViewed', {
+            detail: { storyId: currentStory.id }
+          }));
         } catch (error) {
           console.error('Error marking story as viewed:', error);
         }

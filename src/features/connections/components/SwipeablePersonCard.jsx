@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAppContext } from '../../../context/AppContext';
-import { UserPlus, Calendar, BadgeCheck, Target, Scale, Shield, Handshake, Ear, Compass, GraduationCap, School, Tag, Briefcase, Heart, Users, Rocket, Code, Palette, Boxes, Megaphone, Landmark, Brain, Trophy, Mic, Lightbulb, Monitor } from 'lucide-react';
+import { UserPlus, Calendar, BadgeCheck, CheckCircle, Target, Scale, Shield, Handshake, Ear, Compass, GraduationCap, School, Tag, Briefcase, Heart, Users, Rocket, Code, Palette, Boxes, Megaphone, Landmark, Brain, Trophy, Mic, Lightbulb, Monitor } from 'lucide-react';
 
 import StarBadge from '../../../components/ui/StarBadge';
 import Button from '../../../components/ui/Button';
@@ -68,7 +68,7 @@ const SwipeablePersonCard = ({ person, onAction, style, isTop }) => {
       <div
         className={`absolute w-full h-full p-0 flex flex-col items-center justify-end rounded-2xl shadow-2xl bg-cover bg-center ${
           isTop ? 'z-10' : 'z-0'
-        } touch-none overflow-hidden`}
+        } touch-manipulation overflow-hidden`}
         style={{ ...style, backgroundImage: `url(${person.image})`, cursor: isTop ? 'grab' : 'default' }}
       >
         <StarBadge isSuper={isSuperLinker} />

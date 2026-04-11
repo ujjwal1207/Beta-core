@@ -27,6 +27,25 @@ const ScheduleCallModal = ({ isOpen, onClose, person, onSuccess }) => {
   const [message, setMessage] = useState(`Hi ${person?.name || ''}, I'd love to chat about ${person?.tags?.[0] || 'your work'}!`);
   const [isLoading, setIsLoading] = useState(false);
   const [successData, setSuccessData] = useState(null); // Will store booking response including calendar_url
+  const [errorMessage, setErrorMessage] = useState('');
+
+  const parseTimeSlotTo24h = (slot) => {
+    const [hours, minutes] = slot.replace(/AM|PM/, '').trim().split(':');
+    const isPM = slot.includes('PM');
+    let hour24 = parseInt(hours, 10);
+    if (isPM && hour24 !== 12) hour24 += 12;
+    if (!isPM && hour24 === 12) hour24 = 0;
+    return { hour24, minutes: parseInt(minutes, 10) };
+  };
+
+  const isPastPresetTime = (slot) => {
+    if (selectedDate !== formatDate(today)) return false;
+    const now = new Date();
+    const { hour24, minutes } = parseTimeSlotTo24h(slot);
+    const candidate = new Date();
+    candidate.setHours(hour24, minutes, 0, 0);
+    return candidate <= now;
+  };
 
   const handleDraftIntro = () => {
     const focus = person?.tags?.[0] || person?.industry || 'your work';
@@ -51,7 +70,14 @@ const ScheduleCallModal = ({ isOpen, onClose, person, onSuccess }) => {
   if (!isOpen) return null;
 
   const handleSend = async () => {
+    setErrorMessage('');
     if ((!selectedTime && !useCustomTime) || (useCustomTime && (!customDate || !customTime))) return;
+
+    const hostId = person?.id || person?.user_id;
+    if (!hostId) {
+      setErrorMessage('Unable to schedule: missing recipient id. Please reopen this profile and try again.');
+      return;
+    }
 
     setIsLoading(true);
     try {
@@ -65,24 +91,20 @@ const ScheduleCallModal = ({ isOpen, onClose, person, onSuccess }) => {
         scheduledDate = new Date(year, month - 1, day, hours, minutes, 0, 0);
       } else {
         // Parse the selected date and time from predefined slots
-        const [hours, minutes] = selectedTime.replace(/AM|PM/, '').trim().split(':');
-        const isPM = selectedTime.includes('PM');
-        let hour24 = parseInt(hours);
-        
-        if (isPM && hour24 !== 12) hour24 += 12;
-        if (!isPM && hour24 === 12) hour24 = 0;
+        const { hour24, minutes } = parseTimeSlotTo24h(selectedTime);
 
         // Create the scheduled date/time
         scheduledDate = new Date();
         if (selectedDate === formatDate(tomorrow)) {
           scheduledDate.setDate(scheduledDate.getDate() + 1);
         }
-        scheduledDate.setHours(hour24, parseInt(minutes), 0, 0);
+        scheduledDate.setHours(hour24, minutes, 0, 0);
       }
 
       // Validate that the scheduled time is in the future
       const now = new Date();
       if (scheduledDate <= now) {
+        setErrorMessage('Please select a future time.');
         if (onSuccess) {
           onSuccess('Please select a time in the future.');
         }
@@ -92,7 +114,7 @@ const ScheduleCallModal = ({ isOpen, onClose, person, onSuccess }) => {
 
       // Create the call booking
       const bookingResponse = await callsService.createCallBooking(
-        person.id,
+        hostId,
         scheduledDate,
         'video', // Default to video call
         message,
@@ -109,6 +131,8 @@ const ScheduleCallModal = ({ isOpen, onClose, person, onSuccess }) => {
       }
     } catch (error) {
       console.error('Failed to schedule call:', error);
+      const serverError = error?.response?.data?.detail;
+      setErrorMessage(typeof serverError === 'string' ? serverError : 'Failed to schedule call. Please try another slot.');
       // You could add error handling here, maybe show an error message
       if (onSuccess) {
         onSuccess('Failed to schedule call. Please try again.');
@@ -241,21 +265,39 @@ const ScheduleCallModal = ({ isOpen, onClose, person, onSuccess }) => {
           </div>
           
           <h3 className="text-base font-bold text-slate-800 mb-3">Choose the Time</h3>
+
+          {errorMessage && (
+            <div className="mb-4 p-3 rounded-xl border border-red-200 bg-red-50 text-red-700 text-sm font-medium">
+              {errorMessage}
+            </div>
+          )}
           
           {!useCustomTime ? (
             <div className="grid grid-cols-3 gap-2 mb-6">
               {timeSlots.map(time => (
+                (() => {
+                  const isPast = isPastPresetTime(time);
+                  return (
                 <button 
                   key={time} 
-                  onClick={() => setSelectedTime(time)} 
+                  onClick={() => {
+                    if (isPast) return;
+                    setErrorMessage('');
+                    setSelectedTime(time);
+                  }} 
+                  disabled={isPast}
                   className={`py-2 rounded-lg border font-medium text-sm transition-colors active:scale-[0.98] ${
                     selectedTime === time 
                       ? 'bg-indigo-600 text-white border-indigo-600' 
-                      : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
+                      : isPast
+                        ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed'
+                        : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
                   }`}
                 >
                   {time}
                 </button>
+                  );
+                })()
               ))}
             </div>
           ) : (

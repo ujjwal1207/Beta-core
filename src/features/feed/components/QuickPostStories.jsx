@@ -97,11 +97,23 @@ const QuickPostStories = ({ setIsAddReflectionModalOpen, setViewingStory }) => {
       fetchViewedStories();
     };
 
+    const handleStoryViewed = (event) => {
+      const storyId = event?.detail?.storyId;
+      if (!storyId) return;
+      setViewedStoryIds((prev) => {
+        const next = new Set(prev);
+        next.add(storyId);
+        return next;
+      });
+    };
+
     window.addEventListener('postCreated', handleStoryCreated);
     window.addEventListener('postDeleted', handleStoryDeleted);
+    window.addEventListener('storyViewed', handleStoryViewed);
     return () => {
       window.removeEventListener('postCreated', handleStoryCreated);
       window.removeEventListener('postDeleted', handleStoryDeleted);
+      window.removeEventListener('storyViewed', handleStoryViewed);
     };
   }, [user]);
 

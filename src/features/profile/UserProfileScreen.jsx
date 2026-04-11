@@ -624,7 +624,7 @@ const UserProfileScreen = () => {
     );
   };
 
-  const completeMonetizationSetup = () => {
+  const completeMonetizationSetup = async () => {
     const topicParts = [
       ...monetizationTopicSelections,
       ...String(monetizationCustomTopic || '').split(',').map((item) => item.trim()).filter(Boolean),
@@ -637,13 +637,62 @@ const UserProfileScreen = () => {
     const uniqueTopics = Array.from(new Set(topicParts));
     const uniqueStyles = Array.from(new Set(styleParts));
 
-    setEditingMonetization({
+    const nextMonetization = {
       sessionTopic: uniqueTopics.join(', '),
       sessionStyle: uniqueStyles.join(', '),
       sessionHook: monetizationHook.trim(),
-    });
-    setIsDirty(true);
-    setIsMonetizationSetupOpen(false);
+    };
+
+    const updatedOnboardingAnswers = { ...onboardingAnswers };
+    if (nextMonetization.sessionTopic) updatedOnboardingAnswers['MONETIZATION_TRACK_1'] = nextMonetization.sessionTopic;
+    else delete updatedOnboardingAnswers['MONETIZATION_TRACK_1'];
+
+    if (nextMonetization.sessionStyle) updatedOnboardingAnswers['MONETIZATION_TRACK_2'] = nextMonetization.sessionStyle;
+    else delete updatedOnboardingAnswers['MONETIZATION_TRACK_2'];
+
+    if (nextMonetization.sessionHook) updatedOnboardingAnswers['MONETIZATION_TRACK_3'] = nextMonetization.sessionHook;
+    else delete updatedOnboardingAnswers['MONETIZATION_TRACK_3'];
+
+    const hasMonetizationSubmission = Boolean(
+      nextMonetization.sessionTopic ||
+      nextMonetization.sessionStyle ||
+      nextMonetization.sessionHook
+    );
+
+    if (hasMonetizationSubmission) {
+      updatedOnboardingAnswers['MONETIZATION_APPROVAL_STATUS'] = 'pending';
+    } else {
+      delete updatedOnboardingAnswers['MONETIZATION_APPROVAL_STATUS'];
+    }
+
+    const existingSharerInsights = user?.sharer_insights || {};
+    const monetizationSharerInsights = {
+      ...existingSharerInsights,
+      youngerSelf: nextMonetization.sessionHook,
+      lifeLessons: nextMonetization.sessionTopic
+        ? [{ lesson: nextMonetization.sessionTopic, where: '' }]
+        : [],
+      societyChange: nextMonetization.sessionStyle,
+    };
+
+    try {
+      setIsSaving(true);
+      setSaveError(null);
+
+      await updateUserProfile({
+        onboarding_answers: updatedOnboardingAnswers,
+        sharer_insights: monetizationSharerInsights,
+      });
+
+      setOnboardingAnswers(updatedOnboardingAnswers);
+      setEditingMonetization(nextMonetization);
+      setIsMonetizationSetupOpen(false);
+    } catch (error) {
+      console.error('Error saving paid session setup:', error);
+      setSaveError('Failed to save paid session details. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleSave = async () => {
@@ -1875,10 +1924,18 @@ const UserProfileScreen = () => {
                   <Button
                     primary
                     className="!w-auto !py-2.5 !px-6"
-                    disabled={!monetizationHook.trim()}
+                    disabled={!monetizationHook.trim() || isSaving}
                     onClick={completeMonetizationSetup}
                   >
-                    Save Setup <CheckCircle className="w-4 h-4 inline ml-1" />
+                    {isSaving ? (
+                      <>
+                        <Loader className="w-4 h-4 inline mr-1 animate-spin" /> Saving...
+                      </>
+                    ) : (
+                      <>
+                        Save Setup <CheckCircle className="w-4 h-4 inline ml-1" />
+                      </>
+                    )}
                   </Button>
                 )}
               </div>
