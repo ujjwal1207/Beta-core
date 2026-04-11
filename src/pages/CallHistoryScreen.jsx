@@ -46,6 +46,8 @@ const CallHistoryScreen = () => {
   // Payment States
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [callToPayFor, setCallToPayFor] = useState(null);
+  const hasLoadedOnceRef = useRef(false);
+  const lastFetchAtRef = useRef(0);
 
   const modalRef = useRef(null);
 
@@ -63,11 +65,17 @@ const CallHistoryScreen = () => {
   }, []);
 
   // --- FIXED DATA FETCHING ---
-  const fetchAllData = useCallback(async () => {
-    if (!user) return;
+  const fetchAllData = useCallback(async (force = false) => {
+    if (!user?.id) return;
 
-    // Only set loading on initial load if data is empty
-    if (calls.length === 0 && scheduledCalls.length === 0) {
+    const now = Date.now();
+    if (!force && now - lastFetchAtRef.current < 2000) {
+      return;
+    }
+    lastFetchAtRef.current = now;
+
+    // Show blocking loader only on first load to avoid UI flicker on refreshes.
+    if (!hasLoadedOnceRef.current) {
       setIsLoading(true);
     }
 
@@ -100,20 +108,21 @@ const CallHistoryScreen = () => {
     } catch (error) {
       console.error('Critical error in data fetching:', error);
     } finally {
+      hasLoadedOnceRef.current = true;
       setIsLoading(false);
     }
-  }, [user, calls.length, scheduledCalls.length]);
+  }, [user?.id]);
 
   // Initial Fetch
   useEffect(() => {
-    fetchAllData();
+    fetchAllData(true);
   }, [fetchAllData]);
 
   // Listen for call ended events to refresh data
   useEffect(() => {
     const handleCallEnded = () => {
       console.log('Call ended, refreshing call history');
-      fetchAllData();
+      fetchAllData(true);
     };
 
     window.addEventListener('callEnded', handleCallEnded);
@@ -365,7 +374,7 @@ const CallHistoryScreen = () => {
     try {
       await callsService.acceptCallBooking(bookingId);
       setPendingCallRequestsCount(prev => prev - 1); // Update count immediately
-      await fetchAllData(); // Refresh all lists
+      await fetchAllData(true); // Refresh all lists
       showToast('Call booking request accepted! The call has been scheduled.', 'success');
     } catch (error) {
       console.error('Failed to accept call booking request:', error);
@@ -389,7 +398,7 @@ const CallHistoryScreen = () => {
     try {
       await callsService.acceptRescheduleRequest(requestId);
       setPendingCallRequestsCount(prev => prev - 1); // Update count immediately
-      await fetchAllData(); // Refresh all lists
+      await fetchAllData(true); // Refresh all lists
       showToast('Reschedule request accepted successfully!', 'success');
     } catch (error) {
       console.error('Failed to accept reschedule request:', error);
@@ -1024,7 +1033,7 @@ const CallHistoryScreen = () => {
           }}
           call={callToReschedule}
           onSuccess={(message) => {
-            fetchAllData(); // Refresh list after successful reschedule
+            fetchAllData(true); // Refresh list after successful reschedule
             showToast(message, message.includes('Failed') ? 'error' : 'success');
           }}
         />

@@ -34,20 +34,6 @@ const userService = {
   },
 
   /**
-   * Update user's mood
-   * @param {number} mood - Mood value (0-3 scale)
-   * @returns {Promise<Object>} Update response
-   */
-  updateMood: async (mood) => {
-    try {
-      const response = await api.patch(`/users/me/mood?mood=${mood}`);
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  /**
    * Get user profile by ID
    * @param {number} userId - User ID
    * @returns {Promise<Object>} User profile data

@@ -8,14 +8,17 @@ import api from './api';
 const connectionsService = {
   /**
    * Get users for swipe/discovery mode
-   * Filtered by Vibe Match based on current mood
+   * Smart matched based on onboarding answers, tags, and alumni status
    * @param {number} [limit=20] - Maximum users to return
-   * @returns {Promise<Array>} Array of discovery profiles
+   * @param {string} [tag=null] - Filter by smart match tag
+   * @returns {Promise<Array>} Array of discovery profiles with match_score and match_reasons
    */
-  discover: async (limit = 20) => {
+  discover: async (limit = 20, tag = null) => {
     try {
+      const params = { limit };
+      if (tag) params.tag = tag;
       const response = await api.get('/connections/discover', {
-        params: { limit }
+        params
       });
       return response.data;
     } catch (error) {

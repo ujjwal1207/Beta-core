@@ -3,7 +3,6 @@ import { X, ImageIcon, VideoIcon, Loader, Tag } from 'lucide-react';
 import Button from '../../../components/ui/Button';
 import feedService from '../../../services/feedService';
 import { useAppContext } from '../../../context/AppContext';
-import { MOOD_LABELS, MOOD_COLORS } from '../../../config/theme';
 
 // Available tags for posts
 const AVAILABLE_TAGS = [
@@ -41,13 +40,10 @@ const AddMomentModal = ({ isOpen, onClose, onPostCreated }) => {
     setError('');
 
     try {
-      const currentMood = user?.mood ?? 1;
-      console.log('[AddMomentModal] Creating post with mood:', currentMood, 'User mood:', user?.mood);
-
       const postData = {
         content: momentText,
         type: 'moment',
-        mood_at_time: currentMood, // Use user's current mood (0-3), default to 1 (Just... okay)
+        mood_at_time: 1,
         tags: selectedTags, // Include selected tags
       };
 
@@ -121,13 +117,6 @@ const AddMomentModal = ({ isOpen, onClose, onPostCreated }) => {
           <button onClick={onClose} className="p-2 rounded-full hover:bg-slate-100">
             <X className="w-6 h-6 text-slate-600" />
           </button>
-        </div>
-        <div className="px-6 pt-3 pb-0">
-          <div className="text-sm text-slate-600">
-            Posting as: <span className="font-semibold" style={{ color: MOOD_COLORS[user?.mood ?? 1] }}>
-              {MOOD_LABELS[user?.mood ?? 1]}
-            </span>
-          </div>
         </div>
         <div className="p-6 pt-3 overflow-y-auto grow">
           {error && (

@@ -80,7 +80,6 @@ const PostDetailScreen = () => {
                             content: post.content,
                             likes: post.likes_count,
                             comments: post.comments_count,
-                            mood: post.mood_at_time,
                             timestamp: new Date(post.created_at * 1000).toLocaleDateString(),
                             imageUrl: post.image_url,
                             videoUrl: post.video_url,

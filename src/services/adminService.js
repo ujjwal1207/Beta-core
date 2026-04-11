@@ -21,6 +21,24 @@ const adminService = {
         return response.data;
     },
 
+    // List pending monetization submissions for moderation
+    getPendingMonetizationSubmissions: async () => {
+        const response = await api.get('/admin/monetization/pending');
+        return response.data;
+    },
+
+    // Approve monetization and promote to Super Listener
+    approveMonetizationSubmission: async (userId) => {
+        const response = await api.post(`/admin/monetization/${userId}/approve`);
+        return response.data;
+    },
+
+    // Reject monetization submission
+    rejectMonetizationSubmission: async (userId, reason = '') => {
+        const response = await api.post(`/admin/monetization/${userId}/reject`, { reason });
+        return response.data;
+    },
+
     // Update user role
     updateUserRole: async (userId, role) => {
         const response = await api.patch(`/admin/users/${userId}/role`, { role });
@@ -92,6 +110,17 @@ const adminService = {
 
     getInstitution: async () => {
         const response = await api.get('/admin/university/institution');
+        return response.data;
+    },
+
+    uploadInstitutionLogo: async (file) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        const response = await api.post('/admin/university/institution/logo', formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+            },
+        });
         return response.data;
     },
 

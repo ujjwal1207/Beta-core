@@ -1,27 +1,84 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Search, Users, Star, MessageSquare, Calendar, Frown, Loader, Filter, X, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { Search, Users, Star, MessageSquare, Calendar, Frown, Loader, Filter, X, CheckCircle, XCircle, AlertCircle, Briefcase, Heart, Rocket, Code, Palette, Boxes, Megaphone, Landmark, Brain, Trophy, Mic, Lightbulb, Monitor, GraduationCap, Tag } from 'lucide-react';
 import { useAppContext } from '../../context/AppContext';
 import TopTabBar from '../../components/layout/TopTabBar';
 import SwipeablePersonCard from './components/SwipeablePersonCard';
 import ScheduleCallModal from './components/ScheduleCallModal';
 import IncomingRequests from './components/IncomingRequests';
-import MoodDisplay from '../../components/ui/MoodDisplay';
 import { POPULAR_TOPICS } from '../../data/mockData';
 import connectionsService from '../../services/connectionsService';
 import { getAvatarUrlWithSize } from '../../lib/avatarUtils';
 import { formatRatingCount, isUserVerified } from '../../lib/utils';
 import VerifiedName from '../../components/ui/VerifiedName';
 
+const FIXED_SMART_TAG_FILTERS = [
+  'Career Growth',
+  'Work-Life Balance',
+  'Networking',
+  'Startups',
+  'Software Engineering',
+  'UX Design',
+  'Product Management',
+  'Marketing',
+  'Finance',
+  'Mental Health',
+  'Leadership',
+  'Public Speaking',
+  'Entrepreneurship',
+  'Remote Work',
+  'Interview Prep',
+];
+
+const HIGHLIGHTED_REASON_TAGS = new Set([
+  'Guidance Match',
+  'Shared Interests',
+  'Same School',
+  'Common Field',
+  'Alumni Mentor Match',
+  'Alumni in Your Field',
+]);
+
+const normalizeMatchReasons = (reasons = []) => {
+  return (Array.isArray(reasons) ? reasons : []).map((reason) => {
+    if (reason === 'Alumni in Your Field') return 'Common Field';
+    return reason;
+  });
+};
+
+const SMART_TAG_ICON_MAP = {
+  'Career Growth': Briefcase,
+  'Work-Life Balance': Heart,
+  'Networking': Users,
+  'Startups': Rocket,
+  'Software Engineering': Code,
+  'UX Design': Palette,
+  'Product Management': Boxes,
+  'Marketing': Megaphone,
+  'Finance': Landmark,
+  'Mental Health': Brain,
+  'Leadership': Trophy,
+  'Public Speaking': Mic,
+  'Entrepreneurship': Lightbulb,
+  'Remote Work': Monitor,
+  'Interview Prep': GraduationCap,
+};
+
+const getSmartTagIcon = (tag) => SMART_TAG_ICON_MAP[String(tag || '').trim()] || Tag;
+
 // Swipeable People Screen
 const SwipeablePeopleScreen = () => {
+  const { user, onboardingAnswers } = useAppContext();
   const [people, setPeople] = useState([]);
+  const [selectedDiscoverTag, setSelectedDiscoverTag] = useState('All Matches');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [notification, setNotification] = useState(null);
   const notificationTimeoutRef = useRef(null);
+  const hasLoadedOnceRef = useRef(false);
+  const lastFetchedUserIdRef = useRef(null);
+  const isFetchingRef = useRef(false);
 
   const showNotification = (message, type = 'success') => {
-    // Clear any existing timeout to prevent premature clearing
     if (notificationTimeoutRef.current) {
       clearTimeout(notificationTimeoutRef.current);
     }
@@ -32,22 +89,145 @@ const SwipeablePeopleScreen = () => {
     }, 3000);
   };
 
+  const splitCSVValues = (value) => String(value || '')
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+  const discoverCacheKey = useMemo(() => {
+    return user?.id ? `discover_people_v2_${user.id}` : null;
+  }, [user?.id]);
+
   useEffect(() => {
+    if (!discoverCacheKey) return;
+    try {
+      const cachedRaw = sessionStorage.getItem(discoverCacheKey);
+      if (!cachedRaw) return;
+      const cachedPeople = JSON.parse(cachedRaw);
+      if (Array.isArray(cachedPeople) && cachedPeople.length > 0) {
+        setPeople(cachedPeople);
+        setIsLoading(false);
+        hasLoadedOnceRef.current = true;
+        lastFetchedUserIdRef.current = user?.id;
+      }
+    } catch (cacheError) {
+      console.error('Failed to restore discover cache:', cacheError);
+    }
+  }, [discoverCacheKey, user?.id]);
+
+  const localGuidanceSignals = useMemo(() => {
+    const nowYear = new Date().getFullYear();
+    const educationList = Array.isArray(user?.education) ? user.education : [];
+    const isStudent = educationList.some((edu) => {
+      const enrollment = String(edu?.enrollment_status || '').toLowerCase();
+      if (enrollment === 'currently_enrolled') return true;
+      const passing = Number(edu?.passing_year);
+      return Number.isFinite(passing) && passing > nowYear;
+    }) || String(user?.role || '').toLowerCase().includes('student');
+
+    const lookingFor = [
+      ...splitCSVValues(onboardingAnswers?.LOOKING_FOR),
+      ...splitCSVValues(user?.exploring),
+    ].map((item) => item.toLowerCase());
+
+    const seeksGuidance = lookingFor.some((item) => item.includes('guidance') || item.includes('mentor') || item.includes('advice'));
+
+    return { isStudent, seeksGuidance };
+  }, [onboardingAnswers, user]);
+
+  useEffect(() => {
+    const currentUserId = user?.id;
+    if (!currentUserId) return;
+
+    // Prevent repeated fetches for the same user id (can happen with context churn/remounts).
+    if (hasLoadedOnceRef.current && lastFetchedUserIdRef.current === currentUserId) {
+      return;
+    }
+
+    if (isFetchingRef.current) {
+      return;
+    }
+
     const fetchDiscoveryPeople = async () => {
       try {
-        setIsLoading(true);
-        const data = await connectionsService.discover(20);
-        setPeople(data);
+        isFetchingRef.current = true;
+        if (!hasLoadedOnceRef.current && people.length === 0) {
+          setIsLoading(true);
+        }
+        setError(null);
+        const data = await connectionsService.discover(40);
+        const nextPeople = Array.isArray(data) ? data : [];
+        setPeople(nextPeople);
+        if (discoverCacheKey) {
+          try {
+            sessionStorage.setItem(discoverCacheKey, JSON.stringify(nextPeople));
+          } catch (cacheError) {
+            console.error('Failed to persist discover cache:', cacheError);
+          }
+        }
+        hasLoadedOnceRef.current = true;
+        lastFetchedUserIdRef.current = currentUserId;
       } catch (err) {
         setError('Failed to load discovery feed');
         console.error('Error fetching discovery:', err);
       } finally {
+        isFetchingRef.current = false;
         setIsLoading(false);
       }
     };
 
     fetchDiscoveryPeople();
+  }, [user?.id, discoverCacheKey, people.length]);
+
+  const rankedPeople = useMemo(() => {
+    const currentUserSchools = new Set(
+      (Array.isArray(user?.education) ? user.education : [])
+        .map((edu) => String(edu?.name || '').toLowerCase().trim())
+        .filter(Boolean)
+    );
+
+    return people
+      .map((person) => {
+        const personRole = String(person?.role || '').toLowerCase();
+        const isAlumni = personRole.includes('alumni') || (Array.isArray(person?.education) && person.education.some((edu) => String(edu?.enrollment_status || '').toLowerCase() === 'alumni'));
+        const personSchools = new Set(
+          (Array.isArray(person?.education) ? person.education : [])
+            .map((edu) => String(edu?.name || '').toLowerCase().trim())
+            .filter(Boolean)
+        );
+        const sameSchool = Array.from(personSchools).some((school) => currentUserSchools.has(school));
+
+        let frontendBoost = 0;
+        const extraReasons = [];
+        if (sameSchool && localGuidanceSignals.isStudent && localGuidanceSignals.seeksGuidance && isAlumni) {
+          frontendBoost += 20;
+          extraReasons.push('Alumni Mentor Match');
+        }
+
+        const matchReasons = Array.from(new Set([...normalizeMatchReasons(person.match_reasons || []), ...extraReasons]));
+        return {
+          ...person,
+          match_reasons: matchReasons,
+          discover_rank: Number(person.match_score || 0) + frontendBoost,
+        };
+      })
+      .sort((a, b) => (b.discover_rank || 0) - (a.discover_rank || 0));
+  }, [people, localGuidanceSignals, user?.education]);
+
+  const discoverTagOptions = useMemo(() => {
+    return ['All Matches', ...FIXED_SMART_TAG_FILTERS];
   }, []);
+
+  const filteredPeople = useMemo(() => {
+    if (selectedDiscoverTag === 'All Matches') {
+      return rankedPeople;
+    }
+
+    const selectedLower = selectedDiscoverTag.toLowerCase();
+    return rankedPeople.filter((person) => {
+      return (person.tags || []).some((tag) => String(tag).toLowerCase() === selectedLower);
+    });
+  }, [rankedPeople, selectedDiscoverTag]);
 
   if (isLoading) {
     return (
@@ -65,7 +245,7 @@ const SwipeablePeopleScreen = () => {
     );
   }
 
-  const sections = [{ title: 'People You Might Connect With', people }];
+  const sections = [{ title: 'People You Might Connect With', people: filteredPeople }];
 
   return (
     <>
@@ -93,9 +273,30 @@ const SwipeablePeopleScreen = () => {
           <div key={index} className="flex-shrink-0 w-full h-full scroll-snap-align-start flex">
             <div className="w-full p-0 flex justify-center items-start">
               <div className="flex flex-col items-center space-y-3 pb-12 w-full px-3 sm:px-4">
-                <h2 className="text-xl sm:text-2xl font-bold text-slate-800 mt-3 sm:mt-4 pb-2 sm:pb-3 border-b-2 border-slate-200 w-full text-center max-w-sm mx-auto">
-                  {section.title}
-                </h2>
+                <div className="w-full max-w-sm overflow-x-auto hide-scrollbar pb-1">
+                  <div className="flex gap-2 min-w-max">
+                    {discoverTagOptions.map((tag) => (
+                      (() => {
+                        const SmartTagIcon = getSmartTagIcon(tag);
+                        return (
+                      <button
+                        key={tag}
+                        onClick={() => setSelectedDiscoverTag(tag)}
+                        className={`px-2 py-1 text-[10px] font-bold rounded-full border transition-colors whitespace-nowrap ${selectedDiscoverTag === tag
+                          ? 'bg-indigo-50 text-indigo-700 border-indigo-100'
+                          : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'
+                          }`}
+                      >
+                        <span className="inline-flex items-center gap-1">
+                          <SmartTagIcon className="w-3 h-3" />
+                          {tag}
+                        </span>
+                      </button>
+                        );
+                      })()
+                    ))}
+                  </div>
+                </div>
                 {section.people.map(person => (
                   <div key={person.id} className="w-full max-w-sm mx-auto flex-shrink-0">
                     <div className="relative w-full" style={{ height: '56vh', minHeight: '420px', maxHeight: '680px' }}>
@@ -106,11 +307,11 @@ const SwipeablePeopleScreen = () => {
                           age: person.age,
                           role: person.role,
                           image: getAvatarUrlWithSize(person, 400),
-                          mood: person.mood,
                           location: person.location,
                           tags: person.tags || [],
                           bio: person.bio,
                           trustScore: person.trust_score,
+                          matchReasons: person.match_reasons || [],
                         }}
                         onAction={async () => {
                           try {
@@ -130,8 +331,16 @@ const SwipeablePeopleScreen = () => {
                 {section.people.length === 0 && (
                   <div className="text-center p-8 bg-white rounded-xl shadow-lg border border-slate-200 w-full max-w-sm mt-8">
                     <Users className="w-10 h-10 text-rose-500 mx-auto mb-4" />
-                    <p className="font-semibold text-base text-slate-700">That's everyone for now.</p>
-                    <p className="text-sm text-slate-500 mt-1">Try another category or come back later.</p>
+                    <p className="font-semibold text-base text-slate-700">
+                      {selectedDiscoverTag === 'All Matches'
+                        ? 'No matches available right now.'
+                        : `No users found matching "${selectedDiscoverTag}".`}
+                    </p>
+                    <p className="text-sm text-slate-500 mt-1">
+                      {selectedDiscoverTag === 'All Matches'
+                        ? 'Try again in some time.'
+                        : 'Try a different smart tag.'}
+                    </p>
                   </div>
                 )}
               </div>
@@ -171,6 +380,9 @@ const PersonResultCard = ({ person }) => {
 
   const isSuperLinker = person.is_super_linker || false;
   const isVerifiedUser = isUserVerified(person);
+  const profileTags = Array.isArray(person.tags) ? person.tags : [];
+  const visibleProfileTags = profileTags.slice(0, 4);
+  const hiddenProfileTagCount = Math.max(profileTags.length - visibleProfileTags.length, 0);
 
   return (
     <>
@@ -210,9 +422,26 @@ const PersonResultCard = ({ person }) => {
                 isVerified={isVerifiedUser}
                 className="font-semibold text-sm sm:text-base text-slate-800 truncate active:underline"
               />
-              <MoodDisplay moodIndex={person.mood} />
             </div>
             <p className="text-xs text-slate-500 truncate">{person.role || 'No role specified'}</p>
+            {Array.isArray(person.match_reasons) && person.match_reasons.length > 0 && (
+              <div className="flex flex-wrap gap-1 mt-1.5">
+                {person.match_reasons.map((reason) => {
+                  const isHighlightedReason = HIGHLIGHTED_REASON_TAGS.has(reason);
+                  return (
+                    <span
+                      key={reason}
+                      className={`px-2 py-0.5 text-[10px] font-bold rounded-full border ${isHighlightedReason
+                        ? 'bg-indigo-50 text-indigo-700 border-indigo-100'
+                        : 'bg-slate-100 text-slate-700 border-slate-200'
+                        }`}
+                    >
+                      {reason}
+                    </span>
+                  );
+                })}
+              </div>
+            )}
             {person.matchedTags && person.matchedTags.length > 0 && (
               <div className="flex flex-wrap gap-1 mt-1.5">
                 {person.matchedTags.map((tag) => (
@@ -220,6 +449,20 @@ const PersonResultCard = ({ person }) => {
                     Smart Match: {tag}
                   </span>
                 ))}
+              </div>
+            )}
+            {visibleProfileTags.length > 0 && (
+              <div className="flex flex-wrap gap-1 mt-1.5">
+                {visibleProfileTags.map((tag) => (
+                  <span key={tag} className="px-2 py-0.5 bg-slate-100 text-slate-700 text-[10px] font-semibold rounded-full border border-slate-200">
+                    {tag}
+                  </span>
+                ))}
+                {hiddenProfileTagCount > 0 && (
+                  <span className="px-2 py-0.5 bg-slate-100 text-slate-600 text-[10px] font-semibold rounded-full border border-slate-200">
+                    +{hiddenProfileTagCount}
+                  </span>
+                )}
               </div>
             )}
           </button>
@@ -637,110 +880,166 @@ const SuperListenLinkerScreen = () => {
 };
 
 // Alumni Screen
+const AlumniPersonCard = ({ person }) => {
+  const { setScreen, setSelectedPerson, setPreviousScreen } = useAppContext();
+  const [isRequested, setIsRequested] = useState(false);
+
+  const handleClick = useCallback(() => {
+    if (!person?.id) return;
+    setPreviousScreen('CONNECTIONS_DASHBOARD');
+    setSelectedPerson(person);
+    setScreen('PROFILE_DETAIL');
+  }, [person, setPreviousScreen, setSelectedPerson, setScreen]);
+
+  // Shows schools returned by alumni endpoint (already filtered to common schools server-side).
+  const commonSchools = useMemo(() => {
+    if (!Array.isArray(person?.education)) return [];
+    return person.education.map((edu) => edu?.name).filter(Boolean);
+  }, [person?.education]);
+
+  const isVerifiedUser = isUserVerified(person);
+
+  return (
+    <div
+      onClick={handleClick}
+      className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex items-center mb-3 w-full hover:border-indigo-300 transition-colors cursor-pointer"
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          handleClick();
+        }
+      }}
+    >
+      <div
+        className="w-16 h-16 rounded-full bg-cover bg-center mr-4 flex-shrink-0 overflow-hidden"
+        style={{ backgroundImage: `url(${getAvatarUrlWithSize(person, 100)})` }}
+      >
+        <img
+          src={getAvatarUrlWithSize(person, 100)}
+          alt={person.full_name}
+          className="w-full h-full object-cover"
+        />
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-1">
+          <VerifiedName
+            name={person.full_name}
+            isVerified={isVerifiedUser}
+            className="text-base font-bold text-slate-800 truncate"
+          />
+        </div>
+        <p className="text-sm text-slate-600 truncate">{person.role || 'No role specified'}</p>
+        {commonSchools.length > 0 && (
+          <div className="flex items-center gap-1 mt-1">
+            <span className="text-xs text-indigo-600 font-semibold">🎓 {commonSchools[0]}</span>
+            {commonSchools.length > 1 && (
+              <span className="text-xs text-slate-400">+{commonSchools.length - 1} more</span>
+            )}
+          </div>
+        )}
+      </div>
+      <div className="flex gap-2 sm:gap-3 ml-2 flex-shrink-0">
+        {isRequested ? (
+          <button
+            disabled
+            onClick={(e) => e.stopPropagation()}
+            className="p-2 rounded-lg bg-green-100 text-green-600"
+          >
+            <CheckCircle className="w-4 h-4" />
+          </button>
+        ) : (
+          <button
+            onClick={async (e) => {
+              e.stopPropagation();
+              try {
+                setIsRequested(true);
+                await connectionsService.sendRequest(person.id);
+              } catch (error) {
+                setIsRequested(false);
+                console.error('Failed to send connection request:', error);
+              }
+            }}
+            className="p-2 rounded-lg bg-slate-100 text-indigo-600 active:bg-slate-200"
+          >
+            <MessageSquare className="w-4 h-4" />
+          </button>
+        )}
+      </div>
+    </div>
+  );
+};
+
 const AlumniScreen = () => {
+  const { user } = useAppContext();
   const [alumni, setAlumni] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const hasLoadedOnceRef = useRef(false);
+  const lastFetchedUserIdRef = useRef(null);
+  const isFetchingRef = useRef(false);
+
+  const alumniCacheKey = useMemo(() => {
+    return user?.id ? `alumni_people_v1_${user.id}` : null;
+  }, [user?.id]);
 
   useEffect(() => {
+    if (!alumniCacheKey) return;
+    try {
+      const cachedRaw = sessionStorage.getItem(alumniCacheKey);
+      if (!cachedRaw) return;
+      const cachedAlumni = JSON.parse(cachedRaw);
+      if (Array.isArray(cachedAlumni)) {
+        setAlumni(cachedAlumni);
+        setIsLoading(false);
+        hasLoadedOnceRef.current = true;
+        lastFetchedUserIdRef.current = user?.id;
+      }
+    } catch (cacheError) {
+      console.error('Failed to restore alumni cache:', cacheError);
+    }
+  }, [alumniCacheKey, user?.id]);
+
+  useEffect(() => {
+    const currentUserId = user?.id;
+    if (!currentUserId) return;
+
+    if (hasLoadedOnceRef.current && lastFetchedUserIdRef.current === currentUserId) {
+      return;
+    }
+
+    if (isFetchingRef.current) {
+      return;
+    }
+
     const fetchAlumni = async () => {
       try {
-        setIsLoading(true);
+        isFetchingRef.current = true;
+        if (!hasLoadedOnceRef.current && alumni.length === 0) {
+          setIsLoading(true);
+        }
         const data = await connectionsService.getAlumni(50);
-        setAlumni(data);
+        const nextAlumni = Array.isArray(data) ? data : [];
+        setAlumni(nextAlumni);
+        if (alumniCacheKey) {
+          try {
+            sessionStorage.setItem(alumniCacheKey, JSON.stringify(nextAlumni));
+          } catch (cacheError) {
+            console.error('Failed to persist alumni cache:', cacheError);
+          }
+        }
+        hasLoadedOnceRef.current = true;
+        lastFetchedUserIdRef.current = currentUserId;
       } catch (err) {
         console.error('Error fetching alumni:', err);
       } finally {
+        isFetchingRef.current = false;
         setIsLoading(false);
       }
     };
 
     fetchAlumni();
-  }, []);
-
-  const AlumniPersonCard = ({ person }) => {
-    const { setScreen, setSelectedPerson, setPreviousScreen } = useAppContext();
-    const [isRequested, setIsRequested] = useState(false);
-
-    const handleClick = () => {
-      setPreviousScreen('CONNECTIONS_DASHBOARD');
-      setSelectedPerson(person);
-      setScreen('PROFILE_DETAIL');
-    };
-
-    // Get school(s) in common
-    const getCommonSchools = () => {
-      if (!person.education || person.education.length === 0) return [];
-      return person.education.map(edu => edu.name).filter(Boolean);
-    };
-
-    const commonSchools = getCommonSchools();
-
-    const isVerifiedUser = isUserVerified(person);
-
-    return (
-      <div
-        onClick={handleClick}
-        className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex items-center mb-3 w-full hover:border-indigo-300 transition-colors cursor-pointer"
-      >
-        <div
-          className="w-16 h-16 rounded-full bg-cover bg-center mr-4 flex-shrink-0 overflow-hidden"
-          style={{ backgroundImage: `url(${getAvatarUrlWithSize(person, 100)})` }}
-        >
-          <img
-            src={getAvatarUrlWithSize(person, 100)}
-            alt={person.full_name}
-            className="w-full h-full object-cover"
-          />
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1">
-            <VerifiedName
-              name={person.full_name}
-              isVerified={isVerifiedUser}
-              className="text-base font-bold text-slate-800 truncate"
-            />
-          </div>
-          <p className="text-sm text-slate-600 truncate">{person.role || 'No role specified'}</p>
-          {commonSchools.length > 0 && (
-            <div className="flex items-center gap-1 mt-1">
-              <span className="text-xs text-indigo-600 font-semibold">🎓 {commonSchools[0]}</span>
-              {commonSchools.length > 1 && (
-                <span className="text-xs text-slate-400">+{commonSchools.length - 1} more</span>
-              )}
-            </div>
-          )}
-        </div>
-        <div className="flex gap-2 sm:gap-3 ml-2 flex-shrink-0">
-          <MoodDisplay mood={person.mood} size="sm" />
-          {isRequested ? (
-            <button
-              disabled
-              onClick={(e) => e.stopPropagation()}
-              className="p-2 rounded-lg bg-green-100 text-green-600"
-            >
-              <CheckCircle className="w-4 h-4" />
-            </button>
-          ) : (
-            <button
-              onClick={async (e) => {
-                e.stopPropagation();
-                try {
-                  setIsRequested(true);
-                  await connectionsService.sendRequest(person.id);
-                } catch (error) {
-                  setIsRequested(false);
-                  console.error('Failed to send connection request:', error);
-                }
-              }}
-              className="p-2 rounded-lg bg-slate-100 text-indigo-600 active:bg-slate-200"
-            >
-              <MessageSquare className="w-4 h-4" />
-            </button>
-          )}
-        </div>
-      </div>
-    );
-  };
+  }, [user?.id, alumniCacheKey, alumni.length]);
 
   if (isLoading) {
     return (

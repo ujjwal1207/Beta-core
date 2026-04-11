@@ -66,7 +66,7 @@ const RemoteVideoPlayer = ({ remoteUser, recipientName }) => {
  */
 const VideoCallScreen = ({ recipientUser, channelName, token, uid, appId, onCallEnd }) => {
   // Get voice call setting from context if not available in props
-  const { isVoiceCall, setInVideoCall, setIsCallMinimized, setCallState, setCallControls, showToast } = useAppContext();
+  const { isVoiceCall, setInVideoCall, setIsCallMinimized, isCallMinimized, setCallState, setCallControls, showToast } = useAppContext();
 
   // State
   const [loading, setLoading] = useState(true);
@@ -107,15 +107,36 @@ const VideoCallScreen = ({ recipientUser, channelName, token, uid, appId, onCall
     return () => clearInterval(timer);
   }, []);
 
-  // Sync call state to shared context (separate effect to avoid render issues)
+  // Keep duration in global state only while minimized (widget needs live timer).
   useEffect(() => {
-    setCallState(prevState => ({
-      ...prevState,
-      duration: callDuration,
-      isMicOn,
-      isCameraOn
-    }));
-  }, [callDuration, isMicOn, isCameraOn, setCallState]);
+    if (!isCallMinimized) return;
+
+    setCallState((prevState) => {
+      if (prevState.duration === callDuration) {
+        return prevState;
+      }
+
+      return {
+        ...prevState,
+        duration: callDuration,
+      };
+    });
+  }, [callDuration, isCallMinimized, setCallState]);
+
+  // Sync mic/camera state changes globally (infrequent updates).
+  useEffect(() => {
+    setCallState((prevState) => {
+      if (prevState.isMicOn === isMicOn && prevState.isCameraOn === isCameraOn) {
+        return prevState;
+      }
+
+      return {
+        ...prevState,
+        isMicOn,
+        isCameraOn,
+      };
+    });
+  }, [isMicOn, isCameraOn, setCallState]);
 
   // 30-minute call cap with 5-minute warning
   useEffect(() => {
@@ -425,10 +446,10 @@ const VideoCallScreen = ({ recipientUser, channelName, token, uid, appId, onCall
     setCallControls({
       toggleMic,
       toggleCamera,
-      endCall: () => onCallEnd(callDuration),
+      endCall: () => onCallEnd(callDurationRef.current),
       maximizeCall
     });
-  }, [toggleMic, toggleCamera, onCallEnd, callDuration, setIsCallMinimized, setInVideoCall, setCallControls]);
+  }, [toggleMic, toggleCamera, onCallEnd, setIsCallMinimized, setInVideoCall, setCallControls]);
 
   const endCall = useCallback(() => {
     onCallEnd(callDuration);

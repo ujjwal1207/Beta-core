@@ -12,6 +12,7 @@ const BasicProfileModal = ({ isOpen, onClose, onSave, profileData, universities 
   const [selectedUniversityId, setSelectedUniversityId] = useState('');
   const [universitySearchQuery, setUniversitySearchQuery] = useState('');
   const [isUniversityDropdownOpen, setIsUniversityDropdownOpen] = useState(false);
+  const [isCustomUniversityEntry, setIsCustomUniversityEntry] = useState(false);
   const [enrollmentStatus, setEnrollmentStatus] = useState('');
   const [graduationYear, setGraduationYear] = useState('');
   const [focus, setFocus] = useState([]);
@@ -28,13 +29,32 @@ const BasicProfileModal = ({ isOpen, onClose, onSave, profileData, universities 
     'Career Transit',
   ], []);
 
-  const lookingForOptions = useMemo(() => [
-    'General career guidance & mentorship',
-    'Networking with professionals & peers',
-    'Real-world industry insights',
-    'Navigating gap years & career switches',
-    'Advice on higher studies & exams',
-  ], []);
+  const lookingForOptionsByStatus = useMemo(() => ({
+    currently_enrolled: [
+      'General career guidance & mentorship',
+      'Networking with professionals & peers',
+      'Real-world industry insights',
+      'Navigating gap years & career switches',
+      'Advice on higher studies & exams',
+    ],
+    alumni: [
+      'Guide students on Higher Studies & Exams',
+      'Mentor folks entering Tech/Finance/Med',
+      'Network with fellow founders & professionals',
+      'Share my Career Transit & Break experience',
+      'Hiring interns/professionals',
+      'Fundraising',
+    ],
+  }), []);
+
+  const activeLookingForOptions = useMemo(() => {
+    if (enrollmentStatus === 'currently_enrolled') return lookingForOptionsByStatus.currently_enrolled;
+    if (enrollmentStatus === 'alumni') return lookingForOptionsByStatus.alumni;
+    return [
+      ...lookingForOptionsByStatus.currently_enrolled,
+      ...lookingForOptionsByStatus.alumni,
+    ];
+  }, [enrollmentStatus, lookingForOptionsByStatus]);
 
   const years = useMemo(
     () => Array.from({ length: 21 }, (_, i) => String(new Date().getFullYear() - 10 + i)),
@@ -52,6 +72,9 @@ const BasicProfileModal = ({ isOpen, onClose, onSave, profileData, universities 
       const firstEducation = Array.isArray(profileData?.education) ? profileData.education[0] : null;
       setUniversity(firstEducation?.name || profileData?.university || '');
       setSelectedUniversityId(firstEducation?.university_id ? String(firstEducation.university_id) : '');
+      setIsCustomUniversityEntry(
+        !firstEducation?.university_id && String(firstEducation?.name || profileData?.university || '').trim().length > 0
+      );
       setUniversitySearchQuery('');
       setIsUniversityDropdownOpen(false);
 
@@ -71,9 +94,13 @@ const BasicProfileModal = ({ isOpen, onClose, onSave, profileData, universities 
       setFocus(existingFocus.filter((item) => focusOptions.includes(item)));
       setCustomFocus(existingFocus.filter((item) => !focusOptions.includes(item)).join(', '));
 
+      const allKnownLookingForOptions = [
+        ...lookingForOptionsByStatus.currently_enrolled,
+        ...lookingForOptionsByStatus.alumni,
+      ];
       const existingLookingFor = String(profileData?.connectionGoal || profileData?.exploring || '').split(',').map((v) => v.trim()).filter(Boolean);
-      setLookingFor(existingLookingFor.filter((item) => lookingForOptions.includes(item)));
-      setCustomLookingFor(existingLookingFor.filter((item) => !lookingForOptions.includes(item)).join(', '));
+      setLookingFor(existingLookingFor.filter((item) => allKnownLookingForOptions.includes(item)));
+      setCustomLookingFor(existingLookingFor.filter((item) => !allKnownLookingForOptions.includes(item)).join(', '));
     }
 
     if (!isOpen) {
@@ -81,7 +108,30 @@ const BasicProfileModal = ({ isOpen, onClose, onSave, profileData, universities 
     }
 
     wasOpenRef.current = isOpen;
-  }, [isOpen, profileData, focusOptions, lookingForOptions]);
+  }, [isOpen, profileData, focusOptions, lookingForOptionsByStatus]);
+
+  useEffect(() => {
+    if (!enrollmentStatus) return;
+
+    setLookingFor((prevSelected) => {
+      const allowed = new Set(activeLookingForOptions);
+      const retained = prevSelected.filter((item) => allowed.has(item));
+      const movedToCustom = prevSelected.filter((item) => !allowed.has(item));
+
+      if (movedToCustom.length > 0) {
+        setCustomLookingFor((prevCustom) => {
+          const customItems = String(prevCustom)
+            .split(',')
+            .map((v) => v.trim())
+            .filter(Boolean);
+          const mergedCustom = Array.from(new Set([...customItems, ...movedToCustom]));
+          return mergedCustom.join(', ');
+        });
+      }
+
+      return retained;
+    });
+  }, [enrollmentStatus, activeLookingForOptions]);
 
   useEffect(() => {
     const handleOutsideUniversityClick = (event) => {
@@ -114,7 +164,9 @@ const BasicProfileModal = ({ isOpen, onClose, onSave, profileData, universities 
 
   const isNextDisabled = () => {
     if (step === 1) {
-      const hasValidUniversity = hasUniversityOptions ? !!selectedUniversityId : !!university.trim();
+      const hasValidUniversity = hasUniversityOptions
+        ? (isCustomUniversityEntry ? !!university.trim() : !!selectedUniversityId)
+        : !!university.trim();
       return !name.trim() || !hasValidUniversity || !enrollmentStatus || !graduationYear;
     }
     if (step === 2) return focus.length === 0 && !customFocus.trim();
@@ -190,49 +242,79 @@ const BasicProfileModal = ({ isOpen, onClose, onSave, profileData, universities 
           <div>
             <label className="text-sm font-bold text-slate-700 mb-2 block">1. Where do/did you study?</label>
             {hasUniversityOptions ? (
-              <div ref={universityDropdownRef} className="relative">
-                <input
-                  type="text"
-                  value={isUniversityDropdownOpen ? universitySearchQuery : university}
-                  onFocus={() => setIsUniversityDropdownOpen(true)}
-                  onChange={(e) => {
-                    setUniversitySearchQuery(e.target.value);
-                    setUniversity(e.target.value);
-                    setSelectedUniversityId('');
-                    setIsUniversityDropdownOpen(true);
-                    if (stepError) setStepError('');
-                  }}
-                  placeholder={universitiesLoading ? 'Loading schools...' : 'Search and select your school'}
-                  disabled={universitiesLoading}
-                  className="w-full p-3.5 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 font-medium text-slate-800"
-                />
-                {isUniversityDropdownOpen && !universitiesLoading && (
-                  <div className="absolute z-50 mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-lg max-h-52 overflow-y-auto">
-                    {filteredUniversities.length === 0 ? (
-                      <p className="px-3 py-3 text-sm text-slate-400 text-center">No schools found</p>
-                    ) : (
-                      filteredUniversities.slice(0, 15).map((u) => (
-                        <button
-                          key={u.id}
-                          type="button"
-                          onMouseDown={() => {
-                            setSelectedUniversityId(String(u.id));
-                            setUniversity(u.name);
-                            setUniversitySearchQuery('');
-                            setIsUniversityDropdownOpen(false);
-                            if (stepError) setStepError('');
-                          }}
-                          className={`w-full text-left px-3 py-2.5 text-sm transition-colors ${String(selectedUniversityId) === String(u.id)
-                            ? 'bg-indigo-50 text-indigo-700 font-semibold'
-                            : 'text-slate-700 hover:bg-slate-50'
-                            }`}
-                        >
-                          {u.name}
-                        </button>
-                      ))
+              <div className="space-y-2.5">
+                {!isCustomUniversityEntry ? (
+                  <div ref={universityDropdownRef} className="relative">
+                    <input
+                      type="text"
+                      value={isUniversityDropdownOpen ? universitySearchQuery : university}
+                      onFocus={() => setIsUniversityDropdownOpen(true)}
+                      onChange={(e) => {
+                        setUniversitySearchQuery(e.target.value);
+                        setUniversity(e.target.value);
+                        setSelectedUniversityId('');
+                        setIsUniversityDropdownOpen(true);
+                        if (stepError) setStepError('');
+                      }}
+                      placeholder={universitiesLoading ? 'Loading schools...' : 'Search and select your school'}
+                      disabled={universitiesLoading}
+                      className="w-full p-3.5 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 font-medium text-slate-800"
+                    />
+                    {isUniversityDropdownOpen && !universitiesLoading && (
+                      <div className="absolute z-50 mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-lg max-h-52 overflow-y-auto">
+                        {filteredUniversities.length === 0 ? (
+                          <p className="px-3 py-3 text-sm text-slate-400 text-center">No schools found</p>
+                        ) : (
+                          filteredUniversities.slice(0, 15).map((u) => (
+                            <button
+                              key={u.id}
+                              type="button"
+                              onMouseDown={() => {
+                                setSelectedUniversityId(String(u.id));
+                                setUniversity(u.name);
+                                setUniversitySearchQuery('');
+                                setIsUniversityDropdownOpen(false);
+                                if (stepError) setStepError('');
+                              }}
+                              className={`w-full text-left px-3 py-2.5 text-sm transition-colors ${String(selectedUniversityId) === String(u.id)
+                                ? 'bg-indigo-50 text-indigo-700 font-semibold'
+                                : 'text-slate-700 hover:bg-slate-50'
+                                }`}
+                            >
+                              {u.name}
+                            </button>
+                          ))
+                        )}
+                      </div>
                     )}
                   </div>
+                ) : (
+                  <input
+                    type="text"
+                    value={university}
+                    onChange={(e) => {
+                      setUniversity(e.target.value);
+                      setSelectedUniversityId('');
+                      if (stepError) setStepError('');
+                    }}
+                    placeholder="Type your university"
+                    className="w-full p-3.5 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 font-medium text-slate-800"
+                  />
                 )}
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsCustomUniversityEntry((prev) => !prev);
+                    setUniversitySearchQuery('');
+                    setIsUniversityDropdownOpen(false);
+                    setSelectedUniversityId('');
+                    if (stepError) setStepError('');
+                  }}
+                  className="text-sm font-semibold text-indigo-600 hover:text-indigo-700"
+                >
+                  {isCustomUniversityEntry ? 'Select from list instead' : 'Add your university'}
+                </button>
               </div>
             ) : (
               <input
@@ -321,12 +403,18 @@ const BasicProfileModal = ({ isOpen, onClose, onSave, profileData, universities 
       );
     }
 
+    const followUpQuestion = enrollmentStatus === 'alumni'
+      ? '4. How would you like to engage with the community?'
+      : '4. What kind of guidance are you looking for?';
+
+    const followUpHint = 'Select all that apply.';
+
     return (
       <div>
-        <label className="text-sm font-bold text-slate-700 mb-1 block">4. What kind of guidance are you looking for?</label>
-        <p className="text-xs text-slate-500 mb-3 font-medium">Select all that apply.</p>
+        <label className="text-sm font-bold text-slate-700 mb-1 block">{followUpQuestion}</label>
+        <p className="text-xs text-slate-500 mb-3 font-medium">{followUpHint}</p>
         <div className="space-y-2.5">
-          {lookingForOptions.map((opt) => (
+          {activeLookingForOptions.map((opt) => (
             <button
               key={opt}
               type="button"

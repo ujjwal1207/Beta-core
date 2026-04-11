@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { MessageSquare, Send, Bookmark, Repeat, X, MoreVertical, User, EyeOff, UserX, Edit, Trash2, Play, Pause, Volume2, VolumeX, Tag, CheckCircle } from 'lucide-react';
 import { useAppContext } from '../../../context/AppContext';
-import MoodDisplay from '../../../components/ui/MoodDisplay';
+
 import engagementService from '../../../services/engagementService';
 import feedService from '../../../services/feedService';
 import { getUserInitials } from '../../../lib/avatarUtils';
@@ -404,7 +404,7 @@ const PostCard = ({ post, onUpdate, onHide, showNotInterested = true }) => {
               isVerified={isVerifiedAuthor}
               className="font-semibold text-base text-slate-800 hover:underline"
             />
-            <MoodDisplay moodIndex={post.mood ?? post.mood_at_time} />
+
           </button>
           <p className="text-xs text-slate-500">{post.role || post.user_role}</p>
         </div>

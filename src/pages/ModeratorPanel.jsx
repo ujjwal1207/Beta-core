@@ -134,6 +134,7 @@ const ModeratorPanel = () => {
   const [userSearch, setUserSearch] = useState('');
 
   const [users, setUsers] = useState([]);
+  const [pendingMonetization, setPendingMonetization] = useState([]);
   const [activities, setActivities] = useState([]);
   const [transactions, setTransactions] = useState([]);
   const [selectedUserProfile, setSelectedUserProfile] = useState(null);
@@ -154,6 +155,8 @@ const ModeratorPanel = () => {
 
   const moderatorsCount = users.filter((u) => u.role === 'moderator').length;
   const superListenersCount = users.filter((u) => u.is_super_linker).length;
+  const pendingMonetizationCount = pendingMonetization.length;
+  const pendingMonetizationUserIds = new Set(pendingMonetization.map((item) => Number(item.user_id)));
   const filteredActivitiesCount = activities.filter(a => activityFilter === 'all' || a.type === activityFilter).length;
   const totalTransactionsVolume = transactions.reduce((sum, txn) => sum + Number(txn.price || 0), 0);
 
@@ -173,8 +176,12 @@ const ModeratorPanel = () => {
           setSelectedUserPosts(postsData.posts || []);
           setSelectedUserComments(commentsData.comments || []);
         } else {
-          const data = await adminService.getUsers();
-          setUsers(data.users || []);
+          const [usersData, monetizationData] = await Promise.all([
+            adminService.getUsers(),
+            adminService.getPendingMonetizationSubmissions(),
+          ]);
+          setUsers(usersData.users || []);
+          setPendingMonetization(monetizationData.submissions || []);
         }
       } else if (activeTab === 'activities') {
         const data = await adminService.getActivities();
@@ -203,10 +210,32 @@ const ModeratorPanel = () => {
   }, []);
 
   /* ── HANDLERS ── */
-  const handleToggleSuperListener = async (userId) => {
-    setActionLoading(`super-${userId}`); setMessage(''); setError('');
-    try { await adminService.toggleSuperLinker(userId); setUsers(users.map(u => u.id === userId ? { ...u, is_super_linker: !u.is_super_linker } : u)); setMessage('Super Listener status updated.'); }
-    catch (err) { setError(err.message || 'Failed to toggle status'); } finally { setActionLoading(null); }
+  const handleApproveMonetization = async (userId) => {
+    setActionLoading(`approve-monetization-${userId}`); setMessage(''); setError('');
+    try {
+      await adminService.approveMonetizationSubmission(userId);
+      setPendingMonetization(prev => prev.filter(item => Number(item.user_id) !== Number(userId)));
+      setUsers(prev => prev.map(u => Number(u.id) === Number(userId) ? { ...u, is_super_linker: true } : u));
+      setMessage('Monetization approved. User is now a Super Listener.');
+    } catch (err) {
+      setError(err.message || 'Failed to approve monetization');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleRejectMonetization = async (userId) => {
+    setActionLoading(`reject-monetization-${userId}`); setMessage(''); setError('');
+    try {
+      await adminService.rejectMonetizationSubmission(userId);
+      setPendingMonetization(prev => prev.filter(item => Number(item.user_id) !== Number(userId)));
+      setUsers(prev => prev.map(u => Number(u.id) === Number(userId) ? { ...u, is_super_linker: false } : u));
+      setMessage('Monetization submission rejected.');
+    } catch (err) {
+      setError(err.message || 'Failed to reject monetization');
+    } finally {
+      setActionLoading(null);
+    }
   };
 
   const handleRoleChange = async (userId, newRole) => {
@@ -352,6 +381,58 @@ const ModeratorPanel = () => {
               <StatCard label="Super Listeners" value={superListenersCount} icon={Key} color="#f59e0b" />
             </div>
 
+            {/* Monetization approval queue */}
+            <div className="bg-white/90 backdrop-blur-md rounded-3xl border border-slate-200/60 shadow-sm overflow-hidden">
+              <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+                <div>
+                  <h3 className="text-base font-bold text-slate-800">Pending Monetization Approvals</h3>
+                  <p className="text-xs text-slate-500 mt-0.5">Approve to make user a Super Listener</p>
+                </div>
+                <span className="px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                  {pendingMonetizationCount} pending
+                </span>
+              </div>
+
+              {pendingMonetizationCount === 0 ? (
+                <div className="px-6 py-8 text-sm text-slate-500">No pending monetization requests.</div>
+              ) : (
+                <div className="divide-y divide-slate-100">
+                  {pendingMonetization.map((item) => (
+                    <div key={item.user_id} className="px-6 py-4 flex flex-col lg:flex-row lg:items-center gap-3">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-slate-800 truncate">{item.full_name}</p>
+                        <p className="text-xs text-slate-500 truncate">{item.email}</p>
+                        <p className="text-xs text-slate-400 mt-1">Submitted: {formatTS(item.submitted_at)}</p>
+                      </div>
+
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          onClick={() => handleApproveMonetization(item.user_id)}
+                          disabled={actionLoading === `approve-monetization-${item.user_id}`}
+                          className="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold disabled:opacity-40"
+                        >
+                          {actionLoading === `approve-monetization-${item.user_id}` ? 'Approving...' : 'Approve'}
+                        </button>
+                        <button
+                          onClick={() => handleRejectMonetization(item.user_id)}
+                          disabled={actionLoading === `reject-monetization-${item.user_id}`}
+                          className="px-3 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold disabled:opacity-40"
+                        >
+                          {actionLoading === `reject-monetization-${item.user_id}` ? 'Rejecting...' : 'Reject'}
+                        </button>
+                        <button
+                          onClick={() => handleViewUserDetails(item.user_id)}
+                          className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold"
+                        >
+                          Review Profile
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
             {/* User Directory Card */}
             <div className="bg-white/90 backdrop-blur-md rounded-3xl border border-slate-200/60 shadow-sm overflow-hidden">
               {/* Search bar header */}
@@ -401,14 +482,13 @@ const ModeratorPanel = () => {
                           </select>
                         </td>
                         <td className="px-4 py-4">
-                          <button onClick={() => handleToggleSuperListener(user.id)} disabled={actionLoading === `super-${user.id}`}
-                            className={`px-3 py-1.5 text-xs font-bold rounded-xl border transition-all disabled:opacity-40 ${
-                              user.is_super_linker
-                                ? 'bg-amber-50 text-amber-700 border-amber-200 shadow-sm'
-                                : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'
-                            }`}>
-                            {user.is_super_linker ? '★ Active' : 'Inactive'}
-                          </button>
+                          {pendingMonetizationUserIds.has(Number(user.id)) ? (
+                            <span className="px-3 py-1.5 text-xs font-bold rounded-xl border bg-amber-50 text-amber-700 border-amber-200">Pending Approval</span>
+                          ) : user.is_super_linker ? (
+                            <span className="px-3 py-1.5 text-xs font-bold rounded-xl border bg-amber-50 text-amber-700 border-amber-200 shadow-sm">★ Active</span>
+                          ) : (
+                            <span className="px-3 py-1.5 text-xs font-bold rounded-xl border bg-white text-slate-500 border-slate-200">Inactive</span>
+                          )}
                         </td>
                         <td className="px-4 py-4 text-sm text-slate-500">{formatDate(user.created_at)}</td>
                         <td className="px-4 py-4 text-right">

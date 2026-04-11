@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Loader, CheckCircle, Trash2, Users, GraduationCap, UserCheck, RefreshCw, LogOut, Building2, PencilLine, AlertTriangle, Settings } from 'lucide-react';
+import { Loader, CheckCircle, Trash2, Users, GraduationCap, UserCheck, RefreshCw, LogOut, Building2, PencilLine, AlertTriangle, Settings, Upload } from 'lucide-react';
 import adminService from '../services/adminService';
 import authService from '../services/authService';
 
@@ -40,7 +40,7 @@ const formatDate = (ts) => {
   return new Date(ts * 1000).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 };
 
-const AdminLogin = ({ onLoginSuccess }) => {
+const AdminLogin = ({ onLoginSuccess, universityLogoUrl }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -86,9 +86,17 @@ const AdminLogin = ({ onLoginSuccess }) => {
 
       <div className="w-full max-w-md bg-white/80 backdrop-blur-xl rounded-[2rem] shadow-2xl border border-white/50 p-8 relative z-10">
         <div className="flex items-center justify-center flex-col text-center mb-8">
-          <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4 shadow-lg shadow-indigo-900/10 overflow-hidden bg-white">
-            <img src="/listenlinklogo.png" alt="ListenLink" className="w-12 h-12 object-contain" />
+          <div className="flex items-center justify-center gap-3 mb-4">
+            <div className="w-16 h-16 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-900/10 overflow-hidden bg-white border border-slate-200">
+              <img src="/listenlinklogo.png" alt="ListenLink" className="w-12 h-12 object-contain" />
+            </div>
+            {universityLogoUrl && (
+              <div className="w-16 h-16 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-900/10 overflow-hidden bg-white border border-slate-200">
+                <img src={universityLogoUrl} alt="University" className="w-full h-full object-cover" />
+              </div>
+            )}
           </div>
+          <p className="text-sm font-bold uppercase tracking-widest text-indigo-600 mb-2">ListenLink</p>
           <div>
             <h1 className="text-2xl font-extrabold text-slate-800 tracking-tight mb-1">Admin Portal</h1>
             <p className="text-sm font-medium text-slate-500">Sign in to manage your university</p>
@@ -158,6 +166,14 @@ const AdminPanel = () => {
 
   const [institutionNameInput, setInstitutionNameInput] = useState('');
   const [isEditingInstitution, setIsEditingInstitution] = useState(false);
+  const [institutionLogoFile, setInstitutionLogoFile] = useState(null);
+  const [cachedUniversityLogoUrl, setCachedUniversityLogoUrl] = useState(() => {
+    try {
+      return localStorage.getItem('admin_university_logo_url') || '';
+    } catch {
+      return '';
+    }
+  });
   const [actionLoading, setActionLoading] = useState(null);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -186,6 +202,12 @@ const AdminPanel = () => {
         const dashboardData = dashboardResult.value;
         setDashboard(dashboardData);
         setInstitutionNameInput(dashboardData?.institution?.name || '');
+        const logoUrl = dashboardData?.institution?.logo_url || '';
+        setCachedUniversityLogoUrl(logoUrl);
+        try {
+          if (logoUrl) localStorage.setItem('admin_university_logo_url', logoUrl);
+          else localStorage.removeItem('admin_university_logo_url');
+        } catch {}
       } else {
         setDashboard(null);
       }
@@ -299,6 +321,46 @@ const AdminPanel = () => {
     setIsAuthorized(false);
   };
 
+  const handleLogoFileChange = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type?.startsWith('image/')) {
+      setError('Please select an image file for university logo');
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      setError('University logo must be less than 10MB');
+      return;
+    }
+
+    setInstitutionLogoFile(file);
+    setError('');
+    setMessage('');
+  };
+
+  const uploadInstitutionLogo = async () => {
+    if (!institutionLogoFile) {
+      setError('Please select a logo file first');
+      return;
+    }
+
+    setActionLoading('upload-logo');
+    setMessage('');
+    setError('');
+    try {
+      await adminService.uploadInstitutionLogo(institutionLogoFile);
+      setInstitutionLogoFile(null);
+      await loadDashboard();
+      setMessage('University logo uploaded successfully.');
+    } catch (err) {
+      setError(getErrorMessage(err, 'Failed to upload university logo'));
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   const tabs = [
     { key: 'dashboard', label: 'Dashboard', icon: Users },
     { key: 'pending', label: 'Pending Approvals', icon: UserCheck },
@@ -317,7 +379,7 @@ const AdminPanel = () => {
   }
 
   if (!isAuthorized) {
-    return <AdminLogin onLoginSuccess={loadDashboard} />;
+    return <AdminLogin onLoginSuccess={loadDashboard} universityLogoUrl={cachedUniversityLogoUrl} />;
   }
 
   return (
@@ -325,8 +387,15 @@ const AdminPanel = () => {
       <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-xl border-b border-slate-200/60 shadow-[0_4px_30px_rgba(0,0,0,0.03)]">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-900/10 overflow-hidden bg-white">
-              <img src="/listenlinklogo.png" alt="ListenLink" className="w-9 h-9 object-contain" />
+            <div className="flex items-center gap-2">
+              <div className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-900/10 overflow-hidden bg-white border border-slate-200">
+                <img src="/listenlinklogo.png" alt="ListenLink" className="w-9 h-9 object-contain" />
+              </div>
+              {dashboard?.institution?.logo_url && (
+                <div className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-900/10 overflow-hidden bg-white border border-slate-200">
+                  <img src={dashboard.institution.logo_url} alt="University" className="w-full h-full object-cover" />
+                </div>
+              )}
             </div>
             <div>
               <h1 className="text-xl font-extrabold text-slate-800 tracking-tight">University Admin Panel</h1>
@@ -631,6 +700,14 @@ const AdminPanel = () => {
 
               {dashboard?.institution && !isEditingInstitution && (
                 <div className="rounded-2xl border border-slate-100 bg-slate-50/80 backdrop-blur p-5">
+                  {dashboard?.institution?.logo_url && (
+                    <div className="mb-4 flex items-center gap-3">
+                      <div className="w-14 h-14 rounded-xl overflow-hidden border border-slate-200 bg-white">
+                        <img src={dashboard.institution.logo_url} alt="University Logo" className="w-full h-full object-cover" />
+                      </div>
+                      <p className="text-xs uppercase font-extrabold text-slate-400 tracking-wider">University Logo</p>
+                    </div>
+                  )}
                   <p className="text-xs uppercase font-extrabold text-slate-400 tracking-wider mb-2">Active institution</p>
                   <p className="text-2xl font-black text-slate-800 tracking-tight">{dashboard.institution.name}</p>
                   <p className="text-xs font-semibold text-slate-500 mt-3 inline-flex items-center bg-white px-3 py-1.5 rounded-lg border border-slate-200">
@@ -643,6 +720,27 @@ const AdminPanel = () => {
                   >
                     <PencilLine className="inline w-4 h-4 mr-1.5" /> Change Name
                   </button>
+
+                  <div className="mt-5 pt-4 border-t border-slate-200">
+                    <label className="text-sm font-bold text-slate-700 block mb-2">University Logo</label>
+                    <div className="flex flex-col sm:flex-row gap-3">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleLogoFileChange}
+                        className="flex-1 p-3 rounded-xl border border-slate-200 bg-white/80 text-sm"
+                      />
+                      <button
+                        type="button"
+                        onClick={uploadInstitutionLogo}
+                        disabled={actionLoading === 'upload-logo' || !institutionLogoFile}
+                        className="px-5 py-3 rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-700 disabled:opacity-60 transition-colors"
+                      >
+                        <Upload className="inline w-4 h-4 mr-1.5" />
+                        {actionLoading === 'upload-logo' ? 'Uploading...' : 'Upload Logo'}
+                      </button>
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -672,6 +770,33 @@ const AdminPanel = () => {
                     >
                       Cancel
                     </button>
+                  </div>
+
+                  <div className="pt-3 border-t border-amber-200">
+                    <label className="text-sm font-bold text-slate-700 block mb-2">University Logo</label>
+                    <div className="flex flex-col sm:flex-row gap-3">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleLogoFileChange}
+                        className="flex-1 p-3 rounded-xl border border-slate-200 bg-white/80 text-sm"
+                      />
+                      <button
+                        type="button"
+                        onClick={uploadInstitutionLogo}
+                        disabled={actionLoading === 'upload-logo' || !institutionLogoFile}
+                        className="px-5 py-3 rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-700 disabled:opacity-60 transition-colors"
+                      >
+                        <Upload className="inline w-4 h-4 mr-1.5" />
+                        {actionLoading === 'upload-logo' ? 'Uploading...' : 'Upload Logo'}
+                      </button>
+                    </div>
+                    {dashboard?.institution?.logo_url && (
+                      <div className="mt-3 flex items-center gap-3">
+                        <img src={dashboard.institution.logo_url} alt="University Logo" className="w-12 h-12 rounded-lg object-cover border border-slate-200 bg-white" />
+                        <span className="text-xs text-slate-600">Current logo</span>
+                      </div>
+                    )}
                   </div>
                 </form>
               )}

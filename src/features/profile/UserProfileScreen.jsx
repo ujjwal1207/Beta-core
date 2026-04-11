@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, Settings, User, Edit3, Plus, Loader, Users, Camera, GraduationCap, BookOpen, Briefcase, Zap, CheckCircle, Smile } from 'lucide-react';
+import { ArrowLeft, Settings, User, Edit3, Plus, Loader, Users, Camera, GraduationCap, BookOpen, Briefcase, Zap, CheckCircle, Smile, ChevronRight, X } from 'lucide-react';
 import { useAppContext } from '../../context/AppContext';
 import BasicProfileModal from './components/BasicProfileModal';
 import Button from '../../components/ui/Button';
-import { MOOD_LABELS, MOOD_COLORS, getMoodGradient } from '../../config/theme';
+
 import PostCard from '../feed/components/PostCard';
 import feedService from '../../services/feedService';
 import userService from '../../services/userService';
@@ -119,7 +119,7 @@ const UniversitySearchInput = ({ universities, selectedId, selectedName, onChang
 // ───────────────────────────────────────────────────────────────────────────
 
 const UserProfileScreen = () => {
-  const { setScreen, onboardingAnswers, setOnboardingAnswers, user, updateUserProfile, updateUserMood } = useAppContext();
+  const { setScreen, onboardingAnswers, setOnboardingAnswers, user, updateUserProfile } = useAppContext();
 
   const SMART_TAG_SUGGESTIONS = [
     'Career Growth',
@@ -134,6 +134,22 @@ const UserProfileScreen = () => {
     'Study Abroad',
     'Higher Education',
     'Interview Prep',
+  ];
+
+  const MONETIZATION_TOPIC_OPTIONS = [
+    'Campus life and real lessons',
+    'Career pivots and finding the right path',
+    'Startup journey wins and failures',
+    'Moving abroad and navigating life',
+    'Tech careers and interview strategy',
+    'Key decisions that shaped my journey',
+  ];
+
+  const MONETIZATION_VIBE_OPTIONS = [
+    'Breaking down complex paths into simple steps',
+    'Listening first, then sharing practical guidance',
+    'Helping people find clarity on goals and direction',
+    'Offering actionable next steps from experience',
   ];
 
   const isProtectedTag = (tag) => {
@@ -176,7 +192,7 @@ const UserProfileScreen = () => {
   const [localTags, setLocalTags] = useState([]);
   const [customTagInput, setCustomTagInput] = useState('');
   const [isGeneratingTags, setIsGeneratingTags] = useState(false);
-  const [currentMood, setCurrentMood] = useState(0);
+
   const [isDirty, setIsDirty] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
@@ -205,6 +221,18 @@ const UserProfileScreen = () => {
     societyChange: '',
     communityGratitude: [],
   });
+  const [editingMonetization, setEditingMonetization] = useState({
+    sessionTopic: '',
+    sessionVibe: '',
+    sessionHook: '',
+  });
+  const [isMonetizationSetupOpen, setIsMonetizationSetupOpen] = useState(false);
+  const [monetizationStep, setMonetizationStep] = useState(1);
+  const [monetizationTopicSelections, setMonetizationTopicSelections] = useState([]);
+  const [monetizationCustomTopic, setMonetizationCustomTopic] = useState('');
+  const [monetizationVibeSelections, setMonetizationVibeSelections] = useState([]);
+  const [monetizationCustomVibe, setMonetizationCustomVibe] = useState('');
+  const [monetizationHook, setMonetizationHook] = useState('');
   const [userReviews, setUserReviews] = useState([]);
   const [reviewsLoading, setReviewsLoading] = useState(false);
   const [gratitudeSelectionError, setGratitudeSelectionError] = useState('');
@@ -430,6 +458,14 @@ const UserProfileScreen = () => {
   }, [user?.id]); // Only when user changes
 
   useEffect(() => {
+    setEditingMonetization({
+      sessionTopic: String(onboardingAnswers?.MONETIZATION_TRACK_1 || '').trim(),
+      sessionVibe: String(onboardingAnswers?.MONETIZATION_TRACK_2 || '').trim(),
+      sessionHook: String(onboardingAnswers?.MONETIZATION_TRACK_3 || '').trim(),
+    });
+  }, [user?.id, onboardingAnswers?.MONETIZATION_TRACK_1, onboardingAnswers?.MONETIZATION_TRACK_2, onboardingAnswers?.MONETIZATION_TRACK_3]);
+
+  useEffect(() => {
     const fetchUserReviews = async () => {
       if (!user?.id || !user?.is_super_linker) {
         setUserReviews([]);
@@ -451,12 +487,7 @@ const UserProfileScreen = () => {
     fetchUserReviews();
   }, [user?.id, user?.is_super_linker]);
 
-  // Sync mood separately to ensure it updates when changed from other screens
-  useEffect(() => {
-    if (user) {
-      setCurrentMood(user.mood || 0);
-    }
-  }, [user?.mood]);
+
 
   // Fetch user's posts
   useEffect(() => {
@@ -497,24 +528,13 @@ const UserProfileScreen = () => {
   // Only set About Me expansion state on mount
   // (Do not auto-collapse/expand on every user/onboardingAnswers change)
 
-  const sharerInsights = user?.sharer_insights || {
-    youngerSelf: onboardingAnswers['SHARER_TRACK_1'],
-    lifeLessons: onboardingAnswers['SHARER_TRACK_2'],
-    societyChange: onboardingAnswers['SHARER_TRACK_3'],
-  };
-  const selectedCommunityGratitude = Array.isArray(sharerInsights.communityGratitude)
-    ? sharerInsights.communityGratitude.filter((item) => String(item?.text || '').trim()).slice(0, 3)
+  const selectedCommunityGratitude = Array.isArray(user?.sharer_insights?.communityGratitude)
+    ? user.sharer_insights.communityGratitude.filter((item) => String(item?.text || '').trim()).slice(0, 3)
     : [];
-  const hasSharerInsights =
-    sharerInsights.youngerSelf ||
-    (sharerInsights.lifeLessons && sharerInsights.lifeLessons.length > 0) ||
-    sharerInsights.societyChange ||
-    selectedCommunityGratitude.length > 0;
-  const curiosityHookText = (sharerInsights.youngerSelf || '').trim() || 'Ask me the exact phrase I use to increase my job offers by 20%.';
-  const experiencesSharedText =
-    sharerInsights.lifeLessons?.find((lesson) => lesson?.lesson?.trim())?.lesson?.trim() ||
-    'Key decisions that shaped my journey';
-  const conversationVibeText = (sharerInsights.societyChange || '').trim() || 'Offering practical insights for their next steps';
+  const monetizationTopicText = String(onboardingAnswers?.MONETIZATION_TRACK_1 || '').trim();
+  const monetizationVibeText = String(onboardingAnswers?.MONETIZATION_TRACK_2 || '').trim();
+  const monetizationHookText = String(onboardingAnswers?.MONETIZATION_TRACK_3 || '').trim();
+  const monetizationApprovalStatus = String(onboardingAnswers?.MONETIZATION_APPROVAL_STATUS || '').trim().toLowerCase();
 
   const toggleCommunityGratitude = (review) => {
     const normalizedContent = String(review?.content || '').trim();
@@ -558,6 +578,66 @@ const UserProfileScreen = () => {
     setIsDirty(true);
   };
 
+  const openMonetizationSetup = () => {
+    const currentTopic = String(onboardingAnswers?.MONETIZATION_TRACK_1 || '').trim();
+    const currentVibe = String(onboardingAnswers?.MONETIZATION_TRACK_2 || '').trim();
+    const currentHook = String(onboardingAnswers?.MONETIZATION_TRACK_3 || '').trim();
+
+    const parsedTopics = currentTopic
+      ? currentTopic.split(',').map((item) => item.trim()).filter(Boolean)
+      : [];
+    const parsedVibes = currentVibe
+      ? currentVibe.split(',').map((item) => item.trim()).filter(Boolean)
+      : [];
+
+    const selectedTopics = parsedTopics.filter((item) => MONETIZATION_TOPIC_OPTIONS.includes(item));
+    const customTopics = parsedTopics.filter((item) => !MONETIZATION_TOPIC_OPTIONS.includes(item));
+    const selectedVibes = parsedVibes.filter((item) => MONETIZATION_VIBE_OPTIONS.includes(item));
+    const customVibes = parsedVibes.filter((item) => !MONETIZATION_VIBE_OPTIONS.includes(item));
+
+    setMonetizationTopicSelections(selectedTopics);
+    setMonetizationCustomTopic(customTopics.join(', '));
+    setMonetizationVibeSelections(selectedVibes);
+    setMonetizationCustomVibe(customVibes.join(', '));
+    setMonetizationHook(currentHook);
+    setMonetizationStep(1);
+    setIsMonetizationSetupOpen(true);
+  };
+
+  const toggleMonetizationTopic = (option) => {
+    setMonetizationTopicSelections((prev) =>
+      prev.includes(option) ? prev.filter((item) => item !== option) : [...prev, option]
+    );
+  };
+
+  const toggleMonetizationVibe = (option) => {
+    setMonetizationVibeSelections((prev) =>
+      prev.includes(option) ? prev.filter((item) => item !== option) : [...prev, option]
+    );
+  };
+
+  const completeMonetizationSetup = () => {
+    const topicParts = [
+      ...monetizationTopicSelections,
+      ...String(monetizationCustomTopic || '').split(',').map((item) => item.trim()).filter(Boolean),
+    ];
+    const vibeParts = [
+      ...monetizationVibeSelections,
+      ...String(monetizationCustomVibe || '').split(',').map((item) => item.trim()).filter(Boolean),
+    ];
+
+    const uniqueTopics = Array.from(new Set(topicParts));
+    const uniqueVibes = Array.from(new Set(vibeParts));
+
+    setEditingMonetization({
+      sessionTopic: uniqueTopics.join(', '),
+      sessionVibe: uniqueVibes.join(', '),
+      sessionHook: monetizationHook.trim(),
+    });
+    setIsDirty(true);
+    setIsMonetizationSetupOpen(false);
+  };
+
   const handleSave = async () => {
     let didSave = false;
     setIsSaving(true);
@@ -566,9 +646,12 @@ const UserProfileScreen = () => {
     try {
       // Sync sharer insights data to onboarding answers
       const sharerInsightsData = {
-        youngerSelf: editingSharerInsights.youngerSelf.trim(),
-        lifeLessons: editingSharerInsights.lifeLessons.filter(l => l.lesson.trim() || l.where.trim()),
-        societyChange: editingSharerInsights.societyChange.trim(),
+        // Keep legacy shared wisdom fields in sync with monetization setup
+        youngerSelf: editingMonetization.sessionHook.trim(),
+        lifeLessons: editingMonetization.sessionTopic.trim()
+          ? [{ lesson: editingMonetization.sessionTopic.trim(), where: '' }]
+          : [],
+        societyChange: editingMonetization.sessionVibe.trim(),
         communityGratitude: (Array.isArray(editingSharerInsights.communityGratitude)
           ? editingSharerInsights.communityGratitude
           : [])
@@ -589,6 +672,27 @@ const UserProfileScreen = () => {
 
       if (localLookingFor.trim()) updatedOnboardingAnswers['LOOKING_FOR'] = localLookingFor.trim();
       else delete updatedOnboardingAnswers['LOOKING_FOR'];
+
+      if (editingMonetization.sessionTopic.trim()) updatedOnboardingAnswers['MONETIZATION_TRACK_1'] = editingMonetization.sessionTopic.trim();
+      else delete updatedOnboardingAnswers['MONETIZATION_TRACK_1'];
+
+      if (editingMonetization.sessionVibe.trim()) updatedOnboardingAnswers['MONETIZATION_TRACK_2'] = editingMonetization.sessionVibe.trim();
+      else delete updatedOnboardingAnswers['MONETIZATION_TRACK_2'];
+
+      if (editingMonetization.sessionHook.trim()) updatedOnboardingAnswers['MONETIZATION_TRACK_3'] = editingMonetization.sessionHook.trim();
+      else delete updatedOnboardingAnswers['MONETIZATION_TRACK_3'];
+
+      const hasMonetizationSubmission = Boolean(
+        editingMonetization.sessionTopic.trim() ||
+        editingMonetization.sessionVibe.trim() ||
+        editingMonetization.sessionHook.trim()
+      );
+
+      if (hasMonetizationSubmission) {
+        updatedOnboardingAnswers['MONETIZATION_APPROVAL_STATUS'] = 'pending';
+      } else {
+        delete updatedOnboardingAnswers['MONETIZATION_APPROVAL_STATUS'];
+      }
 
       // Update the state
       setOnboardingAnswers(updatedOnboardingAnswers);
@@ -665,16 +769,7 @@ const UserProfileScreen = () => {
     }
   };
 
-  const handleMoodChange = async (newMood) => {
-    setCurrentMood(newMood);
-    setIsDirty(true);
 
-    try {
-      await updateUserMood(newMood);
-    } catch (error) {
-      console.error('Error updating mood:', error);
-    }
-  };
 
   const handlePhotoChange = (e) => {
     const file = e.target.files[0];
@@ -770,6 +865,14 @@ const UserProfileScreen = () => {
           <h1 className="text-xl font-bold text-slate-800">My Profile</h1>
         </div>
         <div className="flex items-center space-x-2">
+          <button
+            onClick={() => setScreen('MY_CONNECTIONS')}
+            className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+            aria-label="My Connections"
+            title="My Connections"
+          >
+            <Users className="w-5 h-5 text-slate-600" />
+          </button>
           <button
             onClick={() => setScreen('SETTINGS')}
             className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
@@ -946,22 +1049,7 @@ const UserProfileScreen = () => {
             </div>
           </div>
 
-          {/* Mood Slider */}
-          <div className="mb-6">
-            <label className="text-sm font-semibold text-slate-700 mb-2 block">
-              How are you feeling today? <span className="font-bold" style={{ color: MOOD_COLORS[currentMood] }}>{MOOD_LABELS[currentMood]}</span>
-            </label>
-            <input
-              type="range"
-              min="0"
-              max="3"
-              step="1"
-              value={currentMood}
-              onChange={(e) => handleMoodChange(parseInt(e.target.value))}
-              className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer range-slider-fix"
-              style={{ background: getMoodGradient() }}
-            />
-          </div>
+
 
           {/* Connections Stats */}
           <div className="flex items-center gap-6 mb-6 bg-slate-50 p-4 rounded-xl border border-slate-200">
@@ -1387,6 +1475,102 @@ const UserProfileScreen = () => {
           )}
         </div>
 
+        <div className="w-full mb-6 rounded-2xl border border-indigo-100 bg-linear-to-br from-white via-indigo-50/40 to-sky-50/40 p-5 shadow-sm">
+          <div className="flex justify-between items-center mb-4">
+            {(monetizationTopicText || monetizationVibeText || monetizationHookText) && (
+              <div>
+                <h3 className="text-xl font-black text-slate-800">Monetization Questions</h3>
+                <p className="text-xs font-semibold tracking-wide uppercase text-indigo-500 mt-0.5">Paid Session Profile</p>
+                {monetizationApprovalStatus === 'pending' && (
+                  <span className="inline-flex mt-2 text-[10px] font-bold uppercase tracking-wide px-2 py-1 rounded-lg bg-amber-50 text-amber-700 border border-amber-200">
+                    Pending Moderator Approval
+                  </span>
+                )}
+                {monetizationApprovalStatus === 'approved' && (
+                  <span className="inline-flex mt-2 text-[10px] font-bold uppercase tracking-wide px-2 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    Approved Super Listener
+                  </span>
+                )}
+                {monetizationApprovalStatus === 'rejected' && (
+                  <span className="inline-flex mt-2 text-[10px] font-bold uppercase tracking-wide px-2 py-1 rounded-lg bg-rose-50 text-rose-700 border border-rose-200">
+                    Rejected - Update And Resubmit
+                  </span>
+                )}
+              </div>
+            )}
+            {(monetizationTopicText || monetizationVibeText || monetizationHookText) && (
+              <button
+                onClick={openMonetizationSetup}
+                className="p-2.5 rounded-full border border-indigo-200 bg-white/90 hover:bg-white transition-colors shadow-sm"
+                aria-label="Edit Monetization Questions"
+              >
+                <Edit3 className="w-4.5 h-4.5 text-indigo-600" />
+              </button>
+            )}
+          </div>
+
+          {!(monetizationTopicText || monetizationVibeText || monetizationHookText) ? (
+            <div className="rounded-2xl border border-indigo-100 bg-white/85 p-6 text-center shadow-sm">
+              <div className="w-14 h-14 rounded-2xl bg-indigo-100 text-indigo-600 mx-auto mb-4 flex items-center justify-center">
+                <Zap className="w-8 h-8" />
+              </div>
+              <h4 className="text-2xl font-extrabold text-slate-800 mb-2">Monetize Your Journey</h4>
+              <p className="text-slate-600 mb-6">Share your stories, help others grow, and get paid for your time. Ready to take 1:1 sessions?</p>
+              <button
+                onClick={openMonetizationSetup}
+                className="w-full rounded-2xl bg-linear-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white font-bold py-4 transition-all shadow-md"
+              >
+                Setup Paid Sessions
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div className="rounded-xl border border-slate-200 bg-white/90 p-3.5">
+                <div className="flex items-center gap-2 mb-1.5">
+                  <div className="w-6 h-6 rounded-md bg-amber-100 text-amber-600 flex items-center justify-center">
+                    <Briefcase className="w-3.5 h-3.5" />
+                  </div>
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Experiences Shared In Paid Sessions</p>
+                </div>
+                <p className="text-[15px] leading-snug font-semibold text-slate-800">{monetizationTopicText || 'Not shared yet'}</p>
+              </div>
+
+              <div className="rounded-xl border border-slate-200 bg-white/90 p-3.5">
+                <div className="flex items-center gap-2 mb-1.5">
+                  <div className="w-6 h-6 rounded-md bg-indigo-100 text-indigo-600 flex items-center justify-center">
+                    <Users className="w-3.5 h-3.5" />
+                  </div>
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Conversation Style</p>
+                </div>
+                <p className="text-[15px] leading-snug font-semibold text-slate-800">{monetizationVibeText || 'Not shared yet'}</p>
+              </div>
+
+              <div className="rounded-xl border border-slate-200 bg-white/90 p-3.5">
+                <div className="flex items-center gap-2 mb-1.5">
+                  <div className="w-6 h-6 rounded-md bg-rose-100 text-rose-600 flex items-center justify-center">
+                    <Zap className="w-3.5 h-3.5" />
+                  </div>
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Curiosity Hook</p>
+                </div>
+                <p className="text-[15px] leading-snug font-semibold text-slate-800">{monetizationHookText || 'Not shared yet'}</p>
+              </div>
+
+              <button
+                onClick={openMonetizationSetup}
+                className="w-full p-3.5 rounded-xl border border-slate-300 bg-white text-slate-700 font-bold hover:bg-slate-50 transition-colors"
+              >
+                Edit Paid Session Setup
+              </button>
+              <button
+                onClick={() => setScreen('CONSULTATION_RATE_SETTINGS')}
+                className="w-full p-3.5 rounded-xl border border-indigo-200 bg-indigo-100 text-indigo-700 font-extrabold hover:bg-indigo-200 transition-colors"
+              >
+                Manage Consultation Rate
+              </button>
+            </div>
+          )}
+        </div>
+
         {/* Tab Navigation */}
         <div className="sticky top-0 bg-white z-30 border-b border-slate-200 mb-4">
           <div className="flex gap-4 px-4 overflow-x-auto hide-scrollbar">
@@ -1423,145 +1607,6 @@ const UserProfileScreen = () => {
         {/* Bio Tab Content */}
         {activeTab === 'bio' && (
           <>
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 w-full mb-6">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-extrabold text-slate-800">My Shared Wisdom</h3>
-              {!isEditingSharerInsights && (
-                <button
-                  onClick={() => setIsEditingSharerInsights(true)}
-                  className="p-2 rounded-full hover:bg-slate-100"
-                  aria-label="Edit Shared Wisdom"
-                >
-                  <Edit3 className="w-5 h-5 text-indigo-600" />
-                </button>
-              )}
-            </div>
-
-            {isEditingSharerInsights ? (
-              <div className="space-y-6">
-                <div>
-                  <label className="text-sm font-bold text-slate-600 mb-2 block">Curiosity Hook</label>
-                  <textarea
-                    value={editingSharerInsights.youngerSelf}
-                    onChange={(e) => {
-                      setEditingSharerInsights(prev => ({ ...prev, youngerSelf: e.target.value }));
-                      setIsDirty(true);
-                    }}
-                    placeholder="Share one line people can ask you about"
-                    className="w-full p-3 bg-slate-50 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-sm resize-none"
-                    rows="3"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-sm font-bold text-slate-600 mb-2 block">Experiences Shared</label>
-                  <div className="space-y-3">
-                    {editingSharerInsights.lifeLessons.map((lesson, index) => (
-                      <div key={index} className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-                        <textarea
-                          value={lesson.lesson}
-                          onChange={(e) => {
-                            const updated = [...editingSharerInsights.lifeLessons];
-                            updated[index] = { ...updated[index], lesson: e.target.value };
-                            setEditingSharerInsights(prev => ({ ...prev, lifeLessons: updated }));
-                            setIsDirty(true);
-                          }}
-                          placeholder="What experience or decision shaped your journey?"
-                          className="w-full p-2 bg-white border border-slate-300 rounded mb-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm resize-none"
-                          rows="2"
-                        />
-                        <input
-                          type="text"
-                          value={lesson.where}
-                          onChange={(e) => {
-                            const updated = [...editingSharerInsights.lifeLessons];
-                            updated[index] = { ...updated[index], where: e.target.value };
-                            setEditingSharerInsights(prev => ({ ...prev, lifeLessons: updated }));
-                            setIsDirty(true);
-                          }}
-                          placeholder="Context (optional)"
-                          className="w-full p-2 bg-white border border-slate-300 rounded focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-                        />
-                        <button
-                          onClick={() => {
-                            const updated = editingSharerInsights.lifeLessons.filter((_, i) => i !== index);
-                            setEditingSharerInsights(prev => ({ ...prev, lifeLessons: updated }));
-                            setIsDirty(true);
-                          }}
-                          className="mt-2 text-red-500 hover:text-red-700 text-sm font-medium"
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    ))}
-                    <button
-                      onClick={() => {
-                        setEditingSharerInsights(prev => ({
-                          ...prev,
-                          lifeLessons: [...prev.lifeLessons, { lesson: '', where: '' }]
-                        }));
-                        setIsDirty(true);
-                      }}
-                      className="w-full p-3 border-2 border-dashed border-slate-300 rounded-lg text-slate-500 font-semibold text-sm hover:bg-slate-50 hover:border-slate-400 transition-all"
-                    >
-                      <Plus className="w-4 h-4 inline mr-2" /> Add Experience
-                    </button>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="text-sm font-bold text-slate-600 mb-2 block">Conversation Vibe</label>
-                  <textarea
-                    value={editingSharerInsights.societyChange}
-                    onChange={(e) => {
-                      setEditingSharerInsights(prev => ({ ...prev, societyChange: e.target.value }));
-                      setIsDirty(true);
-                    }}
-                    placeholder="How do you usually help people in conversations?"
-                    className="w-full p-3 bg-slate-50 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-sm resize-none"
-                    rows="3"
-                  />
-                </div>
-
-              </div>
-            ) : (
-              <div className="space-y-6">
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <Zap className="w-4 h-4 text-amber-500" />
-                    <h4 className="text-[13px] font-extrabold text-slate-600 uppercase tracking-wide">Curiosity Hook</h4>
-                  </div>
-                  <div className="rounded-xl bg-slate-100 border border-slate-200 p-4 border-l-4 border-l-indigo-300">
-                    <p className="text-[18px] leading-relaxed text-slate-700 italic">"{curiosityHookText}"</p>
-                  </div>
-                </div>
-
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <Briefcase className="w-4 h-4 text-slate-400" />
-                    <h4 className="text-[13px] font-extrabold text-slate-600 uppercase tracking-wide">Experiences Shared</h4>
-                  </div>
-                  <div className="rounded-xl bg-white border border-slate-300 p-4 flex items-start gap-3">
-                    <CheckCircle className="w-5 h-5 text-emerald-500 mt-0.5 shrink-0" />
-                    <p className="text-base font-semibold text-slate-800 leading-snug">{experiencesSharedText}</p>
-                  </div>
-                </div>
-
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <Users className="w-4 h-4 text-slate-400" />
-                    <h4 className="text-[13px] font-extrabold text-slate-600 uppercase tracking-wide">Conversation Vibe</h4>
-                  </div>
-                  <div className="rounded-xl bg-white border border-slate-300 p-4 flex items-start gap-3">
-                    <Smile className="w-5 h-5 text-indigo-500 mt-0.5 shrink-0" />
-                    <p className="text-base font-semibold text-slate-800 leading-snug">{conversationVibeText}</p>
-                  </div>
-                </div>
-
-              </div>
-            )}
-          </div>
-
           {user?.is_super_linker && (
             <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 w-full mb-6">
               <div className="flex justify-between items-center mb-4">
@@ -1691,6 +1736,145 @@ const UserProfileScreen = () => {
                 />
               ))
             )}
+          </div>
+        )}
+
+        {isMonetizationSetupOpen && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex justify-center items-center p-4">
+            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-hidden flex flex-col">
+              <div className="flex justify-between items-center p-5 border-b border-slate-100 bg-slate-50">
+                <div className="flex items-center">
+                  {monetizationStep > 1 && (
+                    <button
+                      onClick={() => setMonetizationStep((prev) => prev - 1)}
+                      className="mr-3 p-1.5 -ml-1.5 rounded-full hover:bg-slate-200 transition-colors"
+                    >
+                      <ArrowLeft className="w-5 h-5 text-slate-600" />
+                    </button>
+                  )}
+                  <div>
+                    <h2 className="text-lg font-extrabold text-slate-800">Paid Session Setup</h2>
+                    <p className="text-xs text-slate-500 font-medium mt-0.5">Step {monetizationStep} of 3</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setIsMonetizationSetupOpen(false)}
+                  className="p-2 rounded-full hover:bg-slate-200 transition-colors"
+                >
+                  <X className="w-5 h-5 text-slate-500" />
+                </button>
+              </div>
+
+              <div className="w-full h-1.5 bg-slate-100">
+                <div className="h-full bg-indigo-500 transition-all duration-300 ease-out" style={{ width: `${(monetizationStep / 3) * 100}%` }}></div>
+              </div>
+
+              <div className="p-6 overflow-y-auto flex-grow">
+                {monetizationStep === 1 && (
+                  <div>
+                    <label className="text-sm font-bold text-slate-700 mb-1 block">1. What experiences do you bring to paid conversations?</label>
+                    <p className="text-xs text-slate-500 mb-3 font-medium">Select all that apply.</p>
+                    <div className="space-y-2.5">
+                      {MONETIZATION_TOPIC_OPTIONS.map((option) => (
+                        <button
+                          key={option}
+                          onClick={() => toggleMonetizationTopic(option)}
+                          className={`w-full text-left p-4 rounded-xl border transition-all font-medium flex justify-between items-center ${monetizationTopicSelections.includes(option) ? 'bg-indigo-50 border-indigo-500 text-indigo-700 ring-2 ring-indigo-200' : 'bg-white border-slate-200 text-slate-700 hover:border-indigo-300 hover:bg-slate-50'}`}
+                        >
+                          <span>{option}</span>
+                          {monetizationTopicSelections.includes(option) && <CheckCircle className="w-5 h-5 text-indigo-600" />}
+                        </button>
+                      ))}
+                      <div className="mt-4 pt-2 border-t border-slate-100">
+                        <input
+                          type="text"
+                          placeholder="Or type your own (comma separated)..."
+                          value={monetizationCustomTopic}
+                          onChange={(e) => setMonetizationCustomTopic(e.target.value)}
+                          className="w-full p-4 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 font-medium text-slate-800"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {monetizationStep === 2 && (
+                  <div>
+                    <label className="text-sm font-bold text-slate-700 mb-1 block">2. How do you usually help people in conversations?</label>
+                    <p className="text-xs text-slate-500 mb-3 font-medium">Select all that apply.</p>
+                    <div className="space-y-2.5">
+                      {MONETIZATION_VIBE_OPTIONS.map((option) => (
+                        <button
+                          key={option}
+                          onClick={() => toggleMonetizationVibe(option)}
+                          className={`w-full text-left p-4 rounded-xl border transition-all font-medium flex justify-between items-center ${monetizationVibeSelections.includes(option) ? 'bg-indigo-50 border-indigo-500 text-indigo-700 ring-2 ring-indigo-200' : 'bg-white border-slate-200 text-slate-700 hover:border-indigo-300 hover:bg-slate-50'}`}
+                        >
+                          <span>{option}</span>
+                          {monetizationVibeSelections.includes(option) && <CheckCircle className="w-5 h-5 text-indigo-600" />}
+                        </button>
+                      ))}
+                      <div className="mt-4 pt-2 border-t border-slate-100">
+                        <input
+                          type="text"
+                          placeholder="Or type your own (comma separated)..."
+                          value={monetizationCustomVibe}
+                          onChange={(e) => setMonetizationCustomVibe(e.target.value)}
+                          className="w-full p-4 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 font-medium text-slate-800"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {monetizationStep === 3 && (
+                  <div>
+                    <label className="text-sm font-bold text-slate-700 mb-2 block">3. Drop one curiosity hook people can ask you about</label>
+                    <p className="text-xs text-slate-500 mb-4">Give them a compelling reason to book a 1:1 session with you.</p>
+                    <textarea
+                      rows="4"
+                      placeholder="e.g., Ask me how I switched careers in 90 days and negotiated a better offer"
+                      value={monetizationHook}
+                      onChange={(e) => setMonetizationHook(e.target.value)}
+                      className="w-full p-4 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 font-medium text-slate-800 resize-none"
+                    />
+                  </div>
+                )}
+              </div>
+
+              <div className="p-5 border-t border-slate-100 bg-slate-50 flex justify-between items-center">
+                {monetizationStep > 1 ? (
+                  <button
+                    onClick={() => setMonetizationStep((prev) => prev - 1)}
+                    className="px-4 py-2 text-sm font-bold text-slate-600 hover:text-slate-800 transition-colors flex items-center"
+                  >
+                    <ArrowLeft className="w-4 h-4 mr-1" /> Back
+                  </button>
+                ) : <div></div>}
+
+                {monetizationStep < 3 ? (
+                  <Button
+                    primary
+                    className="!w-auto !py-2.5 !px-6"
+                    disabled={
+                      (monetizationStep === 1 && monetizationTopicSelections.length === 0 && !monetizationCustomTopic.trim()) ||
+                      (monetizationStep === 2 && monetizationVibeSelections.length === 0 && !monetizationCustomVibe.trim())
+                    }
+                    onClick={() => setMonetizationStep((prev) => prev + 1)}
+                  >
+                    Next <ChevronRight className="w-4 h-4 inline ml-1" />
+                  </Button>
+                ) : (
+                  <Button
+                    primary
+                    className="!w-auto !py-2.5 !px-6"
+                    disabled={!monetizationHook.trim()}
+                    onClick={completeMonetizationSetup}
+                  >
+                    Save Setup <CheckCircle className="w-4 h-4 inline ml-1" />
+                  </Button>
+                )}
+              </div>
+            </div>
           </div>
         )}
 

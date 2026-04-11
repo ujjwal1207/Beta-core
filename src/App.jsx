@@ -117,6 +117,7 @@ const AppContent = () => {
 
   // Callback to refresh feed after post creation
   const handlePostCreated = () => {
+    showToast('Posted successfully', 'success');
     // Trigger a custom event that FeedScreen can listen to
     window.dispatchEvent(new CustomEvent('postCreated'));
   };

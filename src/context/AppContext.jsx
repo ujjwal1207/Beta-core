@@ -429,26 +429,7 @@ export const AppProvider = ({ children }) => {
     }
   };
 
-  // Update user mood
-  const updateUserMood = async (mood) => {
-    const nextMood = Number(mood);
-    const prevMood = user?.mood;
 
-    // Optimistic UI update so slider feels responsive immediately.
-    setUser(prev => (prev ? { ...prev, mood: nextMood } : prev));
-
-    try {
-      const response = await userService.updateMood(nextMood);
-      const confirmedMood = Number(response?.mood);
-      setUser(prev => (prev ? { ...prev, mood: Number.isFinite(confirmedMood) ? confirmedMood : nextMood } : prev));
-      return response;
-    } catch (error) {
-      // Roll back optimistic change on failure.
-      setUser(prev => (prev ? { ...prev, mood: prevMood ?? prev.mood } : prev));
-      console.error('Update mood error:', error);
-      throw error;
-    }
-  };
 
   // Update user profile
   const updateUserProfile = async (profileUpdates) => {
@@ -611,12 +592,17 @@ export const AppProvider = ({ children }) => {
       }
     };
 
+    // Call history screen already has its own fetch flow; avoid duplicate background polling noise there.
+    if (screen === 'CALL_HISTORY') {
+      return;
+    }
+
     fetchPendingCallRequests();
-    // Poll every 2 seconds
-    const interval = setInterval(fetchPendingCallRequests, 2000);
+    // Poll every 5 seconds
+    const interval = setInterval(fetchPendingCallRequests, 5000);
 
     return () => clearInterval(interval);
-  }, [isAuthenticated]);
+  }, [isAuthenticated, screen]);
 
   // Fetch upcoming live scheduled calls (to power the green notification badge)
   // Get all scheduled calls that are starting soon or currently active
@@ -634,12 +620,17 @@ export const AppProvider = ({ children }) => {
       }
     };
 
+    // Skip live-call polling while user is already inside call history view.
+    if (screen === 'CALL_HISTORY') {
+      return;
+    }
+
     fetchUpcomingCalls();
     // Poll every 5 seconds since scheduled calls require less real-time immediacy than invites
     const interval = setInterval(fetchUpcomingCalls, 5000);
 
     return () => clearInterval(interval);
-  }, [isAuthenticated]);
+  }, [isAuthenticated, screen]);
 
   // Toast notification function
   const showToast = (message, type = 'success') => {
@@ -698,7 +689,7 @@ export const AppProvider = ({ children }) => {
     login,
     signup,
     logout,
-    updateUserMood,
+
     updateUserProfile,
     pendingRequestsCount,
     setPendingRequestsCount,

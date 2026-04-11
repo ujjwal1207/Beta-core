@@ -2,7 +2,7 @@ import api from './api';
 
 /**
  * Feed Service
- * Handles posts and feed operations with Vibe Engine support
+ * Handles posts and feed operations
  */
 
 const feedService = {
@@ -11,7 +11,6 @@ const feedService = {
    * @param {Object} postData - Post data
    * @param {string} postData.content - Post content
    * @param {string} postData.type - Post type ('moment' or 'reflection')
-   * @param {number} postData.mood_at_time - Mood at time of posting
    * @param {Array<string>} [postData.tags] - Optional tags for categorizing posts
    * @param {File} [postData.file] - Optional file to upload
    * @returns {Promise<Object>} Created post
@@ -22,7 +21,7 @@ const feedService = {
       const formData = new FormData();
       formData.append('content', postData.content);
       formData.append('type', postData.type);
-      formData.append('mood_at_time', postData.mood_at_time);
+      formData.append('mood_at_time', 1);
 
       // Add tags as comma-separated string
       if (postData.tags && postData.tags.length > 0) {
@@ -47,17 +46,16 @@ const feedService = {
   },
 
   /**
-   * Get personalized feed with Vibe Engine filtering
+  * Get personalized feed
    * @param {Object} options - Feed options
    * @param {number} [options.limit=10] - Maximum posts to return
    * @param {number} [options.skip=0] - Posts to skip (pagination)
-   * @param {boolean} [options.useVibe=true] - Enable mood-based filtering
    * @returns {Promise<Array>} Array of posts with user info
    */
-  getFeed: async ({ limit = 10, skip = 0, useVibe = true } = {}) => {
+  getFeed: async ({ limit = 10, skip = 0 } = {}) => {
     try {
       const response = await api.get('/feed/feed', {
-        params: { limit, skip, use_vibe: useVibe }
+        params: { limit, skip }
       });
       return response.data;
     } catch (error) {
@@ -84,7 +82,7 @@ const feedService = {
   },
 
   /**
-   * Get all posts without mood filtering
+  * Get all posts
    * @param {number} [limit=100] - Maximum posts to return
    * @returns {Promise<Array>} Array of all posts
    */

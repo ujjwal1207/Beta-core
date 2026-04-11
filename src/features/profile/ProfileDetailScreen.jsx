@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ArrowLeft, Star, Users, ThumbsUp, Briefcase, Calendar, MessageSquare, Loader, UserPlus, Image as ImageIcon, MoreVertical, UserMinus, Ban, CheckCircle, XCircle, AlertCircle, Zap, Smile } from 'lucide-react';
 import { useAppContext } from '../../context/AppContext';
-import MoodDisplay from '../../components/ui/MoodDisplay';
+
 import ScheduleCallModal from '../connections/components/ScheduleCallModal';
 import Button from '../../components/ui/Button';
 import PostCard from '../feed/components/PostCard';
@@ -432,7 +432,7 @@ const ProfileDetailScreen = () => {
                 wrapperClassName="inline-flex items-center gap-2"
                 badgeClassName="w-5 h-5 text-white fill-blue-500"
               />
-              {!person?.is_super_linker && <MoodDisplay moodIndex={person.mood} />}
+
             </div>
             {(focusDisplay || headlineStatusText) && (
               <p className="mb-4 text-sm font-semibold text-indigo-600">
@@ -569,7 +569,7 @@ const ProfileDetailScreen = () => {
                       <div className="shrink-0 w-12 h-12 flex items-center justify-center bg-linear-to-br from-indigo-500 to-purple-600 text-white rounded-xl shadow-lg mr-4">
                         <ThumbsUp className="w-6 h-6" />
                       </div>
-                      <h3 className="text-xl font-extrabold text-slate-800">My Shared Wisdom</h3>
+                      <h3 className="text-xl font-extrabold text-slate-800">1:1 Session Details</h3>
                     </div>
 
                     {curiosityHookText && (
