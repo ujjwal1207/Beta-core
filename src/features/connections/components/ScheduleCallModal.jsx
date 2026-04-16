@@ -23,7 +23,7 @@ const ScheduleCallModal = ({ isOpen, onClose, person, onSuccess }) => {
   const [customDate, setCustomDate] = useState('');
   const [customTime, setCustomTime] = useState('');
   const [useCustomTime, setUseCustomTime] = useState(false);
-  const [selectedDuration, setSelectedDuration] = useState(30); // Default to 30 minutes
+  const selectedDuration = 30; // Fixed duration for per session model
   const [message, setMessage] = useState(`Hi ${person?.name || ''}, I'd love to chat about ${person?.tags?.[0] || 'your work'}!`);
   const [isLoading, setIsLoading] = useState(false);
   const [successData, setSuccessData] = useState(null); // Will store booking response including calendar_url
@@ -56,16 +56,6 @@ const ScheduleCallModal = ({ isOpen, onClose, person, onSuccess }) => {
   const isSuperLinker = person?.is_super_linker || ((person?.connections || 0) > 200 && (person?.trustScore || 0) >= 3.0);
   const payRatePerMin = person?.pay_rate_per_min || 0;
   const callPrice = isSuperLinker ? payRatePerMin : 0; // Flat price per session
-
-  // Common duration options in minutes
-  const durationOptions = [
-    { value: 15, label: '15 minutes' },
-    { value: 30, label: '30 minutes' },
-    { value: 45, label: '45 minutes' },
-    { value: 60, label: '1 hour' },
-    { value: 90, label: '1.5 hours' },
-    { value: 120, label: '2 hours' }
-  ];
 
   if (!isOpen) return null;
 
@@ -187,27 +177,11 @@ const ScheduleCallModal = ({ isOpen, onClose, person, onSuccess }) => {
                 <h4 className="font-bold text-indigo-700">💰 Consultation Fee</h4>
                 <span className="text-xs bg-indigo-100 text-indigo-600 px-2 py-1 rounded-full font-medium">Super Listener</span>
               </div>
-              
-              {/* Duration Selection */}
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-indigo-700 mb-2">Call Duration</label>
-                <select
-                  value={selectedDuration}
-                  onChange={(e) => setSelectedDuration(parseInt(e.target.value))}
-                  className="w-full p-3 border border-indigo-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm bg-white"
-                >
-                  {durationOptions.map(option => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
 
               {/* Fee Calculation Display */}
               <div className="bg-white border border-indigo-200 rounded-lg p-3 mb-2">
                 <div className="flex justify-between items-center text-sm text-slate-600 mb-1">
-                  <span>Rate per minute:</span>
+                    <span>Rate per session:</span>
                   <span>₹{payRatePerMin}</span>
                 </div>
                 <div className="flex justify-between items-center text-sm text-slate-600 mb-2">
