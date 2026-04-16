@@ -333,17 +333,6 @@ export const AuthForm = ({ isLogin }) => {
           </div>
         )}
 
-        {isLogin && (
-          <div className="pt-1 text-right">
-            <a
-              href="/admin"
-              className="text-sm font-medium text-indigo-600 hover:text-indigo-800 transition-colors"
-            >
-              University Admin Login
-            </a>
-          </div>
-        )}
-
         {!isLogin && (
           <div className="flex items-center text-sm pt-2">
             <input

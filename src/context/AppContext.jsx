@@ -130,10 +130,10 @@ export const AppProvider = ({ children }) => {
 
   // PWA Install prompt listener
   useEffect(() => {
-    // If you don't prevent default, the browser will automatically show its native prompt
-    // (like the mini-infobar on Chrome Android or the install icon in the address bar on Desktop).
-    // We are just listening to it here if you need to track analytics later.
     const handleBeforeInstallPrompt = (e) => {
+      // Prevent the mini-infobar from appearing on mobile
+      e.preventDefault();
+      // Stash the event so it can be triggered later.
       setDeferredPrompt(e);
       setIsInstallable(true);
     };

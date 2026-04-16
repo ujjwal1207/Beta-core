@@ -130,7 +130,7 @@ const PaymentModal = ({ isOpen, onClose, call, onPaymentSuccess }) => {
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-600">Rate:</span>
-                <span className="font-medium text-slate-700">₹{call.pay_rate_per_min || 0}/min</span>
+                <span className="font-medium text-slate-700">₹{call.pay_rate_per_min || 0}/session</span>
               </div>
               <hr className="border-indigo-200 my-2" />
               <div className="flex justify-between text-lg font-bold">

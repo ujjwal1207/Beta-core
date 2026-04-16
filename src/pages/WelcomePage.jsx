@@ -1,10 +1,10 @@
 import React from 'react';
-import { Mic, ChevronRight } from 'lucide-react';
+import { Mic, ChevronRight, Download } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { useAppContext } from '../context/AppContext';
 
 export const WelcomePage = () => {
-  const { setScreen } = useAppContext();
+  const { setScreen, isInstallable, triggerInstallPrompt } = useAppContext();
 
   return (
     <div className="flex flex-col h-full justify-between items-center text-center p-8 bg-gradient-to-br from-indigo-50 via-white to-violet-50 text-slate-800">
@@ -21,12 +21,14 @@ export const WelcomePage = () => {
         <Button primary onClick={() => setScreen('SIGNUP')}>
           Let's Get Started <ChevronRight className="inline-block w-5 h-5 ml-1" />
         </Button>
-        <a
-          href="/admin"
-          className="mt-3 block w-full text-center py-2.5 rounded-xl border border-slate-300 text-sm font-semibold text-slate-600 hover:bg-slate-100 transition-colors"
-        >
-          University Admin Login
-        </a>
+        {isInstallable && (
+          <button
+            onClick={triggerInstallPrompt}
+            className="mt-3 w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-slate-800 text-white text-sm font-bold shadow-md hover:bg-slate-900 transition-colors"
+          >
+            <Download className="w-4 h-4" /> Install ListenLink App
+          </button>
+        )}
         <p className="mt-4 text-sm text-slate-600">
           Already here?{' '}
           <button 

@@ -146,7 +146,7 @@ const SuperListenerDashboard = () => {
                 iconBg="bg-emerald-50"
                 iconColor="text-emerald-600"
                 label="Set Rates"
-                sublabel={user?.pay_rate_per_min ? `₹${user.pay_rate_per_min}/min` : 'Configure pricing'}
+                sublabel={user?.pay_rate_per_min ? `₹${user.pay_rate_per_min}/session` : 'Configure pricing'}
                 onClick={() => setScreen('CONSULTATION_RATE_SETTINGS')}
               />
               <ActionRow

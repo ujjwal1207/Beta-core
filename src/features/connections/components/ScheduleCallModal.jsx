@@ -55,7 +55,7 @@ const ScheduleCallModal = ({ isOpen, onClose, person, onSuccess }) => {
 
   const isSuperLinker = person?.is_super_linker || ((person?.connections || 0) > 200 && (person?.trustScore || 0) >= 3.0);
   const payRatePerMin = person?.pay_rate_per_min || 0;
-  const callPrice = isSuperLinker ? selectedDuration * payRatePerMin : 0;
+  const callPrice = isSuperLinker ? payRatePerMin : 0; // Flat price per session
 
   // Common duration options in minutes
   const durationOptions = [

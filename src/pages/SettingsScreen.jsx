@@ -9,7 +9,8 @@ import {
   ChevronRight,
   UserX,
   DollarSign,
-  Bell
+  Bell,
+  Download
 } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 
@@ -25,7 +26,7 @@ const SettingItem = ({ icon: Icon, text, hasArrow = true, color = 'text-slate-60
 );
 
 export const SettingsScreen = () => {
-  const { setScreen, logout, user } = useAppContext();
+  const { setScreen, logout, user, isInstallable, triggerInstallPrompt } = useAppContext();
   
   const handleLogout = async () => {
     try {
@@ -91,6 +92,17 @@ export const SettingsScreen = () => {
           text="Contact Us" 
           onClick={() => setScreen('CONTACT_US')}
         />
+        
+        {isInstallable && (
+          <>
+            <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider px-2 pt-4">App</h3>
+            <SettingItem 
+              icon={Download} 
+              text="Install App" 
+              onClick={triggerInstallPrompt}
+            />
+          </>
+        )}
         
         <div className="pt-4">
           <SettingItem 

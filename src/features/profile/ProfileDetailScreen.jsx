@@ -663,7 +663,7 @@ const ProfileDetailScreen = () => {
               {person?.pay_rate_per_min ? (
                 <>
                   <span className="text-green-700 font-semibold text-lg">
-                    ₹{person.pay_rate_per_min}/min
+                    ₹{person.pay_rate_per_min}/session
                   </span>
                   <p className="text-green-600 text-sm">Consultation Rate</p>
                 </>

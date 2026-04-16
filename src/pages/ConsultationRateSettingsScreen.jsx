@@ -42,7 +42,7 @@ export const ConsultationRateSettingsScreen = () => {
     }
   };
 
-  const suggestedRates = [50, 100, 200, 300, 500, 750];
+  const suggestedRates = [500, 1000, 2000, 3000, 5000, 10000];
 
   return (
     <div className="relative flex flex-col h-full bg-slate-50">
@@ -74,12 +74,12 @@ export const ConsultationRateSettingsScreen = () => {
               placeholder="0.00"
               className="w-full pl-8 pr-16 py-4 text-3xl font-bold text-center bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
-            <span className="absolute right-4 top-1/2 transform -translate-y-1/2 text-slate-500 text-lg">/min</span>
+            <span className="absolute right-4 top-1/2 transform -translate-y-1/2 text-slate-500 text-lg">/session</span>
           </div>
           
           {payRate && (
             <div className="text-center text-slate-600">
-              <p className="text-sm">Example: 30-minute consultation = ₹{(parseFloat(payRate) * 30).toFixed(2)}</p>
+              <p className="text-sm">Example: 1 session consultation = ₹{(parseFloat(payRate)).toFixed(2)}</p>
             </div>
           )}
         </div>
@@ -103,7 +103,7 @@ export const ConsultationRateSettingsScreen = () => {
             ))}
           </div>
           <p className="text-xs text-slate-500 mt-3">
-            💡 Most listeners charge between ₹100 - ₹500 per minute
+            💡 Most listeners charge between ₹1000 - ₹5000 per session
           </p>
         </div>
         
