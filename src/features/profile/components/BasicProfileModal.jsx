@@ -56,10 +56,11 @@ const BasicProfileModal = ({ isOpen, onClose, onSave, profileData, universities 
     ];
   }, [enrollmentStatus, lookingForOptionsByStatus]);
 
-  const years = useMemo(
-    () => Array.from({ length: 21 }, (_, i) => String(new Date().getFullYear() - 10 + i)),
-    []
-  );
+  const years = useMemo(() => {
+    const startYear = 1999;
+    const endYear = new Date().getFullYear() + 10;
+    return Array.from({ length: endYear - startYear + 1 }, (_, i) => String(startYear + i));
+  }, []);
 
   useEffect(() => {
     const openedNow = isOpen && !wasOpenRef.current;
@@ -372,7 +373,7 @@ const BasicProfileModal = ({ isOpen, onClose, onSave, profileData, universities 
     if (step === 2) {
       return (
         <div>
-          <label className="text-sm font-bold text-slate-700 mb-1 block">3. Current Focus / Industry</label>
+          <label className="text-sm font-bold text-slate-700 mb-1 block">2. Current Focus / Industry</label>
           <p className="text-xs text-slate-500 mb-3 font-medium">Select all that apply.</p>
           <div className="space-y-2.5">
             {focusOptions.map((opt) => (
@@ -404,8 +405,8 @@ const BasicProfileModal = ({ isOpen, onClose, onSave, profileData, universities 
     }
 
     const followUpQuestion = enrollmentStatus === 'alumni'
-      ? '4. How would you like to engage with the community?'
-      : '4. What kind of guidance are you looking for?';
+      ? '3. How would you like to engage with the community?'
+      : '3. What kind of guidance are you looking for?';
 
     const followUpHint = 'Select all that apply.';
 

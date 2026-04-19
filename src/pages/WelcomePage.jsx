@@ -4,7 +4,7 @@ import { Button } from '../components/ui/Button';
 import { useAppContext } from '../context/AppContext';
 
 export const WelcomePage = () => {
-  const { setScreen, isInstallable, triggerInstallPrompt } = useAppContext();
+  const { setScreen, triggerInstallPrompt } = useAppContext();
 
   return (
     <div className="flex flex-col h-full justify-between items-center text-center p-8 bg-gradient-to-br from-indigo-50 via-white to-violet-50 text-slate-800">
@@ -21,14 +21,12 @@ export const WelcomePage = () => {
         <Button primary onClick={() => setScreen('SIGNUP')}>
           Let's Get Started <ChevronRight className="inline-block w-5 h-5 ml-1" />
         </Button>
-        {isInstallable && (
-          <button
-            onClick={triggerInstallPrompt}
-            className="mt-3 w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-slate-800 text-white text-sm font-bold shadow-md hover:bg-slate-900 transition-colors"
-          >
-            <Download className="w-4 h-4" /> Install ListenLink App
-          </button>
-        )}
+        <button
+          onClick={triggerInstallPrompt}
+          className="mt-3 w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-slate-800 text-white text-sm font-bold shadow-md hover:bg-slate-900 transition-colors"
+        >
+          <Download className="w-4 h-4" /> Install ListenLink App
+        </button>
         <p className="mt-4 text-sm text-slate-600">
           Already here?{' '}
           <button 

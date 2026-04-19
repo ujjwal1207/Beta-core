@@ -300,7 +300,7 @@ const UserProfileScreen = () => {
     localLookingFor ||
     user?.exploring ||
     onboardingAnswers?.LOOKING_FOR ||
-    'Advice on higher studies & exams';
+    'Not set';
 
   const handleAutoTagBio = () => {
     setIsGeneratingTags(true);

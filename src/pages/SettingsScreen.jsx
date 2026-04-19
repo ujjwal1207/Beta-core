@@ -26,7 +26,7 @@ const SettingItem = ({ icon: Icon, text, hasArrow = true, color = 'text-slate-60
 );
 
 export const SettingsScreen = () => {
-  const { setScreen, logout, user, isInstallable, triggerInstallPrompt } = useAppContext();
+  const { setScreen, logout, user, triggerInstallPrompt } = useAppContext();
   
   const handleLogout = async () => {
     try {
@@ -93,16 +93,14 @@ export const SettingsScreen = () => {
           onClick={() => setScreen('CONTACT_US')}
         />
         
-        {isInstallable && (
-          <>
-            <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider px-2 pt-4">App</h3>
-            <SettingItem 
-              icon={Download} 
-              text="Install App" 
-              onClick={triggerInstallPrompt}
-            />
-          </>
-        )}
+        <>
+          <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider px-2 pt-4">App</h3>
+          <SettingItem 
+            icon={Download} 
+            text="Install App" 
+            onClick={triggerInstallPrompt}
+          />
+        </>
         
         <div className="pt-4">
           <SettingItem 

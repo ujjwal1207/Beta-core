@@ -146,12 +146,30 @@ export const AppProvider = ({ children }) => {
   }, []);
 
   const triggerInstallPrompt = async () => {
-    if (!deferredPrompt) return;
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    console.log(`User response to the install prompt: ${outcome}`);
-    setDeferredPrompt(null);
-    setIsInstallable(false);
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      console.log(`User response to the install prompt: ${outcome}`);
+      setDeferredPrompt(null);
+      setIsInstallable(false);
+      return;
+    }
+
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+    if (isStandalone) {
+      setToast({ message: 'ListenLink is already installed on this device.', type: 'success' });
+      setTimeout(() => setToast(null), 5000);
+      return;
+    }
+
+    const ua = window.navigator.userAgent.toLowerCase();
+    const isIOS = /iphone|ipad|ipod/.test(ua);
+    const message = isIOS
+      ? 'To install on iPhone/iPad: tap Share in Safari, then Add to Home Screen.'
+      : 'Install prompt is not available in this browser. Open browser menu and choose Install app or Add to Home Screen.';
+
+    setToast({ message, type: 'info' });
+    setTimeout(() => setToast(null), 7000);
   };
 
   // Check authentication status on mount
