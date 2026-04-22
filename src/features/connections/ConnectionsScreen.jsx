@@ -98,6 +98,26 @@ const SwipeablePeopleScreen = () => {
     return user?.id ? `discover_people_v2_${user.id}` : null;
   }, [user?.id]);
 
+  const persistDiscoverCache = useCallback((nextPeople) => {
+    if (!discoverCacheKey) return;
+    try {
+      sessionStorage.setItem(discoverCacheKey, JSON.stringify(nextPeople));
+    } catch (cacheError) {
+      console.error('Failed to persist discover cache:', cacheError);
+    }
+  }, [discoverCacheKey]);
+
+  const removePersonFromDiscover = useCallback((personId) => {
+    const numericPersonId = Number(personId);
+    setPeople((prevPeople) => {
+      const nextPeople = (Array.isArray(prevPeople) ? prevPeople : []).filter(
+        (person) => Number(person?.id) !== numericPersonId
+      );
+      persistDiscoverCache(nextPeople);
+      return nextPeople;
+    });
+  }, [persistDiscoverCache]);
+
   useEffect(() => {
     if (!discoverCacheKey) return;
     try {
@@ -107,8 +127,6 @@ const SwipeablePeopleScreen = () => {
       if (Array.isArray(cachedPeople) && cachedPeople.length > 0) {
         setPeople(cachedPeople);
         setIsLoading(false);
-        hasLoadedOnceRef.current = true;
-        lastFetchedUserIdRef.current = user?.id;
       }
     } catch (cacheError) {
       console.error('Failed to restore discover cache:', cacheError);
@@ -158,13 +176,7 @@ const SwipeablePeopleScreen = () => {
         const data = await connectionsService.discover(40);
         const nextPeople = Array.isArray(data) ? data : [];
         setPeople(nextPeople);
-        if (discoverCacheKey) {
-          try {
-            sessionStorage.setItem(discoverCacheKey, JSON.stringify(nextPeople));
-          } catch (cacheError) {
-            console.error('Failed to persist discover cache:', cacheError);
-          }
-        }
+        persistDiscoverCache(nextPeople);
         hasLoadedOnceRef.current = true;
         lastFetchedUserIdRef.current = currentUserId;
       } catch (err) {
@@ -177,7 +189,7 @@ const SwipeablePeopleScreen = () => {
     };
 
     fetchDiscoveryPeople();
-  }, [user?.id, discoverCacheKey, people.length]);
+  }, [user?.id, people.length, persistDiscoverCache]);
 
   const rankedPeople = useMemo(() => {
     const currentUserSchools = new Set(
@@ -316,6 +328,7 @@ const SwipeablePeopleScreen = () => {
                         onAction={async () => {
                           try {
                             await connectionsService.sendRequest(person.id);
+                            removePersonFromDiscover(person.id);
                             showNotification('Connection request sent! We\'ll let you know when they accept.', 'success');
                           } catch (error) {
                             console.error('Failed to send connection request:', error);
