@@ -65,6 +65,41 @@ const SMART_TAG_ICON_MAP = {
 
 const getSmartTagIcon = (tag) => SMART_TAG_ICON_MAP[String(tag || '').trim()] || Tag;
 
+const isAlumniProfile = (person) => {
+  if (!person) return false;
+
+  const nowYear = new Date().getFullYear();
+  const role = String(person.role || '').toLowerCase();
+  const tags = Array.isArray(person.tags)
+    ? person.tags.map((tag) => String(tag || '').toLowerCase())
+    : [];
+  const education = Array.isArray(person.education) ? person.education : [];
+
+  const hasStudentSignalInRole = role.includes('student');
+  const hasAlumniSignalInRole = role.includes('alumni') || role.includes('graduate');
+  const hasVerifiedAlumniTag = tags.includes('verified_alumni');
+
+  const hasStudentSignalInEducation = education.some((edu) => {
+    const enrollmentStatus = String(edu?.enrollment_status || '').toLowerCase();
+    return ['currently_enrolled', 'enrolled', 'student'].includes(enrollmentStatus);
+  });
+
+  const hasAlumniSignalInEducation = education.some((edu) => {
+    const enrollmentStatus = String(edu?.enrollment_status || '').toLowerCase();
+    const passingYear = Number(edu?.passing_year);
+    return (
+      ['alumni', 'graduated', 'graduate'].includes(enrollmentStatus) ||
+      (Number.isFinite(passingYear) && passingYear <= nowYear)
+    );
+  });
+
+  if (hasStudentSignalInRole || hasStudentSignalInEducation) {
+    return false;
+  }
+
+  return hasAlumniSignalInRole || hasVerifiedAlumniTag || hasAlumniSignalInEducation;
+};
+
 // Swipeable People Screen
 const SwipeablePeopleScreen = () => {
   const { user, onboardingAnswers } = useAppContext();
@@ -952,7 +987,7 @@ const AlumniPersonCard = ({ person }) => {
       }}
     >
       <div
-        className="w-16 h-16 rounded-full bg-cover bg-center mr-4 flex-shrink-0 overflow-hidden"
+        className="w-16 h-16 rounded-full bg-cover bg-center mr-4 shrink-0 overflow-hidden"
         style={{ backgroundImage: `url(${getAvatarUrlWithSize(person, 100)})` }}
       >
         <img
@@ -972,14 +1007,17 @@ const AlumniPersonCard = ({ person }) => {
         <p className="text-sm text-slate-600 truncate">{person.role || 'No role specified'}</p>
         {commonSchools.length > 0 && (
           <div className="flex items-center gap-1 mt-1">
-            <span className="text-xs text-indigo-600 font-semibold">🎓 {commonSchools[0]}</span>
+            <span className="text-xs text-indigo-600 font-semibold inline-flex items-center gap-1">
+              <GraduationCap className="w-3.5 h-3.5" />
+              {commonSchools[0]}
+            </span>
             {commonSchools.length > 1 && (
               <span className="text-xs text-slate-400">+{commonSchools.length - 1} more</span>
             )}
           </div>
         )}
       </div>
-      <div className="flex gap-2 sm:gap-3 ml-2 flex-shrink-0">
+      <div className="flex gap-2 sm:gap-3 ml-2 shrink-0">
         {isRequested ? (
           <button
             disabled
@@ -1029,7 +1067,9 @@ const AlumniScreen = () => {
       if (!cachedRaw) return;
       const cachedAlumni = JSON.parse(cachedRaw);
       if (Array.isArray(cachedAlumni)) {
-        setAlumni(cachedAlumni);
+        const normalizedCachedAlumni = cachedAlumni.filter(isAlumniProfile);
+        setAlumni(normalizedCachedAlumni);
+        sessionStorage.setItem(alumniCacheKey, JSON.stringify(normalizedCachedAlumni));
         setIsLoading(false);
         hasLoadedOnceRef.current = true;
         lastFetchedUserIdRef.current = user?.id;
@@ -1058,7 +1098,7 @@ const AlumniScreen = () => {
           setIsLoading(true);
         }
         const data = await connectionsService.getAlumni(50);
-        const nextAlumni = Array.isArray(data) ? data : [];
+        const nextAlumni = (Array.isArray(data) ? data : []).filter(isAlumniProfile);
         setAlumni(nextAlumni);
         if (alumniCacheKey) {
           try {

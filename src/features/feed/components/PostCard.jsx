@@ -639,16 +639,16 @@ const PostCard = ({ post, onUpdate, onHide, showNotInterested = true }) => {
             disabled={isLiking}
             className={`flex items-center space-x-1 ${isLiked ? 'text-rose-500' : 'hover:text-rose-500'} p-1 rounded-md transition-colors active:scale-[0.98] disabled:opacity-50`}
           >
-            <div className="relative w-8 h-8">
+            <div className="relative w-10 h-10">
               <img
                 src="/like icon.png"
                 alt="Like"
-                className={`absolute inset-0 w-8 h-8 transition-all duration-300 ease-in-out ${isLiked ? 'scale-75 opacity-0' : 'scale-100 opacity-100'}`}
+                className={`absolute inset-0 w-10 h-10 transition-all duration-300 ease-in-out ${isLiked ? 'scale-75 opacity-0' : 'scale-100 opacity-100'}`}
               />
               <img
                 src="/heart like icon.png"
                 alt="Like"
-                className={`absolute inset-0 w-8 h-8 transition-all duration-300 ease-in-out ${isLiked ? 'scale-100 opacity-100' : 'scale-75 opacity-0'}`}
+                className={`absolute inset-0 w-10 h-10 transition-all duration-300 ease-in-out ${isLiked ? 'scale-100 opacity-100' : 'scale-75 opacity-0'}`}
               />
             </div>
           </button>
