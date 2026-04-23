@@ -53,7 +53,7 @@ const ReviewsScreen = () => {
     <div className="flex flex-col h-full bg-slate-50">
       <TopTabBar setScreen={setScreen} currentScreen="REVIEWS" />
 
-      <div className="flex-grow overflow-y-auto pt-[121px] pb-6">
+      <div className="flex-grow overflow-y-auto pt-14 pb-20">
         <div className="px-4 sm:px-6 max-w-2xl mx-auto">
           {/* Header */}
           <div className="flex items-center gap-3 mb-6">
