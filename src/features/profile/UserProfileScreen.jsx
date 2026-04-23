@@ -412,7 +412,6 @@ const UserProfileScreen = () => {
         industry: nextIndustry,
         expertise: nextExpertise,
         exploring: nextLookingFor,
-        role: data?.role || localRole,
         education: mergedEducation || education,
         onboarding_answers: updatedOnboardingAnswers,
       });
@@ -762,7 +761,6 @@ const UserProfileScreen = () => {
 
       const fullUpdateData = {
         full_name: localName,
-        role: localRole,
         company: localCompany,
         bio: localTagline,
         location: localLocation,
