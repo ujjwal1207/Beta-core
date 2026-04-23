@@ -113,7 +113,7 @@ const ChatHistoryScreen = () => {
   return (
     <div className="relative flex flex-col h-full bg-slate-50 overflow-x-hidden">
       <TopTabBar setScreen={setScreen} currentScreen="CHAT_HISTORY" />
-      <div className="grow overflow-y-auto overflow-x-hidden pt-[120px] sm:pt-[126px] p-3 sm:p-4">
+      <div className="grow overflow-y-auto overflow-x-hidden pt-14 pb-20 p-3 sm:p-4">
         <div className="flex items-center justify-between mb-3 sm:mb-4">
           <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-800">Messages</h1>
           <button

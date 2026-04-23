@@ -336,11 +336,16 @@ const SwipeablePeopleScreen = () => {
                             throw error;
                           }
                         }}
+                        onScheduled={(personId) => {
+                          removePersonFromDiscover(personId);
+                          showNotification('Call scheduled! Moving to the next person.', 'success');
+                        }}
                         isTop={true}
                       />
                     </div>
                   </div>
                 ))}
+
                 {section.people.length === 0 && (
                   <div className="text-center p-8 bg-white rounded-xl shadow-lg border border-slate-200 w-full max-w-sm mt-8">
                     <Users className="w-10 h-10 text-rose-500 mx-auto mb-4" />
@@ -370,14 +375,12 @@ const PersonResultCard = ({ person }) => {
   const { setScreen, setSelectedPerson, setPreviousScreen } = useAppContext();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isRequested, setIsRequested] = useState(false);
+  const [isScheduled, setIsScheduled] = useState(false);
   const [notification, setNotification] = useState(null);
   const notificationTimeoutRef = useRef(null);
 
   const showNotification = (message, type = 'success') => {
-    // Clear any existing timeout to prevent premature clearing
-    if (notificationTimeoutRef.current) {
-      clearTimeout(notificationTimeoutRef.current);
-    }
+    if (notificationTimeoutRef.current) clearTimeout(notificationTimeoutRef.current);
     setNotification({ message, type });
     notificationTimeoutRef.current = setTimeout(() => {
       setNotification(null);
@@ -391,6 +394,12 @@ const PersonResultCard = ({ person }) => {
     setScreen('PROFILE_DETAIL');
   };
 
+  const handleScheduleSuccess = (message) => {
+    if (message.toLowerCase().includes('success')) {
+      setIsScheduled(true);
+    }
+  };
+
   const isSuperLinker = person.is_super_linker || false;
   const isVerifiedUser = isUserVerified(person);
   const profileTags = Array.isArray(person.tags) ? person.tags : [];
@@ -399,7 +408,6 @@ const PersonResultCard = ({ person }) => {
 
   return (
     <>
-      {/* Notification */}
       {notification && (
         <div className="fixed top-4 left-4 right-4 z-50">
           <div className={`p-4 rounded-xl shadow-lg border backdrop-blur-sm ${notification.type === 'success'
@@ -418,7 +426,9 @@ const PersonResultCard = ({ person }) => {
         </div>
       )}
 
-      <div className="bg-white p-3 sm:p-4 rounded-xl shadow-sm border border-slate-100 flex items-center mb-3 w-full touch-manipulation">
+      <div className={`bg-white p-3 sm:p-4 rounded-xl shadow-sm border flex items-center mb-3 w-full touch-manipulation transition-all ${
+        isScheduled ? 'border-green-300 card-green-flash' : 'border-slate-100'
+      }`}>
         <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-cover bg-center mr-3 flex-shrink-0 relative overflow-hidden">
           <img src={getAvatarUrlWithSize(person, 100)} alt={person.full_name} className="w-full h-full rounded-full object-cover" />
           {isSuperLinker && (
@@ -482,10 +492,7 @@ const PersonResultCard = ({ person }) => {
         </div>
         <div className="flex gap-2 ml-2 sm:ml-3 flex-shrink-0">
           {isRequested ? (
-            <button
-              disabled
-              className="p-2 sm:p-2.5 rounded-lg bg-green-100 text-green-600 touch-manipulation"
-            >
+            <button disabled className="p-2 sm:p-2.5 rounded-lg bg-green-100 text-green-600 touch-manipulation">
               <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
           ) : (
@@ -508,9 +515,16 @@ const PersonResultCard = ({ person }) => {
           )}
           <button
             onClick={() => setIsModalOpen(true)}
-            className="p-2 sm:p-2.5 rounded-lg bg-slate-100 text-rose-500 active:bg-slate-200 touch-manipulation"
+            className={`p-2 sm:p-2.5 rounded-lg touch-manipulation transition-all ${
+              isScheduled
+                ? 'bg-green-500 text-white btn-scheduled-pop'
+                : 'bg-slate-100 text-rose-500 active:bg-slate-200 schedule-btn-pulse'
+            }`}
           >
-            <Calendar className="w-4 h-4 sm:w-5 sm:h-5" />
+            {isScheduled
+              ? <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5" />
+              : <Calendar className="w-4 h-4 sm:w-5 sm:h-5" />
+            }
           </button>
         </div>
       </div>
@@ -519,6 +533,7 @@ const PersonResultCard = ({ person }) => {
         onClose={() => setIsModalOpen(false)}
         person={person}
         setScreen={setScreen}
+        onSuccess={handleScheduleSuccess}
       />
     </>
   );
@@ -767,6 +782,7 @@ const SuperPersonCard = React.memo(({ person }) => {
   const { setScreen, setSelectedPerson, setPreviousScreen } = useAppContext();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isRequested, setIsRequested] = useState(false);
+  const [isScheduled, setIsScheduled] = useState(false);
 
   const handleNameClick = () => {
     setPreviousScreen('CONNECTIONS_DASHBOARD');
@@ -774,9 +790,15 @@ const SuperPersonCard = React.memo(({ person }) => {
     setScreen('PROFILE_DETAIL');
   };
 
+  const handleScheduleSuccess = (message) => {
+    if (message.toLowerCase().includes('success')) setIsScheduled(true);
+  };
+
   return (
     <>
-      <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex items-center mb-3 w-full">
+      <div className={`bg-white p-4 rounded-xl shadow-sm border flex items-center mb-3 w-full transition-all ${
+        isScheduled ? 'border-green-300 card-green-flash' : 'border-slate-100'
+      }`}>
         <div
           className="w-16 h-16 rounded-full bg-cover bg-center mr-4 flex-shrink-0 overflow-hidden"
           style={{ backgroundImage: `url(${getAvatarUrlWithSize(person, 100)})` }}
@@ -801,10 +823,7 @@ const SuperPersonCard = React.memo(({ person }) => {
         </div>
         <div className="flex gap-2 ml-3 flex-shrink-0">
           {isRequested ? (
-            <button
-              disabled
-              className="p-2 rounded-lg bg-green-100 text-green-600"
-            >
+            <button disabled className="p-2 rounded-lg bg-green-100 text-green-600">
               <CheckCircle className="w-5 h-5" />
             </button>
           ) : (
@@ -825,9 +844,16 @@ const SuperPersonCard = React.memo(({ person }) => {
           )}
           <button
             onClick={() => setIsModalOpen(true)}
-            className="p-2 rounded-lg bg-rose-100 text-rose-500 hover:bg-rose-200 touch-manipulation"
+            className={`p-2 rounded-lg touch-manipulation transition-all ${
+              isScheduled
+                ? 'bg-green-500 text-white btn-scheduled-pop'
+                : 'bg-rose-100 text-rose-500 hover:bg-rose-200 schedule-btn-pulse'
+            }`}
           >
-            <Calendar className="w-5 h-5" />
+            {isScheduled
+              ? <CheckCircle className="w-5 h-5" />
+              : <Calendar className="w-5 h-5" />
+            }
           </button>
         </div>
       </div>
@@ -836,6 +862,7 @@ const SuperPersonCard = React.memo(({ person }) => {
         onClose={() => setIsModalOpen(false)}
         person={person}
         setScreen={setScreen}
+        onSuccess={handleScheduleSuccess}
       />
     </>
   );
@@ -1105,7 +1132,7 @@ const ConnectionsScreen = () => {
     <div className="flex flex-col h-full bg-slate-50">
       <TopTabBar setScreen={setScreen} currentScreen="CONNECTIONS_DASHBOARD" />
 
-      <div className="flex-grow overflow-y-auto pt-[121px]">
+      <div className="flex-grow overflow-y-auto pt-14 pb-20">
         {/* Mode Selector - constrained to app width */}
         <div className="w-full p-3 sm:p-4 flex justify-center bg-slate-50 border-b border-slate-200">
           <div className="flex bg-slate-200 p-1 rounded-full shadow-inner max-w-sm w-full">

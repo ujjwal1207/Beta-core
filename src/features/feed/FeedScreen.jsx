@@ -297,7 +297,7 @@ const FeedScreen = () => {
   return (
     <div className="relative flex flex-col h-full bg-slate-50">
       <TopTabBar setScreen={setScreen} currentScreen="FEED" />
-      <div className="grow overflow-y-auto pt-30.25">
+      <div className="grow overflow-y-auto pt-14 pb-20">
         <div className="p-4">
 
 

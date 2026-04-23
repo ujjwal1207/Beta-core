@@ -518,7 +518,7 @@ const CallHistoryScreen = () => {
     <div className="flex flex-col h-full bg-slate-50">
       <TopTabBar setScreen={setScreen} currentScreen="CALL_HISTORY" />
 
-      <div className="flex-grow overflow-y-auto pt-[121px]">
+      <div className="flex-grow overflow-y-auto pt-14 pb-20">
         {/* Mode Selector */}
         <div className="w-full p-3 sm:p-4 flex justify-center bg-slate-50 border-b border-slate-200">
           <div className="flex bg-slate-200 p-1 rounded-full shadow-inner max-w-sm w-full">

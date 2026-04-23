@@ -68,7 +68,7 @@ const SuperListenerDashboard = () => {
     return (
       <div className="flex flex-col h-full bg-slate-50">
         <TopTabBar setScreen={setScreen} currentScreen="SUPER_LISTENER_DASHBOARD" />
-        <div className="flex-grow flex items-center justify-center pt-[121px]">
+        <div className="flex-grow flex items-center justify-center pt-14 pb-20">
           <div className="text-center">
             <div className="animate-spin rounded-full h-10 w-10 border-2 border-indigo-600 border-t-transparent mx-auto mb-3"></div>
             <p className="text-sm text-slate-500">Loading dashboard...</p>
@@ -82,7 +82,7 @@ const SuperListenerDashboard = () => {
     <div className="flex flex-col h-full bg-slate-50">
       <TopTabBar setScreen={setScreen} currentScreen="SUPER_LISTENER_DASHBOARD" />
 
-      <div className="flex-grow overflow-y-auto pt-[121px] pb-6">
+      <div className="flex-grow overflow-y-auto pt-14 pb-20">
         <div className="px-4 max-w-lg mx-auto">
 
           {/* Earnings Hero Card */}

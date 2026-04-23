@@ -20,6 +20,7 @@ const ProfileDetailScreen = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSendingRequest, setIsSendingRequest] = useState(false);
   const [requestSent, setRequestSent] = useState(false);
+  const [isScheduled, setIsScheduled] = useState(false);
   const [userPosts, setUserPosts] = useState([]);
   const [postsLoading, setPostsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('bio'); // 'bio' or 'posts'
@@ -181,7 +182,9 @@ const ProfileDetailScreen = () => {
   };
 
   const handleScheduleCallSuccess = (message) => {
-    showToast(message, message.includes('successfully') ? 'success' : 'error');
+    const isSuccess = message.includes('successfully');
+    showToast(message, isSuccess ? 'success' : 'error');
+    if (isSuccess) setIsScheduled(true);
   };
 
   const handleRemoveConnection = async () => {
@@ -657,7 +660,9 @@ const ProfileDetailScreen = () => {
 
         </div>
 
-        <div className="shrink-0 p-4 bg-white/90 backdrop-blur-lg border-t border-slate-200 z-10">
+        <div className={`shrink-0 p-4 backdrop-blur-lg border-t z-10 transition-all duration-500 ${
+          isScheduled ? 'bg-green-50/90 border-green-200' : 'bg-white/90 border-slate-200'
+        }`}>
           {person?.is_super_linker && (
             <div className="mb-3 bg-green-50 border border-green-200 rounded-lg p-3 text-center">
               {person?.pay_rate_per_min ? (
@@ -680,8 +685,17 @@ const ProfileDetailScreen = () => {
           <div className="flex space-x-3">
             {person?.is_super_linker ? (
               // Super Listeners: Only show Schedule Consultation button
-              <Button onClick={() => setIsModalOpen(true)} className="flex-1 bg-rose-500!">
-                <Calendar className="w-5 h-5 inline mr-2" /> Schedule Consultation
+              <Button
+                onClick={() => setIsModalOpen(true)}
+                className={`flex-1 transition-all ${
+                  isScheduled ? 'bg-green-500! btn-scheduled-pop' : 'bg-rose-500! schedule-btn-pulse'
+                }`}
+              >
+                {isScheduled ? (
+                  <><CheckCircle className="w-5 h-5 inline mr-2" /> Scheduled!</>
+                ) : (
+                  <><Calendar className="w-5 h-5 inline mr-2" /> Schedule Consultation</>
+                )}
               </Button>
             ) : (
               // Regular Users: Show connection and chat buttons
@@ -725,8 +739,17 @@ const ProfileDetailScreen = () => {
                     )}
                   </Button>
                 )}
-                <Button onClick={() => setIsModalOpen(true)} className="flex-1 bg-rose-500!">
-                  <Calendar className="w-5 h-5 inline mr-2" /> Schedule Call
+                <Button
+                  onClick={() => setIsModalOpen(true)}
+                  className={`flex-1 transition-all ${
+                    isScheduled ? 'bg-green-500! btn-scheduled-pop' : 'bg-rose-500! schedule-btn-pulse'
+                  }`}
+                >
+                  {isScheduled ? (
+                    <><CheckCircle className="w-5 h-5 inline mr-2" /> Scheduled!</>
+                  ) : (
+                    <><Calendar className="w-5 h-5 inline mr-2" /> Schedule Call</>
+                  )}
                 </Button>
               </>
             )}
