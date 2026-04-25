@@ -6,15 +6,19 @@
   touch-action: manipulation;
 }
 
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  position: fixed;
+  overscroll-behavior-y: none;
+  -webkit-overflow-scrolling: touch;
+}
+
 html {
   font-size: 16px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-}
-
-body {
-  overscroll-behavior-y: none;
-  -webkit-overflow-scrolling: touch;
 }
 
 /* Improve button touch responsiveness */

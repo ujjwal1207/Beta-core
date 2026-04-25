@@ -379,8 +379,8 @@ const AppContent = () => {
 
         {/* Show normal app UI when minimized - overlay on top */}
         {isCallMinimized && (
-          <div className="min-h-screen bg-slate-200 flex justify-center items-center p-0 sm:p-4 font-sans relative z-10">
-            <div className="relative w-full h-screen sm:w-[390px] sm:h-[844px] bg-slate-50 shadow-2xl rounded-none sm:rounded-3xl overflow-hidden flex flex-col">
+          <div className="min-h-[100dvh] bg-slate-200 flex justify-center items-center p-0 sm:p-4 font-sans relative z-10">
+            <div className="relative w-full h-[100dvh] sm:w-[390px] sm:h-[844px] bg-slate-50 shadow-2xl rounded-none sm:rounded-3xl overflow-hidden flex flex-col">
               <div key={screen} className="w-full h-full flex flex-col screen-fade-in">
                 {renderScreen()}
               </div>
@@ -435,7 +435,7 @@ const AppContent = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-200 flex justify-center items-center p-0 sm:p-4 font-sans">
+    <div className="min-h-[100dvh] bg-slate-200 flex justify-center items-center p-0 sm:p-4 font-sans">
       {/* Global Toast Notification */}
       {toast && (
         <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 max-w-sm w-full mx-4">
@@ -456,7 +456,7 @@ const AppContent = () => {
         </div>
       )}
 
-      <div className="relative w-full h-screen sm:w-[390px] sm:h-[844px] bg-slate-50 shadow-2xl rounded-none sm:rounded-3xl overflow-hidden flex flex-col">
+      <div className="relative w-full h-[100dvh] sm:w-[390px] sm:h-[844px] bg-slate-50 shadow-2xl rounded-none sm:rounded-3xl overflow-hidden flex flex-col">
         <div key={screen} className="w-full h-full flex flex-col screen-fade-in">
           {renderScreen()}
         </div>

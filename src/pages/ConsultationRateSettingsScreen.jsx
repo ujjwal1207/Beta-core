@@ -15,7 +15,7 @@ export const ConsultationRateSettingsScreen = () => {
     }
 
     if (parseFloat(payRate) > 500) {
-      showToast('Rate cannot exceed ₹500.00 per minute', 'error');
+      showToast('Rate cannot exceed ₹500.00 per call', 'error');
       return;
     }
 
@@ -42,7 +42,7 @@ export const ConsultationRateSettingsScreen = () => {
     }
   };
 
-  const suggestedRates = [500, 1000, 2000, 3000, 5000, 10000];
+  const suggestedRates = [100, 200, 400, 600, 800, 1000];
 
   return (
     <div className="relative flex flex-col h-full bg-slate-50">
@@ -54,10 +54,10 @@ export const ConsultationRateSettingsScreen = () => {
           <ArrowLeft className="w-6 h-6 text-slate-600" />
         </button>
         <h1 className="text-2xl font-bold text-slate-800 mb-2">Consultation Rate</h1>
-        <p className="text-slate-600 text-sm">Set your rate per minute for consultations</p>
+        <p className="text-slate-600 text-sm">Set your rate per call for consultations</p>
       </div>
       
-      <div className="flex-grow p-4 space-y-6">
+      <div className="grow p-4 space-y-6">
         {/* Current Rate Display */}
         <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-200">
           <div className="flex items-center mb-4">
@@ -103,7 +103,7 @@ export const ConsultationRateSettingsScreen = () => {
             ))}
           </div>
           <p className="text-xs text-slate-500 mt-3">
-            💡 Most listeners charge between ₹1000 - ₹5000 per session
+            💡 Most listeners charge between ₹1000 - ₹5000 per call
           </p>
         </div>
         

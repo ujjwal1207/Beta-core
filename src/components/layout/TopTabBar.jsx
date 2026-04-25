@@ -76,7 +76,8 @@ export const TopTabBar = ({ setScreen, currentScreen }) => {
   return (
     <>
       {/* ── Slim top bar (logo + utility icons) ─────── */}
-      <header className="absolute top-0 left-0 right-0 h-14 bg-white/95 backdrop-blur-lg border-b border-slate-200 z-30 flex items-center justify-between px-3 sm:px-4">
+      <header className="absolute top-0 left-0 right-0 bg-white/95 backdrop-blur-lg border-b border-slate-200 z-30 flex items-center justify-between px-3 sm:px-4"
+              style={{ paddingTop: 'env(safe-area-inset-top, 0px)', height: 'calc(3.5rem + env(safe-area-inset-top, 0px))' }}>
         <img src="listenlinklogo.png" alt="ListenLink" className="h-8 sm:h-9 w-auto" />
 
         <div className="flex items-center gap-2">
@@ -111,8 +112,8 @@ export const TopTabBar = ({ setScreen, currentScreen }) => {
 
       {/* ── Bottom nav bar ───────────────────────────── */}
       <nav
-        className="absolute bottom-0 left-0 right-0 h-16 bg-white/95 backdrop-blur-lg border-t border-slate-200 z-30 flex items-center"
-        style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+        className="absolute bottom-0 left-0 right-0 bg-white/95 backdrop-blur-lg border-t border-slate-200 z-30 flex items-center"
+        style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)', height: 'calc(4rem + env(safe-area-inset-bottom, 0px))' }}
       >
         {navItems.map((item) => (
           <BottomNavItem

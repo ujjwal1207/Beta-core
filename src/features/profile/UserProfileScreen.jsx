@@ -338,17 +338,6 @@ const UserProfileScreen = () => {
     setIsDirty(true);
   };
 
-  const handleAutoWriteBio = () => {
-    setIsGeneratingTags(true);
-    setTimeout(() => {
-      const role = localRole || 'professional';
-      const location = localLocation ? ` based in ${localLocation}` : '';
-      setLocalTagline(`I am a ${role}${location} focused on growth, meaningful conversations, and sharing practical lessons from my journey.`);
-      setIsGeneratingTags(false);
-      setIsDirty(true);
-    }, 700);
-  };
-
   const handleBasicSetupSave = async (data) => {
     const nextName = data?.name || '';
     const nextLocation = data?.location || '';
@@ -1423,13 +1412,6 @@ const UserProfileScreen = () => {
               <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <label className="text-sm font-semibold text-slate-700">Short Bio</label>
-                  <button
-                    onClick={handleAutoWriteBio}
-                    disabled={isGeneratingTags}
-                    className="text-[10px] bg-indigo-50 text-indigo-700 font-bold px-2 py-1 rounded border border-indigo-200 hover:bg-indigo-100 disabled:opacity-50"
-                  >
-                    Polish Bio
-                  </button>
                 </div>
                 <textarea
                   placeholder="e.g., Exploring new career paths"

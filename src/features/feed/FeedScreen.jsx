@@ -302,7 +302,7 @@ const FeedScreen = () => {
   })();
 
   const smartMatchCardsPerBlock = 3;
-  const smartMatchInsertInterval = 3;
+  const smartMatchInsertInterval = 2;
 
   const getSmartMatchSlice = (blockIndex) => {
     if (!Array.isArray(suggestedPeople) || suggestedPeople.length === 0) return [];
