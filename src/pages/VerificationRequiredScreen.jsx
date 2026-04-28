@@ -8,7 +8,7 @@ const VerificationRequiredScreen = () => {
   const isPending = user?.education && user.education.length > 0;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-white to-rose-50 flex items-center justify-center p-6">
+    <div className="h-full overflow-y-auto bg-gradient-to-br from-amber-50 via-white to-rose-50 flex items-center justify-center p-6">
       <div className="w-full max-w-xl bg-white border border-amber-200 rounded-3xl shadow-xl p-8">
         <div className="w-14 h-14 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center mb-5">
           <ShieldAlert className="w-7 h-7" />

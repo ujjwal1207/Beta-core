@@ -461,7 +461,7 @@ const VideoCallScreen = ({ recipientUser, channelName, token, uid, appId, onCall
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-900">
+      <div className="flex items-center justify-center h-full bg-gray-900">
         <div className="text-white text-xl">Connecting to call...</div>
       </div>
     );
@@ -469,7 +469,7 @@ const VideoCallScreen = ({ recipientUser, channelName, token, uid, appId, onCall
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-900">
+      <div className="flex flex-col items-center justify-center h-full bg-gray-900">
         <div className="text-red-500 text-xl mb-4">❌ {error}</div>
         <button
           onClick={onCallEnd}
@@ -482,7 +482,7 @@ const VideoCallScreen = ({ recipientUser, channelName, token, uid, appId, onCall
   }
 
   return (
-    <div className="fixed inset-0 bg-slate-950 z-[100] flex flex-col h-screen overflow-hidden">
+    <div className="fixed inset-0 bg-slate-950 z-[100] flex flex-col h-full overflow-hidden">
       {/* Minimize Button */}
       <button
         onClick={handleMinimize}

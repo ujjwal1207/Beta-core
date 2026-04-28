@@ -73,7 +73,7 @@ const ModeratorLogin = ({ onLoginSuccess }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-slate-200 flex items-center justify-center px-4 relative overflow-hidden">
+    <div className="h-full overflow-y-auto w-full bg-gradient-to-br from-slate-50 via-slate-100 to-slate-200 flex items-center justify-center py-10 px-4 relative">
       {/* Decorative blobs – same as AdminLogin */}
       <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl mix-blend-multiply" />
       <div className="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-violet-500/10 rounded-full blur-3xl mix-blend-multiply" />
@@ -300,7 +300,7 @@ const ModeratorPanel = () => {
 
   /* ── AUTH GATE ── */
   if (isCheckingAuth) return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+    <div className="h-full overflow-y-auto bg-slate-50 flex items-center justify-center">
       <Loader className="w-10 h-10 animate-spin" style={{ color: BRAND }} />
     </div>
   );
@@ -314,7 +314,7 @@ const ModeratorPanel = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="h-full overflow-y-auto bg-slate-50">
 
       {/* ── HEADER (matches AdminPanel header) ── */}
       <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-xl border-b border-slate-200/60 shadow-[0_4px_30px_rgba(0,0,0,0.03)]">

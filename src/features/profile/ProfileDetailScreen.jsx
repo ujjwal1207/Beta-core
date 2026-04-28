@@ -239,7 +239,7 @@ const ProfileDetailScreen = () => {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-screen bg-slate-100">
+      <div className="flex items-center justify-center h-full bg-slate-100">
         <Loader className="w-8 h-8 text-indigo-500 animate-spin" />
       </div>
     );
