@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { Search, Users, Star, MessageSquare, Calendar, Frown, Loader, Filter, X, CheckCircle, XCircle, AlertCircle, Briefcase, Heart, Rocket, Code, Palette, Boxes, Megaphone, Landmark, Brain, Trophy, Mic, Lightbulb, Monitor, GraduationCap, Tag } from 'lucide-react';
+import { Search, Users, Star, MessageSquare, Calendar, Frown, Loader, Filter, X, CheckCircle, XCircle, AlertCircle, Briefcase, Heart, Rocket, Code, Palette, Boxes, Megaphone, Landmark, Brain, Trophy, Mic, Lightbulb, Monitor, GraduationCap, Tag, Sparkles } from 'lucide-react';
 import { useAppContext } from '../../context/AppContext';
 import TopTabBar from '../../components/layout/TopTabBar';
-import SwipeablePersonCard from './components/SwipeablePersonCard';
+import DiscoverPersonCard from './components/DiscoverPersonCard';
 import ScheduleCallModal from './components/ScheduleCallModal';
 import IncomingRequests from './components/IncomingRequests';
 import { POPULAR_TOPICS } from '../../data/mockData';
@@ -315,88 +315,73 @@ const SwipeablePeopleScreen = () => {
         </div>
       )}
 
-      <div className="flex flex-row overflow-x-auto w-full scroll-snap-x-mandatory hide-scrollbar">
+      <div className="flex flex-col w-full h-full pb-20 items-center justify-start">
         {sections.map((section, index) => (
-          <div key={index} className="flex-shrink-0 w-full h-full scroll-snap-align-start flex">
-            <div className="w-full p-0 flex justify-center items-start">
-              <div className="flex flex-col items-center space-y-3 pb-12 w-full px-3 sm:px-4">
-                <div className="w-full max-w-sm overflow-x-auto hide-scrollbar pb-1">
-                  <div className="flex gap-2 min-w-max">
-                    {discoverTagOptions.map((tag) => (
-                      (() => {
-                        const SmartTagIcon = getSmartTagIcon(tag);
-                        return (
-                      <button
-                        key={tag}
-                        onClick={() => setSelectedDiscoverTag(tag)}
-                        className={`px-2 py-1 text-[10px] font-bold rounded-full border transition-colors whitespace-nowrap ${selectedDiscoverTag === tag
-                          ? 'bg-indigo-50 text-indigo-700 border-indigo-100'
-                          : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'
-                          }`}
-                      >
-                        <span className="inline-flex items-center gap-1">
-                          <SmartTagIcon className="w-3 h-3" />
-                          {tag}
-                        </span>
-                      </button>
-                        );
-                      })()
-                    ))}
-                  </div>
-                </div>
-                {section.people.map(person => (
-                  <div key={person.id} className="w-full max-w-sm mx-auto flex-shrink-0">
-                    <div className="relative w-full" style={{ height: '56vh', minHeight: '420px', maxHeight: '680px' }}>
-                      <SwipeablePersonCard
-                        person={{
-                          id: person.id,
-                          name: person.full_name,
-                          age: person.age,
-                          role: person.role,
-                          image: getAvatarUrlWithSize(person, 400),
-                          location: person.location,
-                          tags: person.tags || [],
-                          bio: person.bio,
-                          trustScore: person.trust_score,
-                          matchReasons: person.match_reasons || [],
-                        }}
-                        onAction={async () => {
-                          try {
-                            await connectionsService.sendRequest(person.id);
-                            removePersonFromDiscover(person.id);
-                            showNotification('Connection request sent! We\'ll let you know when they accept.', 'success');
-                          } catch (error) {
-                            console.error('Failed to send connection request:', error);
-                            showNotification('Failed to send connection request. Please try again.', 'error');
-                            throw error;
-                          }
-                        }}
-                        onScheduled={(personId) => {
-                          removePersonFromDiscover(personId);
-                          showNotification('Call scheduled! Moving to the next person.', 'success');
-                        }}
-                        isTop={true}
-                      />
-                    </div>
-                  </div>
-                ))}
-
-                {section.people.length === 0 && (
-                  <div className="text-center p-8 bg-white rounded-xl shadow-lg border border-slate-200 w-full max-w-sm mt-8">
-                    <Users className="w-10 h-10 text-rose-500 mx-auto mb-4" />
-                    <p className="font-semibold text-base text-slate-700">
-                      {selectedDiscoverTag === 'All Matches'
-                        ? 'No matches available right now.'
-                        : `No users found matching "${selectedDiscoverTag}".`}
-                    </p>
-                    <p className="text-sm text-slate-500 mt-1">
-                      {selectedDiscoverTag === 'All Matches'
-                        ? 'Try again in some time.'
-                        : 'Try a different smart tag.'}
-                    </p>
-                  </div>
-                )}
+          <div key={index} className="w-full flex flex-col items-center max-w-lg px-2 sm:px-4">
+            
+            {/* Tag Filters row */}
+            <div className="w-full overflow-x-auto hide-scrollbar pb-3 pt-1 sticky top-0 bg-slate-50 z-10 border-b border-slate-100 mb-4 px-2 sm:px-0">
+              <div className="flex gap-2 min-w-max">
+                {discoverTagOptions.map((tag) => {
+                  const SmartTagIcon = getSmartTagIcon(tag);
+                  return (
+                    <button
+                      key={tag}
+                      onClick={() => setSelectedDiscoverTag(tag)}
+                      className={`px-3 py-2 text-[13px] font-medium rounded-full border transition-all whitespace-nowrap shadow-sm ${selectedDiscoverTag === tag
+                        ? 'bg-[#f3f0ff] text-indigo-700 border-indigo-200 shadow-indigo-100'
+                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                        }`}
+                    >
+                      <span className="inline-flex items-center gap-1.5">
+                        <SmartTagIcon className="w-4 h-4" />
+                        {tag}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
+            </div>
+
+            {/* Title Section (Matching Screenshot) */}
+            <div className="w-full flex items-center justify-between mt-1 mb-5 px-1 sm:px-2">
+              <h2 className="text-[17px] sm:text-[19px] font-bold text-slate-800 tracking-tight">
+                Top Mtaches for you
+              </h2>
+            </div>
+
+            {/* People Cards */}
+            <div className="w-full">
+              {section.people.map(person => (
+                <DiscoverPersonCard 
+                  key={person.id}
+                  person={person}
+                  showNotification={showNotification}
+                  onConnect={async () => {
+                    await connectionsService.sendRequest(person.id);
+                    removePersonFromDiscover(person.id);
+                    showNotification('Connection request sent! We\'ll let you know when they accept.', 'success');
+                  }}
+                  onScheduled={(personId) => {
+                    removePersonFromDiscover(personId);
+                    showNotification('Call scheduled! Moving to the next person.', 'success');
+                  }}
+                />
+              ))}
+
+              {section.people.length === 0 && (
+                <div className="text-center p-8 bg-white rounded-xl shadow-[0_2px_12px_rgba(0,0,0,0.04)] border border-slate-200 w-full mt-4">
+                  <Users className="w-10 h-10 text-indigo-300 mx-auto mb-4" />
+                  <p className="font-semibold text-base text-slate-700">
+                    {selectedDiscoverTag === 'All Matches'
+                      ? 'No matches available right now.'
+                      : `No matches found for "${selectedDiscoverTag}".`}
+                  </p>
+                  <p className="text-sm text-slate-500 mt-1">
+                    Please try exploring another category.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         ))}

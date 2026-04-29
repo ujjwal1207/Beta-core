@@ -683,76 +683,62 @@ const ProfileDetailScreen = () => {
             </div>
           )}
           <div className="flex space-x-3">
-            {person?.is_super_linker ? (
-              // Super Listeners: Only show Schedule Consultation button
+            {/* Connection and Chat buttons - available for everyone */}
+            {isConnected ? (
               <Button
-                onClick={() => setIsModalOpen(true)}
-                className={`flex-1 transition-all ${
-                  isScheduled ? 'bg-green-500! btn-scheduled-pop' : 'bg-rose-500! schedule-btn-pulse'
-                }`}
+                onClick={handleStartChat}
+                disabled={isSendingRequest}
+                primary
+                className="flex-1 bg-indigo-600! text-white!"
               >
-                {isScheduled ? (
-                  <><CheckCircle className="w-5 h-5 inline mr-2" /> Scheduled!</>
+                {isSendingRequest ? (
+                  <>
+                    <Loader className="w-5 h-5 inline mr-2 animate-spin" /> Opening...
+                  </>
                 ) : (
-                  <><Calendar className="w-5 h-5 inline mr-2" /> Schedule Consultation</>
+                  <>
+                    <MessageSquare className="w-5 h-5 inline mr-2" /> Start Chat
+                  </>
                 )}
               </Button>
+            ) : requestSent ? (
+              <Button disabled className="flex-1 bg-green-50! text-green-600!">
+                <UserPlus className="w-5 h-5 inline mr-2" /> Request Sent
+              </Button>
             ) : (
-              // Regular Users: Show connection and chat buttons
-              <>
-                {isConnected ? (
-                  <Button
-                    onClick={handleStartChat}
-                    disabled={isSendingRequest}
-                    primary
-                    className="flex-1 bg-indigo-600! text-white!"
-                  >
-                    {isSendingRequest ? (
-                      <>
-                        <Loader className="w-5 h-5 inline mr-2 animate-spin" /> Opening...
-                      </>
-                    ) : (
-                      <>
-                        <MessageSquare className="w-5 h-5 inline mr-2" /> Start Chat
-                      </>
-                    )}
-                  </Button>
-                ) : requestSent ? (
-                  <Button disabled className="flex-1 bg-green-50! text-green-600!">
-                    <UserPlus className="w-5 h-5 inline mr-2" /> Request Sent
-                  </Button>
+              <Button
+                onClick={handleSendRequest}
+                disabled={isSendingRequest}
+                primary
+                className="flex-1 bg-indigo-100! text-indigo-700!"
+              >
+                {isSendingRequest ? (
+                  <>
+                    <Loader className="w-5 h-5 inline mr-2 animate-spin" /> Sending...
+                  </>
                 ) : (
-                  <Button
-                    onClick={handleSendRequest}
-                    disabled={isSendingRequest}
-                    primary
-                    className="flex-1 bg-indigo-100! text-indigo-700!"
-                  >
-                    {isSendingRequest ? (
-                      <>
-                        <Loader className="w-5 h-5 inline mr-2 animate-spin" /> Sending...
-                      </>
-                    ) : (
-                      <>
-                        <UserPlus className="w-5 h-5 inline mr-2" /> Send Request
-                      </>
-                    )}
-                  </Button>
+                  <>
+                    <UserPlus className="w-5 h-5 inline mr-2" /> Send Request
+                  </>
                 )}
-                <Button
-                  onClick={() => setIsModalOpen(true)}
-                  className={`flex-1 transition-all ${
-                    isScheduled ? 'bg-green-500! btn-scheduled-pop' : 'bg-rose-500! schedule-btn-pulse'
-                  }`}
-                >
-                  {isScheduled ? (
-                    <><CheckCircle className="w-5 h-5 inline mr-2" /> Scheduled!</>
-                  ) : (
-                    <><Calendar className="w-5 h-5 inline mr-2" /> Schedule Call</>
-                  )}
-                </Button>
-              </>
+              </Button>
             )}
+
+            {/* Schedule button */}
+            <Button
+              onClick={() => setIsModalOpen(true)}
+              className={`flex-1 transition-all ${
+                isScheduled ? 'bg-green-500! btn-scheduled-pop' : 'bg-rose-500! schedule-btn-pulse'
+              }`}
+            >
+              {isScheduled ? (
+                <><CheckCircle className="w-5 h-5 inline mr-2" /> Scheduled!</>
+              ) : person?.is_super_linker ? (
+                <><Calendar className="w-5 h-5 inline mr-2" /> Schedule Consultation</>
+              ) : (
+                <><Calendar className="w-5 h-5 inline mr-2" /> Schedule Call</>
+              )}
+            </Button>
           </div>
         </div>
       </div>

@@ -1424,6 +1424,19 @@ const UserProfileScreen = () => {
 
               <div>
                 <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-sm font-semibold text-slate-700">Experience</label>
+                </div>
+                <textarea
+                  placeholder="e.g., 5 years in marketing, pivoted to tech..."
+                  value={localExpertise}
+                  onChange={(e) => { setLocalExpertise(e.target.value); setIsDirty(true); }}
+                  className="w-full p-3 bg-slate-50 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-base"
+                  rows="3"
+                />
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
                   <label className="text-sm font-semibold text-slate-700">Smart Tags</label>
                   <button
                     onClick={handleAutoTagBio}
@@ -1496,6 +1509,12 @@ const UserProfileScreen = () => {
                 <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Short Bio</p>
                 <p className="text-sm text-slate-700">{localTagline || 'Not shared yet'}</p>
               </div>
+              
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Experience</p>
+                <p className="text-sm text-slate-700">{localExpertise || 'Not shared yet'}</p>
+              </div>
+
               <div>
                 <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Smart Tags</p>
                 <div className="flex flex-wrap gap-1.5">
