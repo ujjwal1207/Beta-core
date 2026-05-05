@@ -102,9 +102,6 @@ const DiscoverPersonCard = ({ person, onConnect, showNotification }) => {
           <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full overflow-hidden border border-slate-200">
             <img src={getAvatarUrlWithSize(person, 150)} alt={person.full_name} className="w-full h-full object-cover bg-slate-50" />
           </div>
-          {/* Online Indicator */}
-          <div className="absolute bottom-0 left-0 w-4 h-4 sm:w-5 sm:h-5 bg-green-500 border-2 border-white rounded-full z-10"></div>
-          
           {/* Small icon decorators to mimic screenshot */}
           <div className="absolute -top-1 -right-2 w-7 h-7 bg-[#f3f0ff] rounded-full flex items-center justify-center shadow-[0_2px_4px_rgba(79,70,229,0.15)] border-2 border-white text-indigo-600 z-10 hidden sm:flex">
             <Building className="w-3.5 h-3.5" />
@@ -126,7 +123,6 @@ const DiscoverPersonCard = ({ person, onConnect, showNotification }) => {
                 badgeClassName="w-4 h-4 text-white fill-blue-600"
               />
               <p className="text-xs sm:text-sm text-slate-500 truncate mt-0.5">{subtitle}</p>
-              <p className="text-xs sm:text-sm font-medium text-slate-700 truncate mt-0.5 max-w-[200px] sm:max-w-xs">{person.role || 'Career coach & mentor'}</p>
             </div>
             
             {/* Rating */}
@@ -153,7 +149,7 @@ const DiscoverPersonCard = ({ person, onConnect, showNotification }) => {
             {person.connections_count > 0 ? (
               <>Helped <span className="font-bold text-slate-800">{person.connections_count}</span> people with</>
             ) : (
-              <>Can help you with</>
+              <>Likes to talk about</>
             )}
           </span>
         </div>

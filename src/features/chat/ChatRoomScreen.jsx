@@ -139,6 +139,7 @@ const ChatRoomScreen = () => {
             text: msg.content,
             sender: msg.sender_id === user.id ? 'me' : 'them',
             time: msgDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            createdAt: msgDate,
             attachment_url: msg.attachment_url,
             attachment_type: msg.attachment_type
           };
@@ -176,6 +177,7 @@ const ChatRoomScreen = () => {
           text: msg.content,
           sender: msg.sender_id === currentUserId ? 'me' : 'them',
           time: msgDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          createdAt: msgDate,
           attachment_url: msg.attachment_url,
           attachment_type: msg.attachment_type
         };
@@ -285,6 +287,7 @@ const ChatRoomScreen = () => {
         text: sentMessage.content,
         sender: 'me',
         time: msgDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        createdAt: msgDate,
         attachment_url: sentMessage.attachment_url,
         attachment_type: sentMessage.attachment_type
       };
@@ -308,6 +311,31 @@ const ChatRoomScreen = () => {
   };
 
   if (!selectedPerson) return <div className="p-4">No chat selected</div>;
+
+  // Format a date as a WhatsApp/Instagram-style separator label.
+  const formatDateSeparator = (date) => {
+    if (!date) return '';
+    const now = new Date();
+    const startOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+    const dayMs = 24 * 60 * 60 * 1000;
+    const diffDays = Math.round((startOfDay(now) - startOfDay(date)) / dayMs);
+
+    if (diffDays === 0) return 'Today';
+    if (diffDays === 1) return 'Yesterday';
+    if (diffDays > 1 && diffDays < 7) {
+      return date.toLocaleDateString([], { weekday: 'long' });
+    }
+    if (date.getFullYear() === now.getFullYear()) {
+      return date.toLocaleDateString([], { day: 'numeric', month: 'long' });
+    }
+    return date.toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' });
+  };
+
+  const isSameDay = (a, b) =>
+    a && b &&
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate();
 
   const latestIncomingMessage = useMemo(() => {
     const incoming = [...messages].reverse().find((msg) => msg.sender === 'them' && msg.text);
@@ -392,7 +420,11 @@ const ChatRoomScreen = () => {
             <p>No messages yet. Start the conversation!</p>
           </div>
         ) : (
-          messages.map((msg) => {
+          messages.map((msg, idx) => {
+            const prevMsg = idx > 0 ? messages[idx - 1] : null;
+            const showDateSeparator =
+              msg.createdAt && (!prevMsg || !isSameDay(prevMsg.createdAt, msg.createdAt));
+
             const isCallLog = msg.text && msg.text.startsWith('[CALL_LOG');
             let callDuration = '';
             let isVoiceCallLog = false;
@@ -422,8 +454,15 @@ const ChatRoomScreen = () => {
             }
 
             return (
+              <React.Fragment key={msg.id}>
+                {showDateSeparator && (
+                  <div className="flex justify-center my-3">
+                    <span className="px-3 py-1 bg-white text-slate-500 text-[11px] font-medium rounded-full shadow-sm border border-slate-200">
+                      {formatDateSeparator(msg.createdAt)}
+                    </span>
+                  </div>
+                )}
               <div
-                key={msg.id}
                 className={`flex ${msg.sender === 'me' ? 'justify-end' : 'justify-start'}`}
               >
                 <div
@@ -606,6 +645,7 @@ const ChatRoomScreen = () => {
                   </span>
                 </div>
               </div>
+              </React.Fragment>
             );
           })
         )}

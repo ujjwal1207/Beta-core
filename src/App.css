@@ -9,10 +9,17 @@
 html, body, #root {
   height: 100%;
   width: 100%;
-  overflow: hidden;
-  position: fixed;
   overscroll-behavior-y: none;
   -webkit-overflow-scrolling: touch;
+}
+
+/* Lock viewport scroll only on touch / small devices so the app feels native.
+   On laptops/desktops allow normal page scrolling. */
+@media (max-width: 768px), (pointer: coarse) {
+  html, body, #root {
+    overflow: hidden;
+    position: fixed;
+  }
 }
 
 html {
