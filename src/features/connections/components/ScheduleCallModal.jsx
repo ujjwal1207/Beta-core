@@ -1,398 +1,439 @@
 import React, { useState } from 'react';
-import { X, Calendar, Loader } from 'lucide-react';
-import Button from '../../../components/ui/Button';
+import { X, Calendar, Loader, Clock, Video, Zap, Star } from 'lucide-react';
 import callsService from '../../../services/callsService';
+import { getAvatarUrlWithSize } from '../../../lib/avatarUtils';
 
+/* ── Scoped keyframes ──────────────────────────────────────── */
+const MODAL_CSS = `
+  @keyframes _backdropIn  { from { opacity:0 } to { opacity:1 } }
+  @keyframes _slideUp     { from { opacity:0; transform:translateY(28px) scale(0.97) } to { opacity:1; transform:translateY(0) scale(1) } }
+  @keyframes _confettiUp  { 0%{transform:translateY(0) rotate(0deg);opacity:1} 100%{transform:translateY(-100px) rotate(540deg);opacity:0} }
+  @keyframes _circleDraw  { to { stroke-dashoffset:0 } }
+  @keyframes _checkDraw   { to { stroke-dashoffset:0 } }
+  @keyframes _fadeUp      { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+  @keyframes _countdown   { from{width:100%} to{width:0%} }
+  @keyframes _dotPulse    { 0%,100%{opacity:0.4} 50%{opacity:1} }
+`;
+
+const CONFETTI_COLORS = ['#6366f1','#f43f5e','#f59e0b','#10b981','#3b82f6','#a855f7'];
+
+/* ── Helpers ───────────────────────────────────────────────── */
+const fmt    = (d) => d.toLocaleDateString('en-US',{weekday:'short',day:'numeric',month:'short'});
+const fmtCus = (s) => { if(!s) return ''; return new Date(s).toLocaleDateString('en-US',{weekday:'short',day:'numeric',month:'short'}); };
+const TIME_SLOTS = ['9:00 AM','11:00 AM','2:00 PM','4:00 PM','7:00 PM'];
+
+/* ═══════════════════════════════════════════════════════════ */
 const ScheduleCallModal = ({ isOpen, onClose, person, onSuccess }) => {
-  const today = new Date();
-  const tomorrow = new Date(today);
-  tomorrow.setDate(tomorrow.getDate() + 1);
+  const today    = new Date();
+  const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
 
-  const formatDate = (date) => date.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short' });
-  const timeSlots = ['9:00 AM', '11:00 AM', '2:00 PM', '4:00 PM', '7:00 PM'];
-
-  const formatCustomDate = (dateString) => {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short' });
-  };
-
-  const [selectedDate, setSelectedDate] = useState(formatDate(today));
-  const [selectedTime, setSelectedTime] = useState(null);
-  const [customDate, setCustomDate] = useState('');
-  const [customTime, setCustomTime] = useState('');
-  const [useCustomTime, setUseCustomTime] = useState(false);
-  const selectedDuration = 30;
-  const [message, setMessage] = useState(`Hi ${person?.name || ''}, I'd love to chat about ${person?.tags?.[0] || 'your work'}!`);
-  const [isLoading, setIsLoading] = useState(false);
+  const [selDate,     setSelDate]     = useState(fmt(today));
+  const [selTime,     setSelTime]     = useState(null);
+  const [cusDate,     setCusDate]     = useState('');
+  const [cusTime,     setCusTime]     = useState('');
+  const [useCustom,   setUseCustom]   = useState(false);
+  const [message,     setMessage]     = useState(`Hi ${person?.name || person?.full_name || ''}, I'd love to chat about ${person?.tags?.[0] || 'your work'}!`);
+  const [loading,     setLoading]     = useState(false);
   const [successData, setSuccessData] = useState(null);
-  const [errorMessage, setErrorMessage] = useState('');
+  const [errMsg,      setErrMsg]      = useState('');
 
-  const parseTimeSlotTo24h = (slot) => {
-    const [hours, minutes] = slot.replace(/AM|PM/, '').trim().split(':');
-    const isPM = slot.includes('PM');
-    let hour24 = parseInt(hours, 10);
-    if (isPM && hour24 !== 12) hour24 += 12;
-    if (!isPM && hour24 === 12) hour24 = 0;
-    return { hour24, minutes: parseInt(minutes, 10) };
+  const isSuperLinker = person?.is_super_linker || ((person?.connections||0)>200 && (person?.trustScore||0)>=3.0);
+  const payRate       = person?.pay_rate_per_min || 0;
+  const callPrice     = isSuperLinker ? payRate : 0;
+  const personName    = person?.name || person?.full_name || 'them';
+  const DURATION      = 30;
+
+  /* helpers */
+  const parse24 = (slot) => {
+    const [h,m] = slot.replace(/AM|PM/,'').trim().split(':');
+    const pm = slot.includes('PM');
+    let h24 = parseInt(h,10);
+    if (pm && h24!==12) h24+=12;
+    if (!pm && h24===12) h24=0;
+    return { h24, m:parseInt(m,10) };
+  };
+  const isPast = (slot) => {
+    if (selDate!==fmt(today)) return false;
+    const now=new Date(); const {h24,m}=parse24(slot);
+    const c=new Date(); c.setHours(h24,m,0,0); return c<=now;
+  };
+  const draftIntro = () => {
+    const focus=person?.tags?.[0]||person?.industry||'your work';
+    setMessage(`Hi ${personName}, your experience in ${focus} stood out to me. I'd love to learn from your journey.`);
   };
 
-  const isPastPresetTime = (slot) => {
-    if (selectedDate !== formatDate(today)) return false;
-    const now = new Date();
-    const { hour24, minutes } = parseTimeSlotTo24h(slot);
-    const candidate = new Date();
-    candidate.setHours(hour24, minutes, 0, 0);
-    return candidate <= now;
-  };
-
-  const handleDraftIntro = () => {
-    const focus = person?.tags?.[0] || person?.industry || 'your work';
-    const name = person?.name || person?.full_name || 'there';
-    setMessage(`Hi ${name}, your experience in ${focus} stood out to me. I would love to chat and learn from your journey.`);
-  };
-
-  const isSuperLinker = person?.is_super_linker || ((person?.connections || 0) > 200 && (person?.trustScore || 0) >= 3.0);
-  const payRatePerMin = person?.pay_rate_per_min || 0;
-  const callPrice = isSuperLinker ? payRatePerMin : 0;
+  const hasSelection = selTime||(useCustom&&cusDate&&cusTime);
 
   if (!isOpen) return null;
 
+  /* ── Send handler ── */
   const handleSend = async () => {
-    setErrorMessage('');
-    if ((!selectedTime && !useCustomTime) || (useCustomTime && (!customDate || !customTime))) return;
-
-    const hostId = person?.id || person?.user_id;
-    if (!hostId) {
-      setErrorMessage('Unable to schedule: missing recipient id. Please reopen this profile and try again.');
-      return;
-    }
-
-    setIsLoading(true);
+    setErrMsg('');
+    if (!hasSelection) return;
+    const hostId = person?.id||person?.user_id;
+    if (!hostId){ setErrMsg('Missing recipient – reopen this profile and try again.'); return; }
+    setLoading(true);
     try {
-      let scheduledDate;
-
-      if (useCustomTime) {
-        const [year, month, day] = customDate.split('-').map(Number);
-        const [hours, minutes] = customTime.split(':').map(Number);
-        scheduledDate = new Date(year, month - 1, day, hours, minutes, 0, 0);
+      let dt;
+      if (useCustom){
+        const [y,mo,d]=cusDate.split('-').map(Number);
+        const [hh,mm]=cusTime.split(':').map(Number);
+        dt=new Date(y,mo-1,d,hh,mm);
       } else {
-        const { hour24, minutes } = parseTimeSlotTo24h(selectedTime);
-        scheduledDate = new Date();
-        if (selectedDate === formatDate(tomorrow)) {
-          scheduledDate.setDate(scheduledDate.getDate() + 1);
-        }
-        scheduledDate.setHours(hour24, minutes, 0, 0);
+        const {h24,m}=parse24(selTime); dt=new Date();
+        if (selDate===fmt(tomorrow)) dt.setDate(dt.getDate()+1);
+        dt.setHours(h24,m,0,0);
       }
-
-      const now = new Date();
-      if (scheduledDate <= now) {
-        setErrorMessage('Please select a future time.');
-        if (onSuccess) onSuccess('Please select a time in the future.');
-        setIsLoading(false);
-        return;
-      }
-
-      const bookingResponse = await callsService.createCallBooking(
-        hostId,
-        scheduledDate,
-        'video',
-        message,
-        isSuperLinker ? callPrice : 0,
-        selectedDuration
-      );
-
-      setSuccessData(bookingResponse);
+      if (dt<=new Date()){ setErrMsg('Please select a future time.'); setLoading(false); return; }
+      const res = await callsService.createCallBooking(hostId,dt,'video',message,isSuperLinker?callPrice:0,DURATION);
+      setSuccessData(res);
       if (onSuccess) onSuccess('Call scheduled successfully! Waiting for confirmation.');
-    } catch (error) {
-      console.error('Failed to schedule call:', error);
-      const serverError = error?.response?.data?.detail;
-      setErrorMessage(typeof serverError === 'string' ? serverError : 'Failed to schedule call. Please try another slot.');
+    } catch(e){
+      const srv=e?.response?.data?.detail;
+      setErrMsg(typeof srv==='string'?srv:'Failed to schedule. Please try another slot.');
       if (onSuccess) onSuccess('Failed to schedule call. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
+    } finally { setLoading(false); }
   };
 
-  /* ── Animated success screen ─────────────────────────── */
+  /* ══════════════════════════════════════════════════════════
+     SUCCESS SCREEN
+  ══════════════════════════════════════════════════════════ */
   if (successData) {
-    const CONFETTI_COLORS = ['#6366f1', '#f43f5e', '#f59e0b', '#10b981', '#3b82f6', '#a855f7'];
-    const confettiPieces = Array.from({ length: 18 }, (_, i) => ({
-      id: i,
-      color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
-      left: `${(i * 5.5) % 100}%`,
-      delay: `${(i * 0.07).toFixed(2)}s`,
-      size: i % 3 === 0 ? 10 : i % 3 === 1 ? 7 : 5,
+    const pieces = Array.from({length:18},(_,i)=>({
+      id:i, color:CONFETTI_COLORS[i%CONFETTI_COLORS.length],
+      left:`${(i*5.5)%100}%`, delay:`${(i*0.065).toFixed(2)}s`,
+      size: i%3===0?10:i%3===1?7:5,
     }));
-
-    setTimeout(() => { if (successData) onClose(); }, 5000);
+    setTimeout(()=>{ if(successData) onClose(); },5000);
 
     return (
-      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex justify-center items-center p-4">
-        <style>{`
-          @keyframes confettiFloat { 0% { transform: translateY(0) rotate(0); opacity: 1; } 100% { transform: translateY(-100px) rotate(360deg); opacity: 0; } }
-          @keyframes circleDraw { to { stroke-dashoffset: 0; } }
-          @keyframes checkmarkDraw { to { stroke-dashoffset: 0; } }
-          @keyframes successFadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-          @keyframes countdownBar { from { width: 100%; } to { width: 0%; } }
-        `}</style>
-        <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col">
-          <div className="flex justify-between items-center p-6 border-b border-slate-200">
-            <h2 className="text-xl font-extrabold text-slate-800">Booking Sent</h2>
-            <button onClick={onClose} className="p-2 rounded-full hover:bg-slate-100">
-              <X className="w-6 h-6 text-slate-600" />
+      <div style={{animation:'_backdropIn 0.2s ease both'}}
+        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex justify-center items-end sm:items-center p-0 sm:p-4">
+        <style>{MODAL_CSS}</style>
+        <div style={{animation:'_slideUp 0.32s cubic-bezier(0.22,1,0.36,1) both'}}
+          className="bg-white rounded-t-[28px] sm:rounded-[28px] shadow-2xl w-full max-w-md overflow-hidden flex flex-col">
+
+          {/* header */}
+          <div className="flex justify-between items-center px-6 pt-5 pb-4 border-b border-slate-100">
+            <h2 className="text-lg font-bold text-slate-800">Booking Sent 🎉</h2>
+            <button onClick={onClose}
+              className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors">
+              <X className="w-4 h-4 text-slate-500" />
             </button>
           </div>
 
-          <div className="p-8 flex flex-col items-center justify-center text-center relative overflow-hidden">
-            <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
-              {confettiPieces.map(p => (
-                <span
-                  key={p.id}
-                  style={{
-                    position: 'absolute',
-                    left: p.left,
-                    bottom: '30%',
-                    width: p.size,
-                    height: p.size,
-                    borderRadius: p.id % 2 === 0 ? '50%' : '2px',
-                    backgroundColor: p.color,
-                    animation: `confettiFloat 1.1s ease-out ${p.delay} both`,
-                  }}
-                />
+          <div className="p-8 flex flex-col items-center text-center relative overflow-hidden">
+            {/* confetti */}
+            <div className="absolute inset-0 pointer-events-none" aria-hidden>
+              {pieces.map(p=>(
+                <span key={p.id} style={{
+                  position:'absolute',left:p.left,bottom:'30%',
+                  width:p.size,height:p.size,
+                  borderRadius:p.id%2===0?'50%':'2px',
+                  backgroundColor:p.color,
+                  animation:`_confettiUp 1.15s ease-out ${p.delay} both`,
+                }}/>
               ))}
             </div>
 
-            <div className="relative mb-6">
-              <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <circle
-                  cx="40" cy="40" r="36"
-                  stroke="#22c55e" strokeWidth="4.5" fill="none"
-                  strokeDasharray="226" strokeDashoffset="226"
-                  style={{ animation: 'circleDraw 0.55s cubic-bezier(0.65,0,0.45,1) 0.1s forwards' }}
-                />
-                <polyline
-                  points="22,42 34,54 57,30"
+            {/* animated checkmark */}
+            <div className="mb-5">
+              <svg width="76" height="76" viewBox="0 0 76 76" fill="none">
+                <circle cx="38" cy="38" r="34"
+                  stroke="#22c55e" strokeWidth="4" fill="none"
+                  strokeDasharray="214" strokeDashoffset="214"
+                  style={{animation:'_circleDraw 0.55s cubic-bezier(0.65,0,0.45,1) 0.1s forwards'}}/>
+                <polyline points="20,40 32,52 55,28"
                   stroke="#22c55e" strokeWidth="5" fill="none"
                   strokeLinecap="round" strokeLinejoin="round"
-                  strokeDasharray="80" strokeDashoffset="80"
-                  style={{ animation: 'checkmarkDraw 0.35s ease-out 0.55s forwards' }}
-                />
+                  strokeDasharray="76" strokeDashoffset="76"
+                  style={{animation:'_checkDraw 0.32s ease-out 0.55s forwards'}}/>
               </svg>
             </div>
 
-            <h3
-              className="text-2xl font-bold text-slate-800 mb-2"
-              style={{ animation: 'successFadeUp 0.4s ease 0.7s both' }}
-            >
+            <h3 className="text-2xl font-bold text-slate-800 mb-2"
+              style={{animation:'_fadeUp 0.38s ease 0.7s both'}}>
               Request Sent!
             </h3>
-            <p
-              className="text-slate-600 mb-8 max-w-sm"
-              style={{ animation: 'successFadeUp 0.4s ease 0.85s both' }}
-            >
-              Your call request has been sent to <strong>{person?.name || person?.full_name || 'the host'}</strong>. They will review and confirm it soon.
+            <p className="text-slate-500 text-sm mb-7 max-w-xs"
+              style={{animation:'_fadeUp 0.38s ease 0.85s both'}}>
+              Your call request has been sent to{' '}
+              <span className="font-semibold text-slate-800">{personName}</span>.
+              They'll review and confirm soon.
             </p>
 
-            <div className="w-full space-y-3" style={{ animation: 'successFadeUp 0.4s ease 0.95s both' }}>
+            <div className="w-full space-y-2.5" style={{animation:'_fadeUp 0.38s ease 0.95s both'}}>
               {successData.calendar_url && (
-                <a
-                  href={successData.calendar_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-xl font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                >
-                  <Calendar className="w-5 h-5" />
+                <a href={successData.calendar_url} target="_blank" rel="noopener noreferrer"
+                  className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white py-3 px-4 rounded-2xl font-semibold text-sm transition-colors">
+                  <Calendar className="w-4 h-4"/>
                   Add to Google Calendar
                 </a>
               )}
-              <Button onClick={onClose} variant="outline" className="w-full border-slate-300 text-slate-700 hover:bg-slate-50">
+              <button onClick={onClose}
+                className="w-full py-3 px-4 rounded-2xl font-semibold text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors">
                 Done
-              </Button>
+              </button>
             </div>
 
+            {/* countdown bar */}
             <div className="mt-6 w-full h-1 bg-slate-100 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-indigo-400 rounded-full"
-                style={{ animation: 'countdownBar 4s linear 1s forwards', width: '100%' }}
-              />
+              <div className="h-full bg-indigo-400 rounded-full"
+                style={{animation:'_countdown 4s linear 1s forwards',width:'100%'}}/>
             </div>
-            <p className="text-xs text-slate-400 mt-1.5">Auto-closing in a few seconds…</p>
+            <p className="text-[11px] text-slate-400 mt-1.5">Auto-closing in a few seconds…</p>
           </div>
         </div>
       </div>
     );
   }
 
-  /* ── Booking form ──────────────────────────────────────── */
+  /* ══════════════════════════════════════════════════════════
+     BOOKING FORM
+  ══════════════════════════════════════════════════════════ */
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex justify-center items-center p-4">
-      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md h-full sm:h-auto sm:max-h-[90vh] overflow-hidden flex flex-col">
-        <div className="flex justify-between items-center p-6 border-b border-slate-200">
-          <h2 className="text-xl font-extrabold text-slate-800">
-            {`Schedule a chat with ${person?.name}`}
-          </h2>
-          <button onClick={onClose} className="p-2 rounded-full hover:bg-slate-100">
-            <X className="w-6 h-6 text-slate-600" />
-          </button>
-        </div>
+    <div style={{animation:'_backdropIn 0.2s ease both'}}
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex justify-center items-end sm:items-center p-0 sm:p-4">
+      <style>{MODAL_CSS}</style>
 
-        <div className="p-6 overflow-y-auto flex-grow">
-          {isSuperLinker && (
-            <div className="p-4 bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 rounded-lg mb-6">
-              <div className="flex items-center justify-between mb-3">
-                <h4 className="font-bold text-indigo-700">💰 Consultation Fee</h4>
-                <span className="text-xs bg-indigo-100 text-indigo-600 px-2 py-1 rounded-full font-medium">Super Listener</span>
+      <div style={{animation:'_slideUp 0.32s cubic-bezier(0.22,1,0.36,1) both', maxHeight:'92vh'}}
+        className="bg-white rounded-t-[28px] sm:rounded-[28px] shadow-2xl w-full max-w-md flex flex-col overflow-hidden">
+
+        {/* ── HEADER ── */}
+        <div className="shrink-0 relative px-5 pt-5 pb-4 border-b border-slate-100 overflow-hidden">
+          {/* subtle gradient stripe */}
+          <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-rose-500"/>
+          <div className="absolute top-0 right-0 w-28 h-28 bg-indigo-50 rounded-bl-full -z-0 pointer-events-none"/>
+
+          <div className="flex items-start justify-between gap-3 relative">
+            <div className="flex items-center gap-3">
+              {/* avatar with online dot */}
+              {person && (
+                <div className="relative shrink-0">
+                  <img src={getAvatarUrlWithSize(person,90)} alt={personName}
+                    className="w-12 h-12 rounded-full object-cover border-2 border-indigo-100 shadow-sm"/>
+                  <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-green-400 rounded-full border-2 border-white"/>
+                </div>
+              )}
+              <div>
+                <p className="text-[10px] font-semibold text-indigo-500 uppercase tracking-widest mb-0.5">
+                  Schedule a Call
+                </p>
+                <h2 className="text-[15px] font-bold text-slate-800 leading-tight">
+                  Chat with {personName}
+                </h2>
               </div>
-              <div className="bg-white border border-indigo-200 rounded-lg p-3 mb-2">
-                <div className="flex justify-between items-center text-sm text-slate-600 mb-1">
-                  <span>Rate per session:</span>
-                  <span>₹{payRatePerMin}</span>
-                </div>
-                <div className="flex justify-between items-center text-sm text-slate-600 mb-2">
-                  <span>Duration:</span>
-                  <span>{selectedDuration} minutes</span>
-                </div>
-                <hr className="border-slate-200 mb-2" />
-                <div className="flex justify-between items-center">
-                  <span className="font-bold text-indigo-700">Total Fee:</span>
-                  <span className="font-bold text-lg text-indigo-700">₹{callPrice.toFixed(2)}</span>
-                </div>
-              </div>
-              <p className="text-xs text-indigo-600 text-center">
-                💡 Payment required after Super Listener accepts your request
-              </p>
             </div>
-          )}
-
-          <h3 className="text-base font-bold text-slate-800 mb-3">Choose a Day</h3>
-          <div className="flex space-x-3 mb-6">
-            {[today, tomorrow].map(date => {
-              const dateStr = formatDate(date);
-              return (
-                <button
-                  key={dateStr}
-                  onClick={() => { setSelectedDate(dateStr); setSelectedTime(null); setUseCustomTime(false); }}
-                  className={`px-4 py-2 rounded-xl border font-semibold text-sm transition-colors active:scale-[0.98] ${
-                    selectedDate === dateStr && !useCustomTime
-                      ? 'bg-rose-500 text-white border-rose-500'
-                      : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
-                  }`}
-                >
-                  {dateStr}
-                </button>
-              );
-            })}
-            <button
-              onClick={() => { setUseCustomTime(true); setSelectedTime(null); }}
-              className={`px-4 py-2 rounded-xl border font-semibold text-sm transition-colors active:scale-[0.98] ${
-                useCustomTime
-                  ? 'bg-rose-500 text-white border-rose-500'
-                  : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
-              }`}
-            >
-              Custom Date
+            <button onClick={onClose}
+              className="shrink-0 w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors mt-0.5">
+              <X className="w-4 h-4 text-slate-500"/>
             </button>
           </div>
 
-          <h3 className="text-base font-bold text-slate-800 mb-3">Choose the Time</h3>
+          {/* meta pills */}
+          <div className="flex gap-2 mt-3.5 flex-wrap">
+            <span className="inline-flex items-center gap-1.5 bg-slate-100 text-slate-600 text-[11px] font-medium px-3 py-1.5 rounded-full">
+              <Video className="w-3 h-3 text-indigo-500"/> Video Call
+            </span>
+            <span className="inline-flex items-center gap-1.5 bg-slate-100 text-slate-600 text-[11px] font-medium px-3 py-1.5 rounded-full">
+              <Clock className="w-3 h-3 text-indigo-500"/> {DURATION} min
+            </span>
+            {isSuperLinker && (
+              <span className="inline-flex items-center gap-1.5 bg-amber-50 text-amber-700 border border-amber-200 text-[11px] font-semibold px-3 py-1.5 rounded-full">
+                <Zap className="w-3 h-3 fill-amber-400 text-amber-500"/> Super Listener
+              </span>
+            )}
+          </div>
+        </div>
 
-          {errorMessage && (
-            <div className="mb-4 p-3 rounded-xl border border-red-200 bg-red-50 text-red-700 text-sm font-medium">
-              {errorMessage}
+        {/* ── SCROLLABLE BODY ── */}
+        <div className="flex-1 overflow-y-auto px-5 py-5 space-y-5"
+          style={{scrollbarWidth:'none',WebkitOverflowScrolling:'touch'}}>
+
+          {/* Super Listener Fee Card */}
+          {isSuperLinker && (
+            <div className="rounded-2xl overflow-hidden border border-indigo-100 shadow-sm">
+              {/* card header */}
+              <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-indigo-50 to-purple-50 border-b border-indigo-100">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center">
+                    <Star className="w-3 h-3 text-indigo-600 fill-indigo-500"/>
+                  </div>
+                  <span className="text-sm font-bold text-indigo-700">Consultation Fee</span>
+                </div>
+                <span className="text-[10px] font-bold bg-indigo-100 text-indigo-600 px-2.5 py-1 rounded-full uppercase tracking-wide">
+                  Super Listener
+                </span>
+              </div>
+              {/* line items */}
+              <div className="bg-white px-4 py-3 space-y-2">
+                <div className="flex justify-between text-xs text-slate-500">
+                  <span>Rate per session</span>
+                  <span className="text-slate-700 font-medium">₹{payRate}</span>
+                </div>
+                <div className="flex justify-between text-xs text-slate-500">
+                  <span>Duration</span>
+                  <span className="text-slate-700 font-medium">{DURATION} minutes</span>
+                </div>
+                <div className="border-t border-slate-100 pt-2 flex justify-between items-center">
+                  <span className="text-sm font-bold text-slate-800">Total</span>
+                  <span className="text-lg font-extrabold text-indigo-600">₹{callPrice.toFixed(2)}</span>
+                </div>
+              </div>
+              {/* note */}
+              <div className="bg-indigo-50 px-4 py-2.5 border-t border-indigo-100">
+                <p className="text-[11px] text-indigo-600 text-center">
+                  💡 Payment only charged after {personName} accepts your request
+                </p>
+              </div>
             </div>
           )}
 
-          {!useCustomTime ? (
-            <div className="grid grid-cols-3 gap-2 mb-6">
-              {timeSlots.map(time => {
-                const isPast = isPastPresetTime(time);
+          {/* ── Choose Day ── */}
+          <div>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2.5">
+              Choose a Day
+            </p>
+            <div className="flex gap-2 flex-wrap">
+              {[today, tomorrow].map(date => {
+                const ds = fmt(date);
+                const active = selDate===ds && !useCustom;
                 return (
-                  <button
-                    key={time}
-                    onClick={() => { if (isPast) return; setErrorMessage(''); setSelectedTime(time); }}
-                    disabled={isPast}
-                    className={`py-2 rounded-lg border font-medium text-sm transition-colors active:scale-[0.98] ${
-                      selectedTime === time
-                        ? 'bg-indigo-600 text-white border-indigo-600'
-                        : isPast
-                          ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed'
-                          : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
-                    }`}
-                  >
-                    {time}
+                  <button key={ds}
+                    onClick={()=>{ setSelDate(ds); setSelTime(null); setUseCustom(false); }}
+                    className={`px-4 py-2.5 rounded-xl border text-sm font-semibold transition-all active:scale-95 ${
+                      active
+                        ? 'bg-indigo-600 border-indigo-600 text-white shadow-[0_4px_12px_rgba(99,102,241,0.3)]'
+                        : 'bg-white border-slate-200 text-slate-700 hover:border-indigo-200 hover:bg-indigo-50'
+                    }`}>
+                    {ds}
                   </button>
                 );
               })}
+              <button
+                onClick={()=>{ setUseCustom(true); setSelTime(null); }}
+                className={`px-4 py-2.5 rounded-xl border text-sm font-semibold transition-all active:scale-95 ${
+                  useCustom
+                    ? 'bg-indigo-600 border-indigo-600 text-white shadow-[0_4px_12px_rgba(99,102,241,0.3)]'
+                    : 'bg-white border-slate-200 text-slate-700 hover:border-indigo-200 hover:bg-indigo-50'
+                }`}>
+                Custom
+              </button>
             </div>
-          ) : (
-            <div className="space-y-4 mb-6">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Select Date</label>
-                <input
-                  type="date"
-                  value={customDate}
-                  onChange={(e) => setCustomDate(e.target.value)}
-                  min={today.toISOString().split('T')[0]}
-                  className="w-full p-3 border border-slate-300 rounded-xl focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Select Time</label>
-                <input
-                  type="time"
-                  value={customTime}
-                  onChange={(e) => setCustomTime(e.target.value)}
-                  className="w-full p-3 border border-slate-300 rounded-xl focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-                />
-              </div>
-            </div>
-          )}
-
-          <div className="flex justify-between items-center mb-3">
-            <h3 className="text-base font-bold text-slate-800">Write a Note (Optional)</h3>
-            <button
-              onClick={handleDraftIntro}
-              className="text-[10px] bg-indigo-50 text-indigo-700 font-bold px-2 py-1 rounded border border-indigo-200 hover:bg-indigo-100 transition-colors"
-            >
-              Draft Intro
-            </button>
           </div>
-          <textarea
-            className="w-full p-3 border border-slate-300 rounded-xl resize-none focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-            rows="3"
-            placeholder="Say hello!"
-            value={message}
-            onChange={e => setMessage(e.target.value)}
-          />
-          {(selectedTime || (useCustomTime && customDate && customTime)) && (
-            <p className="mt-3 text-sm font-semibold text-green-600">
-              You picked: {useCustomTime ? `${formatCustomDate(customDate)} at ${customTime}` : `${selectedDate} at ${selectedTime}`}
+
+          {/* ── Choose Time ── */}
+          <div>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2.5">
+              Choose a Time
             </p>
+
+            {errMsg && (
+              <div className="mb-3 px-4 py-3 rounded-xl border border-red-200 bg-red-50 text-red-600 text-sm font-medium">
+                {errMsg}
+              </div>
+            )}
+
+            {!useCustom ? (
+              <div className="grid grid-cols-3 gap-2">
+                {TIME_SLOTS.map(t => {
+                  const past   = isPast(t);
+                  const active = selTime===t;
+                  return (
+                    <button key={t}
+                      onClick={()=>{ if(past) return; setErrMsg(''); setSelTime(t); }}
+                      disabled={past}
+                      className={`py-2.5 rounded-xl border text-sm font-semibold transition-all active:scale-95 ${
+                        active
+                          ? 'bg-[#ff3b68] border-[#ff3b68] text-white shadow-[0_4px_12px_rgba(255,59,104,0.3)]'
+                          : past
+                            ? 'bg-slate-50 border-slate-100 text-slate-300 cursor-not-allowed'
+                            : 'bg-white border-slate-200 text-slate-700 hover:border-rose-200 hover:bg-rose-50'
+                      }`}>
+                      {t}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1.5">Date</label>
+                  <input type="date" value={cusDate}
+                    onChange={e=>setCusDate(e.target.value)}
+                    min={today.toISOString().split('T')[0]}
+                    className="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-indigo-400 bg-white"/>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1.5">Time</label>
+                  <input type="time" value={cusTime}
+                    onChange={e=>setCusTime(e.target.value)}
+                    className="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-indigo-400 bg-white"/>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* ── Write a Note ── */}
+          <div>
+            <div className="flex items-center justify-between mb-2.5">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                Write a Note <span className="normal-case font-normal text-slate-400">(optional)</span>
+              </p>
+              <button onClick={draftIntro}
+                className="text-[10px] font-bold text-indigo-600 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-2.5 py-1 rounded-lg transition-colors">
+                ✨ Draft Intro
+              </button>
+            </div>
+            <textarea
+              rows={3}
+              placeholder="Say something nice…"
+              value={message}
+              onChange={e=>setMessage(e.target.value)}
+              className="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm text-slate-800 resize-none focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-indigo-400 placeholder-slate-300 bg-white leading-relaxed"
+            />
+          </div>
+
+          {/* selection summary */}
+          {hasSelection && (
+            <div className="flex items-center gap-2.5 px-4 py-3 rounded-xl bg-green-50 border border-green-200">
+              <span className="w-2 h-2 rounded-full bg-green-400 shrink-0"
+                style={{animation:'_dotPulse 1.5s ease-in-out infinite'}}/>
+              <p className="text-sm text-green-700 font-semibold">
+                {useCustom
+                  ? `${fmtCus(cusDate)} at ${cusTime}`
+                  : `${selDate} at ${selTime}`}
+              </p>
+            </div>
           )}
         </div>
 
-        <div className="p-6 border-t border-slate-200">
-          <Button
+        {/* ── FOOTER CTA ── */}
+        <div className="shrink-0 px-5 py-4 border-t border-slate-100 bg-white">
+          <button
             onClick={handleSend}
-            disabled={(!selectedTime && !useCustomTime) || (useCustomTime && (!customDate || !customTime)) || isLoading}
-          >
-            {isLoading ? (
-              <>
-                <Loader className="w-4 h-4 animate-spin mr-2" />
-                Scheduling...
-              </>
+            disabled={!hasSelection||loading}
+            className={`w-full py-4 rounded-2xl font-bold text-base flex items-center justify-center gap-2 transition-all active:scale-[0.98] ${
+              !hasSelection||loading
+                ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                : isSuperLinker
+                  ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-[0_6px_18px_rgba(99,102,241,0.4)] hover:shadow-[0_8px_24px_rgba(99,102,241,0.5)]'
+                  : 'bg-[#ff3b68] hover:bg-[#e8345c] text-white shadow-[0_6px_18px_rgba(255,59,104,0.35)] hover:shadow-[0_8px_24px_rgba(255,59,104,0.45)]'
+            }`}>
+            {loading ? (
+              <><Loader className="w-4 h-4 animate-spin"/>Scheduling…</>
             ) : isSuperLinker ? (
-              <span className="flex items-center justify-center gap-2">
-                📅 Schedule Consultation
-                <span className="bg-white/20 px-2 py-1 rounded-full text-sm font-bold">
+              <>
+                <Calendar className="w-4 h-4"/>
+                Schedule Consultation
+                <span className="ml-1 px-2 py-0.5 rounded-full bg-white/20 text-sm font-bold">
                   ₹{callPrice.toFixed(2)}
                 </span>
-              </span>
+              </>
             ) : (
-              'Schedule Call'
+              <><Calendar className="w-4 h-4"/>Schedule Call</>
             )}
-          </Button>
+          </button>
         </div>
       </div>
     </div>
