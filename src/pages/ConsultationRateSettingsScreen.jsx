@@ -45,7 +45,7 @@ export const ConsultationRateSettingsScreen = () => {
   const suggestedRates = [100, 200, 400, 600, 800, 1000];
 
   return (
-    <div className="relative flex flex-col h-full bg-slate-50">
+    <div className="relative flex flex-col h-full bg-slate-50 overflow-hidden">
       <div className="p-4 pt-6 bg-white shadow-sm">
         <button 
           onClick={() => setScreen('SETTINGS')} 
@@ -57,7 +57,7 @@ export const ConsultationRateSettingsScreen = () => {
         <p className="text-slate-600 text-sm">Set your rate per call for consultations</p>
       </div>
       
-      <div className="grow p-4 space-y-6">
+      <div className="flex-1 overflow-y-auto p-4 space-y-6">
         {/* Current Rate Display */}
         <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-200">
           <div className="flex items-center mb-4">
@@ -119,12 +119,12 @@ export const ConsultationRateSettingsScreen = () => {
         </div>
       </div>
       
-      {/* Save Button */}
-      <div className="p-4 bg-white border-t border-slate-200">
+      {/* Save Button - always visible at bottom */}
+      <div className="shrink-0 p-4 bg-white border-t border-slate-200" style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}>
         <button
           onClick={handleSaveRate}
           disabled={isLoading || !payRate || parseFloat(payRate) <= 0}
-          className="w-full bg-blue-500 text-white py-3 px-4 rounded-lg hover:bg-blue-600 transition-colors disabled:bg-slate-300 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          className="w-full bg-blue-500 text-white py-3 px-4 rounded-lg hover:bg-blue-600 transition-colors disabled:bg-slate-300 disabled:cursor-not-allowed flex items-center justify-center gap-2 font-medium"
         >
           {isLoading ? (
             <>
